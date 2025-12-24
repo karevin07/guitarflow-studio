@@ -3,12 +3,13 @@ import React, { useMemo } from 'react';
 import { TabSection, ChordDefinition } from '../types';
 import ChordDiagram from './ChordDiagram';
 import { COMMON_CHORDS } from '../constants';
-import { Anchor } from 'lucide-react';
+import { Anchor, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 
 interface SongPreviewProps {
   sections: TabSection[];
   customChords?: ChordDefinition[];
   externalTranspose?: number;
+  onTransposeChange?: (newVal: number) => void;
 }
 
 const chromaticScale = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -42,7 +43,12 @@ const transposeFret = (fretStr: string, semitones: number): string => {
   return newFret < 0 ? '0' : newFret.toString();
 };
 
-const SongPreview: React.FC<SongPreviewProps> = ({ sections, customChords = [], externalTranspose = 0 }) => {
+const SongPreview: React.FC<SongPreviewProps> = ({ 
+  sections, 
+  customChords = [], 
+  externalTranspose = 0,
+  onTransposeChange 
+}) => {
   const transpose = externalTranspose;
 
   // Combine libraries
@@ -200,33 +206,72 @@ const SongPreview: React.FC<SongPreviewProps> = ({ sections, customChords = [], 
           ))}
         </div>
 
-        <aside className="w-full lg:w-40 flex-shrink-0">
-          <div className="sticky top-24 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center leading-tight">Song Chord Shapes</h3>
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-              {allUniqueTransposedNames.length > 0 ? (
-                allUniqueTransposedNames.map((name) => {
-                  const chordDef = chordLibrary.find(c => c.name === name);
-                  return (
-                    <div key={name} className="flex flex-col items-center">
-                      <div className="transform scale-[0.75] origin-top opacity-100 transition-all duration-500">
-                        {chordDef ? (
-                          <ChordDiagram chord={chordDef} size={130} />
-                        ) : (
-                          <div className="w-[130px] h-[150px] bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center p-4">
-                            <span className="text-xl font-black text-slate-800 mb-2">{name}</span>
-                            <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest text-center leading-none text-balance">Shape not found</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="py-8 text-center">
-                  <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">No Chords</span>
+        <aside className="w-full lg:w-48 flex-shrink-0 space-y-6">
+          {/* Transpose Tool - Now exclusively here */}
+          <div className="sticky top-24 space-y-6">
+            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 text-center leading-tight">Transposition</h3>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-sm w-full justify-between">
+                  <button 
+                    onClick={() => onTransposeChange?.(Math.max(-12, transpose - 1))}
+                    className="p-2 hover:bg-slate-50 text-slate-500 hover:text-orange-600 rounded-lg transition-all"
+                    title="Transpose Down"
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                  <div className="flex flex-col items-center">
+                    <span className="text-[8px] font-black text-slate-400 uppercase leading-none mb-1">Shift</span>
+                    <span className={`text-sm font-black leading-none ${transpose === 0 ? 'text-slate-400' : 'text-orange-600'}`}>
+                      {transpose > 0 ? `+${transpose}` : transpose}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => onTransposeChange?.(Math.min(12, transpose + 1))}
+                    className="p-2 hover:bg-slate-50 text-slate-500 hover:text-orange-600 rounded-lg transition-all"
+                    title="Transpose Up"
+                  >
+                    <ChevronUp size={18} />
+                  </button>
                 </div>
-              )}
+                {transpose !== 0 && (
+                  <button 
+                    onClick={() => onTransposeChange?.(0)}
+                    className="w-full py-2 bg-white text-slate-400 hover:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 hover:border-slate-200 transition-all flex items-center justify-center gap-2"
+                  >
+                    <RotateCcw size={12} /> Reset Key
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 text-center leading-tight">Song Chord Shapes</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                {allUniqueTransposedNames.length > 0 ? (
+                  allUniqueTransposedNames.map((name) => {
+                    const chordDef = chordLibrary.find(c => c.name === name);
+                    return (
+                      <div key={name} className="flex flex-col items-center">
+                        <div className="transform scale-[0.75] origin-top opacity-100 transition-all duration-500">
+                          {chordDef ? (
+                            <ChordDiagram chord={chordDef} size={130} />
+                          ) : (
+                            <div className="w-[130px] h-[150px] bg-white border border-slate-200 rounded-2xl flex flex-col items-center justify-center p-4 text-center">
+                              <span className="text-xl font-black text-slate-800 mb-2">{name}</span>
+                              <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest leading-none text-balance">Shape not found</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-8 text-center">
+                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-widest italic">No Chords</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </aside>

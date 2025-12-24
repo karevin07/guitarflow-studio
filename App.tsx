@@ -1,68 +1,114 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Music, Plus, Save, Download, Trash2, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
+import { Music, Plus, Save, Download, Trash2, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw, ArrowLeft, Search, Clock, FileText } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
 import ChordDiagram from './components/ChordDiagram';
 import SongPreview from './components/SongPreview';
 import ChordManager from './components/ChordManager';
+import Home from './components/Home';
 import { EMPTY_MEASURE, COMMON_CHORDS } from './constants';
-import { TabSection, ChordDefinition } from './types';
+import { TabSection, ChordDefinition, GuitarSong } from './types';
 
 const App: React.FC = () => {
+  const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'library'>('home');
+  const [songs, setSongs] = useState<GuitarSong[]>([]);
+  const [currentSongId, setCurrentSongId] = useState<string | null>(null);
+  
+  // Current editing song states
   const [songTitle, setSongTitle] = useState('My Awesome Riff');
-  const [viewMode, setViewMode] = useState<'edit' | 'preview' | 'library'>('edit');
+  const [sections, setSections] = useState<TabSection[]>([]);
   const [customChords, setCustomChords] = useState<ChordDefinition[]>([]);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [transposeOffset, setTransposeOffset] = useState(0);
   
-  const initialSection: TabSection = { 
-    id: '1', 
-    title: 'Intro', 
-    capo: 0,
-    measures: [JSON.parse(JSON.stringify(EMPTY_MEASURE))],
-    chords: [Array(16).fill(null)],
-    lyrics: [Array(16).fill(null)]
-  };
-
-  const [sections, setSections] = useState<TabSection[]>([initialSection]);
-  const [activeSectionId, setActiveSectionId] = useState<string>('1');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [selection, setSelection] = useState<{ sectionId: string; measureIdx: number; stringIdx: number; colIdx: number } | null>(null);
   const [previewChord, setPreviewChord] = useState<ChordDefinition | null>(null);
 
-  const [history, setHistory] = useState<TabSection[][]>([[initialSection]]);
+  const [history, setHistory] = useState<TabSection[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
   
   const chordLibrary = useMemo(() => [...COMMON_CHORDS, ...customChords], [customChords]);
 
-  // Load from local storage on mount
+  // Load song list from local storage on mount
   useEffect(() => {
-    const savedSong = localStorage.getItem('guitarflow_saved_song');
-    if (savedSong) {
+    const savedIndex = localStorage.getItem('guitarflow_index');
+    if (savedIndex) {
       try {
-        const parsed = JSON.parse(savedSong);
-        setSongTitle(parsed.title || 'My Awesome Riff');
-        setSections(parsed.sections || [initialSection]);
-        setCustomChords(parsed.customChords || []);
-        setActiveSectionId(parsed.sections?.[0]?.id || '1');
-        setTransposeOffset(parsed.transposeOffset || 0);
-        // Initialize history with loaded state
-        setHistory([parsed.sections]);
-        setHistoryIndex(0);
+        const index = JSON.parse(savedIndex);
+        const loadedSongs: GuitarSong[] = [];
+        index.forEach((id: string) => {
+          const songData = localStorage.getItem(`guitarflow_song_${id}`);
+          if (songData) loadedSongs.push(JSON.parse(songData));
+        });
+        setSongs(loadedSongs.sort((a, b) => b.lastModified - a.lastModified));
       } catch (e) {
-        console.error("Failed to load saved song", e);
+        console.error("Failed to load index", e);
       }
     }
   }, []);
 
-  const saveToLocalStorage = () => {
-    setSaveStatus('saving');
-    const songData = {
-      title: songTitle,
-      sections: sections,
-      customChords: customChords,
-      transposeOffset: transposeOffset
+  const createNewSong = () => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const initialSection: TabSection = { 
+      id: '1', 
+      title: 'Intro', 
+      capo: 0,
+      measures: [JSON.parse(JSON.stringify(EMPTY_MEASURE))],
+      chords: [Array(16).fill(null)],
+      lyrics: [Array(16).fill(null)]
     };
-    localStorage.setItem('guitarflow_saved_song', JSON.stringify(songData));
+    
+    const newSong: GuitarSong = {
+      id,
+      title: 'New Song',
+      lastModified: Date.now(),
+      sections: [initialSection],
+      customChords: [],
+      transposeOffset: 0
+    };
+
+    setSongs([newSong, ...songs]);
+    openSong(newSong);
+  };
+
+  const openSong = (song: GuitarSong) => {
+    setCurrentSongId(song.id);
+    setSongTitle(song.title);
+    setSections(song.sections);
+    setCustomChords(song.customChords || []);
+    setTransposeOffset(song.transposeOffset || 0);
+    setActiveSectionId(song.sections[0]?.id || '');
+    setHistory([song.sections]);
+    setHistoryIndex(0);
+    setViewMode('edit');
+  };
+
+  const deleteSong = (id: string) => {
+    const updatedSongs = songs.filter(s => s.id !== id);
+    setSongs(updatedSongs);
+    localStorage.removeItem(`guitarflow_song_${id}`);
+    localStorage.setItem('guitarflow_index', JSON.stringify(updatedSongs.map(s => s.id)));
+  };
+
+  const saveCurrentSong = () => {
+    if (!currentSongId) return;
+    setSaveStatus('saving');
+    
+    const updatedSong: GuitarSong = {
+      id: currentSongId,
+      title: songTitle,
+      lastModified: Date.now(),
+      sections,
+      customChords,
+      transposeOffset
+    };
+
+    localStorage.setItem(`guitarflow_song_${currentSongId}`, JSON.stringify(updatedSong));
+    
+    const updatedSongs = songs.map(s => s.id === currentSongId ? updatedSong : s);
+    setSongs(updatedSongs);
+    localStorage.setItem('guitarflow_index', JSON.stringify(updatedSongs.map(s => s.id)));
     
     setTimeout(() => {
       setSaveStatus('saved');
@@ -277,7 +323,7 @@ const App: React.FC = () => {
   };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (viewMode !== 'edit') return;
+    if (viewMode === 'home') return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); return; }
     
@@ -350,10 +396,28 @@ const App: React.FC = () => {
 
   const activeChord = getActiveChord();
 
+  if (viewMode === 'home') {
+    return (
+      <Home 
+        songs={songs} 
+        onCreateNew={createNewSong} 
+        onOpen={openSong} 
+        onDelete={deleteSong} 
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setViewMode('home')}
+            className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
+            title="Back to Home"
+          >
+            <ArrowLeft size={20} />
+          </button>
           <div className="bg-orange-500 p-2 rounded-xl text-white shadow-lg shadow-orange-500/20">
             <Music size={24} />
           </div>
@@ -377,40 +441,6 @@ const App: React.FC = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
-            <div className="px-3 py-1 flex flex-col items-center">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-0.5">Key</span>
-              <span className={`text-xs font-black leading-none ${transposeOffset === 0 ? 'text-slate-400' : 'text-orange-600'}`}>
-                {transposeOffset > 0 ? `+${transposeOffset}` : transposeOffset}
-              </span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <button 
-                onClick={() => setTransposeOffset(prev => Math.min(12, prev + 1))}
-                className="p-1 hover:bg-white text-slate-500 hover:text-orange-600 rounded-md transition-all active:scale-95"
-                title="Transpose Up"
-              >
-                <ChevronUp size={14} strokeWidth={3} />
-              </button>
-              <button 
-                onClick={() => setTransposeOffset(prev => Math.max(-12, prev - 1))}
-                className="p-1 hover:bg-white text-slate-500 hover:text-orange-600 rounded-md transition-all active:scale-95"
-                title="Transpose Down"
-              >
-                <ChevronDown size={14} strokeWidth={3} />
-              </button>
-            </div>
-            {transposeOffset !== 0 && (
-              <button 
-                onClick={() => setTransposeOffset(0)}
-                className="p-1.5 ml-1 bg-white text-slate-400 hover:text-slate-900 rounded-lg shadow-sm transition-all"
-                title="Reset Key"
-              >
-                <RotateCcw size={14} />
-              </button>
-            )}
-          </div>
-
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
             <button onClick={undo} disabled={historyIndex === 0} className="p-2 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-all hover:bg-white rounded-lg" title="Undo (Ctrl+Z)">
               <Undo2 size={18} />
@@ -421,7 +451,7 @@ const App: React.FC = () => {
           </div>
 
           <button 
-            onClick={saveToLocalStorage} 
+            onClick={saveCurrentSong} 
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${
               saveStatus === 'saved' 
                 ? 'bg-emerald-50 border-emerald-500 text-emerald-600' 
@@ -579,6 +609,7 @@ const App: React.FC = () => {
               sections={sections} 
               customChords={customChords} 
               externalTranspose={transposeOffset}
+              onTransposeChange={setTransposeOffset}
             />
           </div>
         )}
