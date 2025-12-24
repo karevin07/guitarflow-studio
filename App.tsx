@@ -500,9 +500,9 @@ const App: React.FC = () => {
               </div>
             </aside>
 
-            <div className="flex-1 overflow-x-auto bg-slate-100 p-8 flex flex-col gap-8">
+            <div className="flex-1 overflow-y-auto bg-slate-100 p-8 flex flex-col gap-8">
               {currentSection && (
-                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 min-w-max">
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 min-w-max md:min-w-0">
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-6">
                       <input 
@@ -536,25 +536,27 @@ const App: React.FC = () => {
                     </button>
                   </div>
                   
-                  <div className="flex gap-4">
+                  {/* Measures Grid: Wraps after 2 measures */}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-12 gap-y-16">
                     {currentSection.measures.map((measure, mIdx) => (
-                      <TabMeasure 
-                        key={mIdx}
-                        measure={measure}
-                        chords={currentSection.chords[mIdx]}
-                        lyrics={currentSection.lyrics[mIdx]}
-                        activeCol={selection?.measureIdx === mIdx ? selection.colIdx : null}
-                        activeString={selection?.measureIdx === mIdx ? selection.stringIdx : null}
-                        onCellClick={(sIdx, cIdx) => setSelection({ sectionId: activeSectionId, measureIdx: mIdx, stringIdx: sIdx, colIdx: cIdx })}
-                        onChordClick={(cIdx) => setSelection({ sectionId: activeSectionId, measureIdx: mIdx, stringIdx: 0, colIdx: cIdx })}
-                        onChordNameChange={(cIdx, name) => handleChordNameChange(activeSectionId, mIdx, cIdx, name)}
-                        onLyricChange={(cIdx, text) => updateLyric(activeSectionId, mIdx, cIdx, text)}
-                        onDelete={() => deleteMeasure(activeSectionId, mIdx)}
-                        onCopy={() => copyMeasure(activeSectionId, mIdx)}
-                        onClearColumn={(cIdx) => clearColumn(activeSectionId, mIdx, cIdx)}
-                        onDropChord={(cIdx, chordName) => handleDropChord(activeSectionId, mIdx, cIdx, chordName)}
-                        canDelete={currentSection.measures.length > 1}
-                      />
+                      <div key={mIdx} className="w-full overflow-x-auto xl:overflow-visible">
+                        <TabMeasure 
+                          measure={measure}
+                          chords={currentSection.chords[mIdx]}
+                          lyrics={currentSection.lyrics[mIdx]}
+                          activeCol={selection?.measureIdx === mIdx ? selection.colIdx : null}
+                          activeString={selection?.measureIdx === mIdx ? selection.stringIdx : null}
+                          onCellClick={(sIdx, cIdx) => setSelection({ sectionId: activeSectionId, measureIdx: mIdx, stringIdx: sIdx, colIdx: cIdx })}
+                          onChordClick={(cIdx) => setSelection({ sectionId: activeSectionId, measureIdx: mIdx, stringIdx: 0, colIdx: cIdx })}
+                          onChordNameChange={(cIdx, name) => handleChordNameChange(activeSectionId, mIdx, cIdx, name)}
+                          onLyricChange={(cIdx, text) => updateLyric(activeSectionId, mIdx, cIdx, text)}
+                          onDelete={() => deleteMeasure(activeSectionId, mIdx)}
+                          onCopy={() => copyMeasure(activeSectionId, mIdx)}
+                          onClearColumn={(cIdx) => clearColumn(activeSectionId, mIdx, cIdx)}
+                          onDropChord={(cIdx, chordName) => handleDropChord(activeSectionId, mIdx, cIdx, chordName)}
+                          canDelete={currentSection.measures.length > 1}
+                        />
+                      </div>
                     ))}
                   </div>
                 </div>
