@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Music, Plus, Save, Download, Trash2, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2 } from 'lucide-react';
+import { Music, Plus, Save, Download, Trash2, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
 import ChordDiagram from './components/ChordDiagram';
 import SongPreview from './components/SongPreview';
@@ -13,6 +13,7 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'edit' | 'preview' | 'library'>('edit');
   const [customChords, setCustomChords] = useState<ChordDefinition[]>([]);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [transposeOffset, setTransposeOffset] = useState(0);
   
   const initialSection: TabSection = { 
     id: '1', 
@@ -43,6 +44,7 @@ const App: React.FC = () => {
         setSections(parsed.sections || [initialSection]);
         setCustomChords(parsed.customChords || []);
         setActiveSectionId(parsed.sections?.[0]?.id || '1');
+        setTransposeOffset(parsed.transposeOffset || 0);
         // Initialize history with loaded state
         setHistory([parsed.sections]);
         setHistoryIndex(0);
@@ -57,7 +59,8 @@ const App: React.FC = () => {
     const songData = {
       title: songTitle,
       sections: sections,
-      customChords: customChords
+      customChords: customChords,
+      transposeOffset: transposeOffset
     };
     localStorage.setItem('guitarflow_saved_song', JSON.stringify(songData));
     
@@ -71,7 +74,8 @@ const App: React.FC = () => {
     const songData = {
       title: songTitle,
       sections: sections,
-      customChords: customChords
+      customChords: customChords,
+      transposeOffset: transposeOffset
     };
     const blob = new Blob([JSON.stringify(songData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -235,7 +239,6 @@ const App: React.FC = () => {
         newChords[mIdx] = [...newChords[mIdx]];
         newChords[mIdx][cIdx] = name || null;
 
-        // Try to find the chord in the library
         const foundChord = chordLibrary.find(c => c.name.toLowerCase() === name.toLowerCase());
         if (foundChord) {
           const newMeasures = [...sec.measures];
@@ -349,7 +352,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="bg-orange-500 p-2 rounded-xl text-white shadow-lg shadow-orange-500/20">
             <Music size={24} />
@@ -360,7 +363,8 @@ const App: React.FC = () => {
             className="text-xl font-black text-slate-800 bg-transparent border-none outline-none focus:ring-0 w-64 md:w-auto"
           />
         </div>
-        <nav className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+        
+        <nav className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl mx-4">
           <button onClick={() => setViewMode('edit')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'edit' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
             <Edit3 size={16} /> Edit
           </button>
@@ -371,7 +375,42 @@ const App: React.FC = () => {
             <Book size={16} /> Chords
           </button>
         </nav>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+            <div className="px-3 py-1 flex flex-col items-center">
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter leading-none mb-0.5">Key</span>
+              <span className={`text-xs font-black leading-none ${transposeOffset === 0 ? 'text-slate-400' : 'text-orange-600'}`}>
+                {transposeOffset > 0 ? `+${transposeOffset}` : transposeOffset}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <button 
+                onClick={() => setTransposeOffset(prev => Math.min(12, prev + 1))}
+                className="p-1 hover:bg-white text-slate-500 hover:text-orange-600 rounded-md transition-all active:scale-95"
+                title="Transpose Up"
+              >
+                <ChevronUp size={14} strokeWidth={3} />
+              </button>
+              <button 
+                onClick={() => setTransposeOffset(prev => Math.max(-12, prev - 1))}
+                className="p-1 hover:bg-white text-slate-500 hover:text-orange-600 rounded-md transition-all active:scale-95"
+                title="Transpose Down"
+              >
+                <ChevronDown size={14} strokeWidth={3} />
+              </button>
+            </div>
+            {transposeOffset !== 0 && (
+              <button 
+                onClick={() => setTransposeOffset(0)}
+                className="p-1.5 ml-1 bg-white text-slate-400 hover:text-slate-900 rounded-lg shadow-sm transition-all"
+                title="Reset Key"
+              >
+                <RotateCcw size={14} />
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
             <button onClick={undo} disabled={historyIndex === 0} className="p-2 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-all hover:bg-white rounded-lg" title="Undo (Ctrl+Z)">
               <Undo2 size={18} />
@@ -534,9 +573,13 @@ const App: React.FC = () => {
           </>
         )}
 
-        {viewMode === 'preview' && currentSection && (
+        {viewMode === 'preview' && (
           <div className="flex-1 p-8 overflow-y-auto">
-            <SongPreview section={currentSection} customChords={customChords} />
+            <SongPreview 
+              sections={sections} 
+              customChords={customChords} 
+              externalTranspose={transposeOffset}
+            />
           </div>
         )}
 
