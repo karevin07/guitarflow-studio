@@ -36,11 +36,16 @@ const transposeChordName = (name: string | null, semitones: number): string | nu
 
 const transposeFret = (fretStr: string, semitones: number): string => {
   if (fretStr === '-' || fretStr === '·' || semitones === 0) return fretStr;
-  const fret = parseInt(fretStr, 10);
-  if (isNaN(fret)) return fretStr;
+  
+  // Isolate number from potential suffixes like 's' or '/'
+  const match = fretStr.match(/^(\d+)(.*)$/);
+  if (!match) return fretStr; // It's just 's' or '/' or invalid
+
+  const fret = parseInt(match[1], 10);
+  const suffix = match[2];
   
   const newFret = fret + semitones;
-  return newFret < 0 ? '0' : newFret.toString();
+  return (newFret < 0 ? '0' : newFret.toString()) + suffix;
 };
 
 const SongPreview: React.FC<SongPreviewProps> = ({ 
@@ -94,6 +99,19 @@ const SongPreview: React.FC<SongPreviewProps> = ({
     const filtered = allNames.filter((c): c is string => c !== null);
     return Array.from(new Set(filtered));
   }, [renderedSections]);
+
+  const renderFretValue = (fret: string) => {
+    const parts = fret.split(/([s/])/);
+    if (parts.length > 1) {
+      return (
+        <>
+          {parts[0]}
+          <span className="text-orange-400 italic text-[9px] ml-[0.5px]">{parts[1]}</span>
+        </>
+      );
+    }
+    return fret;
+  };
 
   return (
     <div className="bg-white min-h-full p-6 md:p-12 shadow-sm rounded-3xl border border-slate-200 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -171,10 +189,10 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                                       (note !== '-' && note !== '·') && (
                                         <span 
                                           key={cIdx} 
-                                          className="absolute bg-white px-1 text-[12px] font-mono font-bold text-slate-900 transform -translate-y-1/2 -translate-x-1/2 z-10" 
+                                          className="absolute bg-white px-1 text-[12px] font-mono font-bold text-slate-900 transform -translate-y-1/2 -translate-x-1/2 z-10 whitespace-nowrap" 
                                           style={{ left: `${((cIdx + 0.5) / 16) * 100}%` }}
                                         >
-                                          {note}
+                                          {renderFretValue(note)}
                                         </span>
                                       )
                                     ))}

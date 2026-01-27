@@ -59,6 +59,24 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
   // Helper to determine if a column is a primary beat (1, 2, 3, 4)
   const isPrimaryBeat = (cIdx: number) => cIdx % 4 === 0;
 
+  const renderNote = (note: string) => {
+    if (note === '-' || note === '·') return '·';
+    
+    // Check if the note contains a slide
+    const hasSlide = note.includes('s') || note.includes('/');
+    if (hasSlide) {
+      const parts = note.split(/([s/])/);
+      return (
+        <span>
+          {parts[0]}
+          <span className="text-orange-400 italic font-black text-[10px] ml-[1px]">{parts[1]}</span>
+        </span>
+      );
+    }
+    
+    return note;
+  };
+
   return (
     <div className="flex-shrink-0 bg-white border-r-2 border-slate-300 p-2 group relative transition-all">
       {/* Chord names row */}
@@ -112,14 +130,14 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                   onDragOver={(e) => handleDragOver(e, cIdx)}
                   onDragLeave={handleDragLeave}
                   onDrop={(e) => handleDrop(e, cIdx)}
-                  className={`w-6 h-6 flex items-center justify-center transition-colors
-                    ${activeString === sIdx && activeCol === cIdx ? 'bg-orange-100 text-orange-600 font-bold ring-1 ring-orange-500' : 'hover:bg-slate-50'}
+                  className={`w-6 h-6 flex items-center justify-center transition-all overflow-visible
+                    ${activeString === sIdx && activeCol === cIdx ? 'bg-orange-100 text-orange-600 font-bold ring-1 ring-orange-500 z-10' : 'hover:bg-slate-50'}
                     ${activeCol === cIdx ? 'bg-slate-50/50' : ''}
                     ${dragOverCol === cIdx ? 'bg-orange-50' : ''}
                     ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx ? 'bg-slate-50' : ''}
                   `}
                 >
-                  {note === '-' ? '·' : note}
+                  {renderNote(note)}
                 </button>
               ))}
             </div>

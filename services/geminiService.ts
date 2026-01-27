@@ -1,3 +1,2 @@
-
-// Gemini AI services have been removed from the application.
+// Service has been removed.
 export {};

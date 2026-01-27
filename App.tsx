@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Music, Plus, Save, Download, Trash2, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw, ArrowLeft, Search, Clock, FileText } from 'lucide-react';
+import { Music, Plus, Save, Download, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw, ArrowLeft, Search, Clock, FileText } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
 import ChordDiagram from './components/ChordDiagram';
 import SongPreview from './components/SongPreview';
@@ -322,47 +322,148 @@ const App: React.FC = () => {
     });
   };
 
+  // Helper to safely navigate grid
+  const moveCursor = useCallback((direction: 'up' | 'down' | 'left' | 'right' | 'nextMeasure' | 'nextBeat') => {
+    if (!selection) return;
+
+    const currentSection = sections.find(s => s.id === selection.sectionId);
+    if (!currentSection) return;
+
+    let { measureIdx, stringIdx, colIdx } = selection;
+    const maxMeasureIdx = currentSection.measures.length - 1;
+    const maxColIdx = 15; // 16 columns (0-15)
+
+    switch (direction) {
+      case 'up':
+        stringIdx = Math.max(0, stringIdx - 1);
+        break;
+      case 'down':
+        stringIdx = Math.min(5, stringIdx + 1);
+        break;
+      case 'left':
+        if (colIdx > 0) {
+          colIdx--;
+        } else if (measureIdx > 0) {
+          measureIdx--;
+          colIdx = maxColIdx;
+        }
+        break;
+      case 'right':
+      case 'nextBeat': // Tab behavior (next slot for fluidity)
+        if (colIdx < maxColIdx) {
+          colIdx++;
+        } else if (measureIdx < maxMeasureIdx) {
+          measureIdx++;
+          colIdx = 0;
+        }
+        break;
+      case 'nextMeasure': // Enter behavior
+        if (measureIdx < maxMeasureIdx) {
+          measureIdx++;
+          colIdx = 0;
+        }
+        break;
+    }
+
+    setSelection({ ...selection, measureIdx, stringIdx, colIdx });
+  }, [selection, sections]);
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (viewMode === 'home') return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === 'y') { e.preventDefault(); redo(); return; }
     
+    // Allow input in text fields
     if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
+    // Handle Selection Navigation
+    if (selection) {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveCursor('up');
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveCursor('down');
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        moveCursor('left');
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        moveCursor('right');
+        return;
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        moveCursor('nextBeat');
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        moveCursor('nextMeasure');
+        return;
+      }
+    }
+
+    // Handle Input logic if selection exists
     if (!selection) return;
-    if (e.key >= '0' && e.key <= '9') {
+
+    const isNum = e.key >= '0' && e.key <= '9';
+    const isSlide = e.key.toLowerCase() === 's' || e.key === '/';
+
+    if (isNum || isSlide) {
       const nextSections = sections.map(sec => {
         if (sec.id === selection.sectionId) {
           const newMeasures = [...sec.measures];
-          newMeasures[selection.measureIdx][selection.stringIdx][selection.colIdx] = e.key;
+          const currentVal = newMeasures[selection.measureIdx][selection.stringIdx][selection.colIdx];
+          
+          if (isSlide) {
+            // Append slide suffix if not present
+            if (currentVal !== '-' && currentVal !== '·' && !isNaN(parseInt(currentVal, 10)) && !currentVal.includes('s') && !currentVal.includes('/')) {
+              newMeasures[selection.measureIdx][selection.stringIdx][selection.colIdx] = currentVal + e.key.toLowerCase();
+              // Don't advance cursor on slide entry so user can see it
+            } else {
+              // If empty, just start with symbol (uncommon but handled)
+              newMeasures[selection.measureIdx][selection.stringIdx][selection.colIdx] = e.key.toLowerCase();
+            }
+          } else {
+            // Numeric Input Logic (Smart Entry 0-24)
+            let newVal = e.key;
+
+            // Smart double digit handling
+            // If current cell is a single digit number, and we type another digit, try to combine
+            if (currentVal !== '-' && currentVal !== '·' && /^\d+$/.test(currentVal)) {
+               const combined = parseInt(currentVal + e.key, 10);
+               if (combined <= 24 && currentVal.length < 2) {
+                 newVal = combined.toString();
+               }
+            }
+            
+            newMeasures[selection.measureIdx][selection.stringIdx][selection.colIdx] = newVal;
+          }
           return { ...sec, measures: newMeasures };
         }
         return sec;
       });
       commitToHistory(nextSections);
-      setSelection(prev => (prev && prev.colIdx < 15) ? { ...prev, colIdx: prev.colIdx + 1 } : prev);
+      
     } else if (e.key === 'Backspace' || e.key === 'Delete') {
       const nextSections = sections.map(sec => {
         if (sec.id === selection.sectionId) {
           const newMeasures = [...sec.measures];
-          const newChords = [...sec.chords];
           newMeasures[selection.measureIdx][selection.stringIdx][selection.colIdx] = '-';
-          newChords[selection.measureIdx][selection.colIdx] = null;
-          return { ...sec, measures: newMeasures, chords: newChords };
+          return { ...sec, measures: newMeasures };
         }
         return sec;
       });
       commitToHistory(nextSections);
-    } else if (e.key === 'ArrowRight') {
-      setSelection(prev => prev ? { ...prev, colIdx: Math.min(15, prev.colIdx + 1) } : null);
-    } else if (e.key === 'ArrowLeft') {
-      setSelection(prev => prev ? { ...prev, colIdx: Math.max(0, prev.colIdx - 1) } : null);
-    } else if (e.key === 'ArrowUp') {
-      setSelection(prev => prev ? { ...prev, stringIdx: Math.max(0, prev.stringIdx - 1) } : null);
-    } else if (e.key === 'ArrowDown') {
-      setSelection(prev => prev ? { ...prev, stringIdx: Math.min(5, prev.stringIdx + 1) } : null);
-    }
-  }, [selection, sections, viewMode, undo, redo]);
+    } 
+  }, [selection, sections, viewMode, undo, redo, moveCursor]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -385,8 +486,10 @@ const App: React.FC = () => {
       if (hasNotes) {
         const frets = columnNotes.map(n => {
           if (n === '-' || n === '·') return null;
-          const parsed = parseInt(n, 10);
-          return isNaN(parsed) ? null : parsed;
+          // Extract numeric part for chord detection
+          const match = n.match(/^(\d+)/);
+          const parsed = match ? parseInt(match[1], 10) : null;
+          return parsed;
         });
         return { name: 'Custom', frets: frets } as ChordDefinition;
       }
