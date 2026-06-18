@@ -8,6 +8,8 @@ import ChordManager from './components/ChordManager';
 import Home from './components/Home';
 import { EMPTY_MEASURE, COMMON_CHORDS } from './constants';
 import { TabSection, ChordDefinition, GuitarSong } from './types';
+import { api } from './services/api';
+
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'library'>('home');
@@ -30,28 +32,19 @@ const App: React.FC = () => {
   
   const chordLibrary = useMemo(() => [...COMMON_CHORDS, ...customChords], [customChords]);
 
-  // Load song list from local storage on mount
+  // Load song list from Django backend on mount
   useEffect(() => {
-    const savedIndex = localStorage.getItem('guitarflow_index');
-    if (savedIndex) {
-      try {
-        const index = JSON.parse(savedIndex);
-        const loadedSongs: GuitarSong[] = [];
-        index.forEach((id: string) => {
-          const songData = localStorage.getItem(`guitarflow_song_${id}`);
-          if (songData) loadedSongs.push(JSON.parse(songData));
-        });
-        setSongs(loadedSongs.sort((a, b) => b.lastModified - a.lastModified));
-      } catch (e) {
-        console.error("Failed to load index", e);
-      }
-    }
+    api.fetchSongs()
+      .then(loadedSongs => {
+        setSongs(loadedSongs);
+      })
+      .catch(e => {
+        console.error("Failed to load songs from backend", e);
+      });
   }, []);
 
   const createNewSong = () => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const initialSection: TabSection = { 
-      id: '1', 
+    const initialSection: Omit<TabSection, 'id'> = { 
       title: 'Intro', 
       capo: 0,
       measures: [JSON.parse(JSON.stringify(EMPTY_MEASURE))],
@@ -59,17 +52,21 @@ const App: React.FC = () => {
       lyrics: [Array(16).fill(null)]
     };
     
-    const newSong: GuitarSong = {
-      id,
+    const newSongData: Omit<GuitarSong, 'id' | 'lastModified'> = {
       title: 'New Song',
-      lastModified: Date.now(),
-      sections: [initialSection],
+      sections: [initialSection as TabSection],
       customChords: [],
       transposeOffset: 0
     };
 
-    setSongs([newSong, ...songs]);
-    openSong(newSong);
+    api.createSong(newSongData as Omit<GuitarSong, 'id'>)
+      .then(newSong => {
+        setSongs([newSong, ...songs]);
+        openSong(newSong);
+      })
+      .catch(e => {
+        console.error("Failed to create song on backend", e);
+      });
   };
 
   const openSong = (song: GuitarSong) => {
@@ -85,35 +82,36 @@ const App: React.FC = () => {
   };
 
   const deleteSong = (id: string) => {
-    const updatedSongs = songs.filter(s => s.id !== id);
-    setSongs(updatedSongs);
-    localStorage.removeItem(`guitarflow_song_${id}`);
-    localStorage.setItem('guitarflow_index', JSON.stringify(updatedSongs.map(s => s.id)));
+    api.deleteSong(id)
+      .then(() => {
+        setSongs(songs.filter(s => s.id !== id));
+      })
+      .catch(e => {
+        console.error("Failed to delete song on backend", e);
+      });
   };
 
   const saveCurrentSong = () => {
     if (!currentSongId) return;
     setSaveStatus('saving');
     
-    const updatedSong: GuitarSong = {
-      id: currentSongId,
+    const updatedSongData: Omit<GuitarSong, 'id' | 'lastModified'> = {
       title: songTitle,
-      lastModified: Date.now(),
       sections,
       customChords,
       transposeOffset
     };
 
-    localStorage.setItem(`guitarflow_song_${currentSongId}`, JSON.stringify(updatedSong));
-    
-    const updatedSongs = songs.map(s => s.id === currentSongId ? updatedSong : s);
-    setSongs(updatedSongs);
-    localStorage.setItem('guitarflow_index', JSON.stringify(updatedSongs.map(s => s.id)));
-    
-    setTimeout(() => {
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    }, 600);
+    api.updateSong(currentSongId, updatedSongData as Omit<GuitarSong, 'id'>)
+      .then(savedSong => {
+        setSongs(songs.map(s => s.id === currentSongId ? savedSong : s));
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      })
+      .catch(e => {
+        console.error("Failed to save song on backend", e);
+        setSaveStatus('idle');
+      });
   };
 
   const exportAsFile = () => {
