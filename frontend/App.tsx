@@ -509,58 +509,58 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm">
+    <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 selection:bg-violet-500/30 selection:text-violet-200">
+      <header className="bg-zinc-900/50 backdrop-blur-xl border-b border-zinc-800/80 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setViewMode('home')}
-            className="p-2 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
+            className="p-2 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-850 rounded-xl transition-all"
             title="Back to Home"
           >
             <ArrowLeft size={20} />
           </button>
-          <div className="bg-orange-500 p-2 rounded-xl text-white shadow-lg shadow-orange-500/20">
+          <div className="bg-gradient-to-tr from-violet-600 to-fuchsia-600 p-2 rounded-xl text-white shadow-lg shadow-violet-500/25">
             <Music size={24} />
           </div>
           <input 
             value={songTitle}
             onChange={e => setSongTitle(e.target.value)}
-            className="text-xl font-black text-slate-800 bg-transparent border-none outline-none focus:ring-0 w-64 md:w-auto"
+            className="text-xl font-bold text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-violet-500/50 w-64 md:w-auto"
           />
         </div>
         
-        <nav className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl mx-4">
-          <button onClick={() => setViewMode('edit')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'edit' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+        <nav className="flex items-center gap-2 bg-zinc-950 border border-zinc-850 p-1 rounded-xl mx-4">
+          <button onClick={() => setViewMode('edit')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'edit' ? 'bg-zinc-900 text-violet-400 border border-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
             <Edit3 size={16} /> Edit
           </button>
-          <button onClick={() => setViewMode('preview')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'preview' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+          <button onClick={() => setViewMode('preview')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'preview' ? 'bg-zinc-900 text-violet-400 border border-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
             <Eye size={16} /> Preview
           </button>
-          <button onClick={() => setViewMode('library')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'library' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}>
+          <button onClick={() => setViewMode('library')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'library' ? 'bg-zinc-900 text-violet-400 border border-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
             <Book size={16} /> Chords
           </button>
         </nav>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-100">
-            <button onClick={undo} disabled={historyIndex === 0} className="p-2 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-all hover:bg-white rounded-lg" title="Undo (Ctrl+Z)">
+          <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-xl border border-zinc-850">
+            <button onClick={undo} disabled={historyIndex === 0} className="p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg" title="Undo (Ctrl+Z)">
               <Undo2 size={18} />
             </button>
-            <button onClick={redo} disabled={historyIndex === history.length - 1} className="p-2 text-slate-400 hover:text-slate-600 disabled:opacity-30 transition-all hover:bg-white rounded-lg" title="Redo (Ctrl+Y)">
+            <button onClick={redo} disabled={historyIndex === history.length - 1} className="p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg" title="Redo (Ctrl+Y)">
               <Redo2 size={18} />
             </button>
           </div>
 
           <button 
             onClick={saveCurrentSong} 
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border-2 ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
               saveStatus === 'saved' 
-                ? 'bg-emerald-50 border-emerald-500 text-emerald-600' 
-                : 'bg-white border-slate-200 text-slate-700 hover:border-orange-500 hover:text-orange-600 shadow-sm'
+                ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
+                : 'bg-zinc-900 border-zinc-850 text-zinc-300 hover:border-violet-500 hover:text-violet-400 shadow-md'
             }`}
           >
             {saveStatus === 'saving' ? (
-              <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-zinc-650 border-t-zinc-300 rounded-full animate-spin" />
             ) : saveStatus === 'saved' ? (
               <CheckCircle2 size={18} />
             ) : (
@@ -571,7 +571,7 @@ const App: React.FC = () => {
 
           <button 
             onClick={exportAsFile}
-            className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 text-white rounded-xl text-sm font-bold hover:from-violet-500 hover:via-fuchsia-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-500/20"
           >
             <Download size={18} /> Export
           </button>
@@ -581,10 +581,10 @@ const App: React.FC = () => {
       <main className="flex-1 flex overflow-hidden">
         {viewMode === 'edit' && (
           <>
-            <aside className="w-64 bg-white border-r border-slate-200 flex flex-col">
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sections</h3>
-                <button onClick={addSection} className="p-1 text-orange-500 hover:bg-orange-50 rounded">
+            <aside className="w-64 bg-zinc-900/40 backdrop-blur-md border-r border-zinc-800/80 flex flex-col">
+              <div className="p-6 border-b border-zinc-800/80 flex items-center justify-between">
+                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Sections</h3>
+                <button onClick={addSection} className="p-1 text-violet-400 hover:bg-violet-950/30 rounded-lg transition-colors">
                   <Plus size={18} />
                 </button>
               </div>
@@ -593,7 +593,7 @@ const App: React.FC = () => {
                   <button 
                     key={sec.id}
                     onClick={() => setActiveSectionId(sec.id)}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all border-2 ${activeSectionId === sec.id ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all border ${activeSectionId === sec.id ? 'border-violet-500 bg-violet-500/10 text-violet-400 font-bold shadow-md shadow-violet-500/5' : 'border-transparent text-zinc-400 hover:bg-zinc-850'}`}
                   >
                     {sec.title}
                   </button>
@@ -601,9 +601,9 @@ const App: React.FC = () => {
               </div>
             </aside>
 
-            <div className="flex-1 overflow-y-auto bg-slate-100 p-8 flex flex-col gap-8">
+            <div className="flex-1 overflow-y-auto bg-zinc-950 p-8 flex flex-col gap-8">
               {currentSection && (
-                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 min-w-max md:min-w-0">
+                <div className="bg-zinc-900/20 backdrop-blur-md rounded-3xl border border-zinc-800/60 p-8 shadow-2xl">
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-6">
                       <input 
@@ -612,26 +612,26 @@ const App: React.FC = () => {
                           const next = sections.map(s => s.id === activeSectionId ? {...s, title: e.target.value} : s);
                           setSections(next);
                         }}
-                        className="text-2xl font-black text-slate-900 border-b-2 border-transparent focus:border-orange-500 outline-none transition-all"
+                        className="text-2xl font-bold text-zinc-100 border-b-2 border-transparent focus:border-violet-500 outline-none bg-transparent transition-all"
                       />
-                      <div className="h-8 w-[1px] bg-slate-200" />
-                      <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 group">
-                        <Anchor size={14} className="text-slate-400 group-hover:text-orange-500 transition-colors" />
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Capo</span>
+                      <div className="h-8 w-[1px] bg-zinc-800" />
+                      <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800 group">
+                        <Anchor size={14} className="text-zinc-500 group-hover:text-violet-400 transition-colors" />
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capo</span>
                         <select 
                           value={currentSection.capo}
                           onChange={(e) => setCapo(activeSectionId, parseInt(e.target.value, 10))}
-                          className="bg-transparent text-sm font-bold text-slate-700 outline-none cursor-pointer"
+                          className="bg-transparent text-sm font-bold text-zinc-350 outline-none cursor-pointer"
                         >
                           {Array.from({ length: 13 }).map((_, i) => (
-                            <option key={i} value={i}>{i === 0 ? 'None' : i}</option>
+                            <option key={i} value={i} className="bg-zinc-900 text-zinc-350">{i === 0 ? 'None' : i}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                     <button 
                       onClick={() => addMeasure(activeSectionId)}
-                      className="flex items-center gap-2 px-4 py-2 bg-orange-50 text-orange-600 rounded-xl text-xs font-bold hover:bg-orange-100 transition-all"
+                      className="flex items-center gap-2 px-4 py-2 bg-violet-950/40 text-violet-400 border border-violet-900/30 rounded-xl text-xs font-bold hover:bg-violet-950/80 transition-all shadow-md shadow-violet-500/5"
                     >
                       <Plus size={16} /> Add Measure
                     </button>
@@ -664,27 +664,27 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <aside className="w-80 bg-white border-l border-slate-200 flex flex-col overflow-hidden">
-              <div className="p-6 border-b border-slate-100">
-                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chord Tools</h3>
+            <aside className="w-80 bg-zinc-900/40 backdrop-blur-md border-l border-zinc-800/80 flex flex-col overflow-hidden">
+              <div className="p-6 border-b border-zinc-800/80">
+                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Chord Tools</h3>
               </div>
               
               <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 {activeChord ? (
                   <div className="space-y-4">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Selected / Detected</span>
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase">Selected / Detected</span>
                     <div className="h-64">
                       <ChordDiagram chord={activeChord} />
                     </div>
                   </div>
                 ) : (
-                  <div className="h-64 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex items-center justify-center p-8 text-center">
-                    <p className="text-xs font-medium text-slate-400">Select a column or enter notes to see a chord preview</p>
+                  <div className="h-64 bg-zinc-950/40 rounded-3xl border border-zinc-850 flex items-center justify-center p-8 text-center shadow-inner">
+                    <p className="text-xs font-semibold text-zinc-600">Select a column or enter notes to see a chord preview</p>
                   </div>
                 )}
 
                 <div className="space-y-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Chord Library</span>
+                  <span className="text-[10px] font-bold text-zinc-550 uppercase">Chord Library</span>
                   <div className="grid grid-cols-2 gap-2">
                     {chordLibrary.map(chord => (
                       <button 
@@ -694,7 +694,7 @@ const App: React.FC = () => {
                           e.dataTransfer.setData('chordName', chord.name);
                         }}
                         onClick={() => handleChordInput(chord)}
-                        className="cursor-grab active:cursor-grabbing px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:border-orange-500 hover:bg-orange-50 hover:text-orange-600 transition-all flex items-center justify-center"
+                        className="cursor-grab active:cursor-grabbing px-4 py-3 bg-zinc-900/60 border border-zinc-850 rounded-xl text-sm font-bold text-zinc-350 hover:border-violet-500 hover:bg-violet-950/20 hover:text-violet-400 transition-all flex items-center justify-center shadow-sm"
                       >
                         {chord.name}
                       </button>
@@ -707,7 +707,7 @@ const App: React.FC = () => {
         )}
 
         {viewMode === 'preview' && (
-          <div className="flex-1 p-8 overflow-y-auto">
+          <div className="flex-1 p-8 overflow-y-auto bg-zinc-950">
             <SongPreview 
               sections={sections} 
               customChords={customChords} 
