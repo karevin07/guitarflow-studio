@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Music, Plus, Save, Download, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw, ArrowLeft, Search, Clock, FileText } from 'lucide-react';
+import { Music, Plus, Save, Download, Settings, Play, ChevronRight, Hash, LayoutGrid, Info, Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2, ChevronUp, ChevronDown, RotateCcw, ArrowLeft, Search, Clock, FileText, Sun, Moon } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
 import ChordDiagram from './components/ChordDiagram';
 import SongPreview from './components/SongPreview';
@@ -9,10 +9,31 @@ import Home from './components/Home';
 import { EMPTY_MEASURE, COMMON_CHORDS } from './constants';
 import { TabSection, ChordDefinition, GuitarSong } from './types';
 import { api } from './services/api';
+import { exportToMidi } from './services/midiHelper';
+
 
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'library'>('home');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    const saved = localStorage.getItem('guitarflow-theme');
+    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+  });
+  const [isExportOpen, setIsExportOpen] = useState(false);
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('guitarflow-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
   const [songs, setSongs] = useState<GuitarSong[]>([]);
   const [currentSongId, setCurrentSongId] = useState<string | null>(null);
   
@@ -129,6 +150,26 @@ const App: React.FC = () => {
     link.click();
     URL.revokeObjectURL(url);
   };
+
+  const triggerMidiExport = () => {
+    exportToMidi(songTitle, sections, transposeOffset);
+  };
+
+  const triggerPdfExport = () => {
+    const originalView = viewMode;
+    if (originalView !== 'preview') {
+      setViewMode('preview');
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => {
+          setViewMode(originalView);
+        }, 1000);
+      }, 300);
+    } else {
+      window.print();
+    }
+  };
+
 
   const commitToHistory = (newSections: TabSection[]) => {
     const nextHistory = history.slice(0, historyIndex + 1);
@@ -504,63 +545,73 @@ const App: React.FC = () => {
         onCreateNew={createNewSong} 
         onOpen={openSong} 
         onDelete={deleteSong} 
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-950 text-zinc-100 selection:bg-violet-500/30 selection:text-violet-200">
-      <header className="bg-zinc-900/50 backdrop-blur-xl border-b border-zinc-800/80 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-md">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200">
+      <header className="bg-white dark:bg-zinc-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-800/80 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm dark:shadow-md transition-colors duration-200">
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setViewMode('home')}
-            className="p-2 text-zinc-500 hover:text-zinc-100 hover:bg-zinc-850 rounded-xl transition-all"
+            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-850 rounded-xl transition-all"
             title="Back to Home"
           >
             <ArrowLeft size={20} />
           </button>
-          <div className="bg-gradient-to-tr from-violet-600 to-fuchsia-600 p-2 rounded-xl text-white shadow-lg shadow-violet-500/25">
+          <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-600 dark:to-fuchsia-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/10 dark:shadow-violet-500/25">
             <Music size={24} />
           </div>
           <input 
             value={songTitle}
             onChange={e => setSongTitle(e.target.value)}
-            className="text-xl font-bold text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-violet-500/50 w-64 md:w-auto"
+            className="text-xl font-bold text-slate-850 dark:text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-indigo-500/50 dark:focus:border-violet-500/50 w-64 md:w-auto"
           />
         </div>
         
-        <nav className="flex items-center gap-2 bg-zinc-950 border border-zinc-850 p-1 rounded-xl mx-4">
-          <button onClick={() => setViewMode('edit')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'edit' ? 'bg-zinc-900 text-violet-400 border border-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
+        <nav className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-950 border border-slate-250/50 dark:border-zinc-850 p-1 rounded-xl mx-4 transition-colors">
+          <button onClick={() => setViewMode('edit')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'edit' ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-250/30 dark:border-zinc-800 shadow-sm' : 'text-slate-500 dark:text-zinc-500 hover:text-slate-850 dark:hover:text-zinc-300'}`}>
             <Edit3 size={16} /> Edit
           </button>
-          <button onClick={() => setViewMode('preview')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'preview' ? 'bg-zinc-900 text-violet-400 border border-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
+          <button onClick={() => setViewMode('preview')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'preview' ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-250/30 dark:border-zinc-800 shadow-sm' : 'text-slate-500 dark:text-zinc-500 hover:text-slate-850 dark:hover:text-zinc-300'}`}>
             <Eye size={16} /> Preview
           </button>
-          <button onClick={() => setViewMode('library')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'library' ? 'bg-zinc-900 text-violet-400 border border-zinc-800 shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}>
+          <button onClick={() => setViewMode('library')} className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${viewMode === 'library' ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-250/30 dark:border-zinc-800 shadow-sm' : 'text-slate-500 dark:text-zinc-500 hover:text-slate-850 dark:hover:text-zinc-300'}`}>
             <Book size={16} /> Chords
           </button>
         </nav>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-zinc-900/50 p-1 rounded-xl border border-zinc-850">
-            <button onClick={undo} disabled={historyIndex === 0} className="p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg" title="Undo (Ctrl+Z)">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-900/50 p-1 rounded-xl border border-slate-200 dark:border-zinc-850 transition-colors">
+            <button onClick={undo} disabled={historyIndex === 0} className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg" title="Undo (Ctrl+Z)">
               <Undo2 size={18} />
             </button>
-            <button onClick={redo} disabled={historyIndex === history.length - 1} className="p-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg" title="Redo (Ctrl+Y)">
+            <button onClick={redo} disabled={historyIndex === history.length - 1} className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg" title="Redo (Ctrl+Y)">
               <Redo2 size={18} />
             </button>
           </div>
 
           <button 
+            onClick={toggleTheme}
+            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-850 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
+            title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          <button 
             onClick={saveCurrentSong} 
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
               saveStatus === 'saved' 
-                ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
-                : 'bg-zinc-900 border-zinc-850 text-zinc-300 hover:border-violet-500 hover:text-violet-400 shadow-md'
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600 dark:text-emerald-400' 
+                : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-850 text-slate-700 dark:text-zinc-300 hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 shadow-sm dark:shadow-md'
             }`}
           >
             {saveStatus === 'saving' ? (
-              <div className="w-4 h-4 border-2 border-zinc-650 border-t-zinc-300 rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-slate-350 dark:border-zinc-650 border-t-slate-600 dark:border-t-zinc-300 rounded-full animate-spin" />
             ) : saveStatus === 'saved' ? (
               <CheckCircle2 size={18} />
             ) : (
@@ -569,22 +620,47 @@ const App: React.FC = () => {
             {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
           </button>
 
-          <button 
-            onClick={exportAsFile}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-indigo-600 text-white rounded-xl text-sm font-bold hover:from-violet-500 hover:via-fuchsia-500 hover:to-indigo-500 transition-all shadow-lg shadow-violet-500/20"
-          >
-            <Download size={18} /> Export
-          </button>
+          <div className="relative print:hidden">
+            <button 
+              onClick={() => setIsExportOpen(!isExportOpen)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-650 to-violet-650 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-xl text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/20"
+            >
+              <Download size={18} /> Export <ChevronDown size={14} />
+            </button>
+            
+            {isExportOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <button 
+                  onClick={() => { exportAsFile(); setIsExportOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
+                >
+                  <FileText size={16} className="text-slate-400 dark:text-zinc-550" /> Export Project (.gflow)
+                </button>
+                <button 
+                  onClick={() => { triggerMidiExport(); setIsExportOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
+                >
+                  <Music size={16} className="text-indigo-600 dark:text-violet-400" /> Export MIDI (.mid)
+                </button>
+                <button 
+                  onClick={() => { triggerPdfExport(); setIsExportOpen(false); }}
+                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
+                >
+                  <Eye size={16} className="text-emerald-600 dark:text-emerald-400" /> Export PDF Sheet
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">
         {viewMode === 'edit' && (
           <>
-            <aside className="w-64 bg-zinc-900/40 backdrop-blur-md border-r border-zinc-800/80 flex flex-col">
-              <div className="p-6 border-b border-zinc-800/80 flex items-center justify-between">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Sections</h3>
-                <button onClick={addSection} className="p-1 text-violet-400 hover:bg-violet-950/30 rounded-lg transition-colors">
+            <aside className="w-64 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-r border-slate-200 dark:border-zinc-800/80 flex flex-col transition-colors duration-250">
+              <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80 flex items-center justify-between">
+                <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Sections</h3>
+                <button onClick={addSection} className="p-1 text-indigo-650 dark:text-violet-400 hover:bg-indigo-50 dark:hover:bg-violet-955/30 rounded-lg transition-colors">
                   <Plus size={18} />
                 </button>
               </div>
@@ -593,7 +669,7 @@ const App: React.FC = () => {
                   <button 
                     key={sec.id}
                     onClick={() => setActiveSectionId(sec.id)}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all border ${activeSectionId === sec.id ? 'border-violet-500 bg-violet-500/10 text-violet-400 font-bold shadow-md shadow-violet-500/5' : 'border-transparent text-zinc-400 hover:bg-zinc-850'}`}
+                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all border ${activeSectionId === sec.id ? 'border-indigo-500 bg-indigo-50/70 text-indigo-650 dark:border-violet-500 dark:bg-violet-500/10 dark:text-violet-400 font-bold shadow-md' : 'border-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-850'}`}
                   >
                     {sec.title}
                   </button>
@@ -601,9 +677,9 @@ const App: React.FC = () => {
               </div>
             </aside>
 
-            <div className="flex-1 overflow-y-auto bg-zinc-950 p-8 flex flex-col gap-8">
+            <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-zinc-950 p-8 flex flex-col gap-8 transition-colors duration-250">
               {currentSection && (
-                <div className="bg-zinc-900/20 backdrop-blur-md rounded-3xl border border-zinc-800/60 p-8 shadow-2xl">
+                <div className="bg-white/80 dark:bg-zinc-900/20 backdrop-blur-md rounded-3xl border border-slate-200 dark:border-zinc-800/60 p-8 shadow-md dark:shadow-2xl">
                   <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-6">
                       <input 
@@ -612,26 +688,26 @@ const App: React.FC = () => {
                           const next = sections.map(s => s.id === activeSectionId ? {...s, title: e.target.value} : s);
                           setSections(next);
                         }}
-                        className="text-2xl font-bold text-zinc-100 border-b-2 border-transparent focus:border-violet-500 outline-none bg-transparent transition-all"
+                        className="text-2xl font-bold text-slate-805 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
                       />
-                      <div className="h-8 w-[1px] bg-zinc-800" />
-                      <div className="flex items-center gap-2 bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-800 group">
-                        <Anchor size={14} className="text-zinc-500 group-hover:text-violet-400 transition-colors" />
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Capo</span>
+                      <div className="h-8 w-[1px] bg-slate-200 dark:bg-zinc-800" />
+                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
+                        <Anchor size={14} className="text-slate-400 dark:text-zinc-500 group-hover:text-indigo-650 dark:group-hover:text-violet-400 transition-colors" />
+                        <span className="text-[10px] font-bold text-slate-450 dark:text-zinc-555 uppercase tracking-widest">Capo</span>
                         <select 
                           value={currentSection.capo}
                           onChange={(e) => setCapo(activeSectionId, parseInt(e.target.value, 10))}
-                          className="bg-transparent text-sm font-bold text-zinc-350 outline-none cursor-pointer"
+                          className="bg-transparent text-sm font-bold text-slate-650 dark:text-zinc-350 outline-none cursor-pointer"
                         >
                           {Array.from({ length: 13 }).map((_, i) => (
-                            <option key={i} value={i} className="bg-zinc-900 text-zinc-350">{i === 0 ? 'None' : i}</option>
+                            <option key={i} value={i} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-355">{i === 0 ? 'None' : i}</option>
                           ))}
                         </select>
                       </div>
                     </div>
                     <button 
                       onClick={() => addMeasure(activeSectionId)}
-                      className="flex items-center gap-2 px-4 py-2 bg-violet-950/40 text-violet-400 border border-violet-900/30 rounded-xl text-xs font-bold hover:bg-violet-950/80 transition-all shadow-md shadow-violet-500/5"
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-violet-955/40 text-indigo-600 dark:text-violet-400 border border-indigo-200/50 dark:border-violet-900/30 rounded-xl text-xs font-bold transition-all shadow-sm"
                     >
                       <Plus size={16} /> Add Measure
                     </button>
@@ -656,6 +732,7 @@ const App: React.FC = () => {
                           onClearColumn={(cIdx) => clearColumn(activeSectionId, mIdx, cIdx)}
                           onDropChord={(cIdx, chordName) => handleDropChord(activeSectionId, mIdx, cIdx, chordName)}
                           canDelete={currentSection.measures.length > 1}
+                          theme={theme}
                         />
                       </div>
                     ))}
@@ -664,27 +741,27 @@ const App: React.FC = () => {
               )}
             </div>
 
-            <aside className="w-80 bg-zinc-900/40 backdrop-blur-md border-l border-zinc-800/80 flex flex-col overflow-hidden">
-              <div className="p-6 border-b border-zinc-800/80">
-                <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Chord Tools</h3>
+            <aside className="w-80 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-l border-slate-200 dark:border-zinc-800/80 flex flex-col overflow-hidden transition-colors duration-250">
+              <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80">
+                <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Chord Tools</h3>
               </div>
               
               <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 {activeChord ? (
                   <div className="space-y-4">
-                    <span className="text-[10px] font-bold text-zinc-500 uppercase">Selected / Detected</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">Selected / Detected</span>
                     <div className="h-64">
-                      <ChordDiagram chord={activeChord} />
+                      <ChordDiagram chord={activeChord} theme={theme} />
                     </div>
                   </div>
                 ) : (
-                  <div className="h-64 bg-zinc-950/40 rounded-3xl border border-zinc-850 flex items-center justify-center p-8 text-center shadow-inner">
-                    <p className="text-xs font-semibold text-zinc-600">Select a column or enter notes to see a chord preview</p>
+                  <div className="h-64 bg-slate-100/50 dark:bg-zinc-950/40 rounded-3xl border border-slate-200 dark:border-zinc-850 flex items-center justify-center p-8 text-center shadow-inner">
+                    <p className="text-xs font-semibold text-slate-400 dark:text-zinc-650">Select a column or enter notes to see a chord preview</p>
                   </div>
                 )}
 
                 <div className="space-y-4">
-                  <span className="text-[10px] font-bold text-zinc-550 uppercase">Chord Library</span>
+                  <span className="text-[10px] font-bold text-slate-450 dark:text-zinc-550 uppercase">Chord Library</span>
                   <div className="grid grid-cols-2 gap-2">
                     {chordLibrary.map(chord => (
                       <button 
@@ -694,7 +771,7 @@ const App: React.FC = () => {
                           e.dataTransfer.setData('chordName', chord.name);
                         }}
                         onClick={() => handleChordInput(chord)}
-                        className="cursor-grab active:cursor-grabbing px-4 py-3 bg-zinc-900/60 border border-zinc-850 rounded-xl text-sm font-bold text-zinc-350 hover:border-violet-500 hover:bg-violet-950/20 hover:text-violet-400 transition-all flex items-center justify-center shadow-sm"
+                        className="cursor-grab active:cursor-grabbing px-4 py-3 bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-855 rounded-xl text-sm font-bold text-slate-605 dark:text-zinc-355 hover:border-indigo-500 dark:hover:border-violet-500 hover:bg-indigo-50 dark:hover:bg-violet-955/20 hover:text-indigo-650 dark:hover:text-violet-400 transition-all flex items-center justify-center shadow-sm"
                       >
                         {chord.name}
                       </button>
@@ -707,12 +784,13 @@ const App: React.FC = () => {
         )}
 
         {viewMode === 'preview' && (
-          <div className="flex-1 p-8 overflow-y-auto bg-zinc-950">
+          <div className="flex-1 p-8 overflow-y-auto bg-slate-100 dark:bg-zinc-950 transition-colors duration-250">
             <SongPreview 
               sections={sections} 
               customChords={customChords} 
               externalTranspose={transposeOffset}
               onTransposeChange={setTransposeOffset}
+              theme={theme}
             />
           </div>
         )}
@@ -722,6 +800,7 @@ const App: React.FC = () => {
             customChords={customChords} 
             onAddChord={(c) => setCustomChords([...customChords, c])}
             onDeleteChord={(name) => setCustomChords(customChords.filter(c => c.name !== name))}
+            theme={theme}
           />
         )}
       </main>
