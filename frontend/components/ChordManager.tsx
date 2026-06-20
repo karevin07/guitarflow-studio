@@ -373,7 +373,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                   <button 
                     onClick={() => setActiveTab('browse')}
                     className="w-full py-4 text-slate-400 dark:text-zinc-500 hover:text-slate-600 dark:hover:text-zinc-300 text-xs font-bold uppercase tracking-widest transition-colors"
-                  >>
+                  >
                     Cancel
                   </button>
                 </div>

@@ -228,7 +228,8 @@ const SongPreview: React.FC<SongPreviewProps> = ({
 
         <aside className="w-full lg:w-48 flex-shrink-0 space-y-6">
           {/* Transpose Tool */}
-          <div className="sticky top-24 space-y-6"            <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/85 dark:border-zinc-800/80 shadow-md transition-colors duration-250 print:hidden">
+          <div className="sticky top-24 space-y-6">
+            <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/85 dark:border-zinc-800/80 shadow-md transition-colors duration-250 print:hidden">
 
               <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-4 text-center leading-tight">Transposition</h3>
               <div className="flex flex-col items-center gap-3">
