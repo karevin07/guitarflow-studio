@@ -150,7 +150,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                     )}
                   </div>
                 </div>
-              </header>>
+              </header>
 
               <div className="space-y-16">
                 {section.rows.map((row, rIdx) => (
@@ -258,8 +258,8 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                 {transpose !== 0 && (
                   <button 
                     onClick={() => onTransposeChange?.(0)}
-                    className="w-full py-2 bg-slate-50 dark:bg-zinc-955 text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all flex items-center justify-center gap-2"
-                  > >
+                    className="w-full py-2 bg-slate-50 dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 hover:text-slate-800 dark:hover:text-zinc-200 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-all flex items-center justify-center gap-2"
+                  >
                     <RotateCcw size={12} /> Reset Key
                   </button>
                 )}
@@ -282,7 +282,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                             </div>
                           )}
                         </div>
-                      </div>v>
+                      </div>
                     );
                   })
                 ) : (
