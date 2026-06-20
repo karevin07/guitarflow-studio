@@ -3,7 +3,18 @@
 > 策略：**C — 混合路線**（創作 + 閱譜/練習）  
 > 執行順序：**先 A（創作工具）→ 再 B（alphaTab 整合）**  
 > 參考：[alphaTab](https://github.com/CoderLine/alphaTab) UI/UX 與功能設計  
-> 日期：2025-06-20
+> 日期：2025-06-20 · **最後更新：2026-06-21**
+
+### 進度總覽
+
+| 階段 | 狀態 | 完成度 |
+|------|------|--------|
+| Phase A（A1–A3） | ✅ 核心完成 | ~90% |
+| Sprint B1（GP PoC） | ✅ 完成 | ~85% |
+| Sprint B2（雙引擎） | ✅ 完成 | ~95% |
+| Sprint B3（進階） | 🔄 進行中 | ~35% |
+
+**當前 Sprint：B3** — 多軌選擇 ✅；Backlog：GP→gflow、MusicXML 匯出
 
 ---
 
@@ -20,22 +31,30 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 
 ---
 
-## 2. 現況摘要
+## 2. 現況摘要（2026-06-21）
 
 ### 已有能力
 - 6 弦 × 16 分音符格線編輯器（鍵盤/指板輸入）
-- Section / Measure 管理、Undo/Redo
-- 和弦庫（Global + Custom）、拖放、Chord Manager
-- Django REST API + PostgreSQL 持久化
-- 基礎 Web Audio 播放、轉調、Preview、.gflow / MIDI / Print 匯出
+- Section / Measure 管理（刪除、排序、Undo/Redo）
+- 和弦庫（Global + Custom）、拖放、Chord Manager、和弦自動辨識
+- Django REST API + PostgreSQL 持久化（`.gflow` 歌曲）
+- **PlayerBar**：seek、Pause/Resume、A-B loop、BPM、Metronome、SoundFont 播放
+- **Practice 視圖**：連續排版、播放游標、auto-scroll
+- **`.gflow` 匯入/匯出**、MIDI / Print 匯出
+- 記譜擴充：`x`、slide、`h`/`p`/`b`（渲染 + 播放）
+- Autosave、快捷鍵面板、離開提示
+- **Guitar Pro PoC**：alphaTab 渲染 + IndexedDB 本機存檔 + lazy load
+- **B2 進行中**：`PlayerBarBindings` 介面、`useAlphaTabPlayback`、GP Practice 共用 PlayerBar
 
-### 關鍵缺口
-- 播放體驗不完整（無 seek、Pause 重頭、控制列重複）
-- 無 .gflow 匯入、無 Section 刪除 UI
-- 記譜深度不足（僅 slide，無 bend/h/p/x 等）
-- 無 Practice 連續視圖
-- 無 Guitar Pro / MusicXML 支援
-- 無使用者隔離
+### 仍待完成
+- Practice **Zoom** 四档（80/100/125/150%）
+- PlayerBar **mm:ss 時間顯示**（gflow 模式）
+- `timeSignature` 欄位（Phase A3 規劃）
+- `ScoreLine.tsx` 元件拆分（目前直接重用 TabMeasure）
+- GP 歌曲 **backend 持久化**（跨裝置同步）
+- **MPL-2.0** 授權結論
+- 前端 unit / integration 測試
+- 使用者隔離
 
 ---
 
@@ -115,10 +134,10 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 | Section 標題編輯進 Undo | `updateSectionTitle` 改走 `pushHistory()` |
 
 #### A1.3 驗收標準
-- [ ] 播放可 Pause 後從原位置繼續
-- [ ] .gflow 匯入後可正常編輯並 Save
-- [ ] Section 可刪除、排序
-- [ ] Preview 轉調後和弦圖正確顯示
+- [x] 播放可 Pause 後從原位置繼續
+- [x] .gflow 匯入後可正常編輯並 Save
+- [x] Section 可刪除、排序
+- [x] Preview 轉調後和弦圖正確顯示
 
 ---
 
@@ -177,10 +196,13 @@ Edit / Preview / Practice 三模式共用 `PlayerBar`。
 播放邏輯改為：fret + string → MIDI note → SoundFont trigger。
 
 #### A2.4 驗收標準
-- [ ] Edit / Practice 模式播放游標同步
-- [ ] 可 seek、A-B loop、從選取格播放
-- [ ] 吉他音色可辨識（非合成器三角波）
-- [ ] Practice 模式 auto-scroll 正常
+- [x] Edit / Practice 模式播放游標同步
+- [x] 可 seek、A-B loop、從選取格播放
+- [x] 吉他音色可辨識（SoundFont `acoustic_guitar_steel`）
+- [x] Practice 模式 auto-scroll 正常
+- [ ] PlayerBar 顯示 mm:ss 時間（目前為 col index seek）
+- [ ] Practice Zoom 四档
+- [ ] `ScoreLine.tsx` 獨立元件（目前重用 TabMeasure）
 
 ---
 
@@ -217,10 +239,12 @@ Edit / Preview / Practice 三模式共用 `PlayerBar`。
 | Header 視圖切換 | `[Edit] [Preview] [Practice]` tab 式切換 |
 
 #### A3.4 驗收標準
-- [ ] `x`、`h`、`p` 可輸入並正確渲染
-- [ ] 和弦欄位自動命名常見和弦
-- [ ] Autosave 正常，離開有提示
-- [ ] 快捷鍵面板完整
+- [x] `x`、`h`、`p` 可輸入並正確渲染
+- [x] 和弦欄位自動命名常見和弦
+- [x] Autosave 正常，離開有提示
+- [x] 快捷鍵面板完整
+- [ ] `timeSignature` 欄位與 UI
+- [~] `b`（bend）鍵盤輸入 UX 可再優化
 
 ---
 
@@ -263,9 +287,12 @@ class GuitarSong(models.Model):
 Home 加「Import Guitar Pro」→ 檔案選擇 → alphaTab 渲染 → Practice 模式播放。
 
 #### B1.4 驗收標準
-- [ ] 可匯入 .gp5 檔並看到樂譜
-- [ ] alphaTab SoundFont 播放正常
-- [ ] 播放游標與 alphaTab 內建 cursor 同步
+- [x] 可匯入 .gp5 檔並看到樂譜（需實檔 smoke test）
+- [x] alphaTab SoundFont 播放正常
+- [x] 播放游標與 alphaTab 內建 cursor 同步
+- [x] IndexedDB 本機存檔（PoC 方案）
+- [x] alphaTab lazy load（Vite 7 + `@coderline/alphatab-vite`）
+- [ ] ImportPreview 確認步驟（目前選檔後直接匯入）
 
 ---
 
@@ -300,20 +327,39 @@ interface PlaybackEngine {
 卡片顯示來源 badge：`GFlow` / `Guitar Pro` / `MusicXML`
 
 #### B2.4 驗收標準
-- [ ] 同一 PlayerBar 可播放 .gflow 與 GP 歌曲
-- [ ] GP 歌曲在 Practice 模式體驗接近 alphaTab demo
-- [ ] .gflow 歌曲不受 alphaTab 依賴影響（bundle 可 lazy load alphaTab）
+- [x] `PlayerBarBindings` 介面（`types/playback.ts`）
+- [x] `useAlphaTabPlayback` 包裝 alphaTab API（含 `playbackRange` A-B loop）
+- [x] GP 歌曲 Practice 模式共用 PlayerBar
+- [x] GP 與 gflow 共用 `SongShellHeader` App Shell
+- [x] Home 來源 badge（GFlow / Guitar Pro / MusicXML）
+- [x] alphaTab lazy load，不拖慢 .gflow 開啟
+- [x] `SongShellHeader` 抽出（App.tsx 瘦身）
+- [ ] App.tsx 進一步拆分 gflow 編輯區（可選）
 
 ---
 
 ### Sprint B3 — 進階（選做）
 
-| 功能 | 優先 | 說明 |
-|------|------|------|
-| GP → .gflow 簡化轉換 | 低 | 提取主旋律 tab 到 gflow sections，失敗則 fallback |
-| 多軌選擇 | 中 | alphaTab track selector UI |
-| 與音訊檔同步 | 低 | alphaTab 支援 external media sync |
-| MusicXML 匯出 | 低 | 長期目標 |
+| 功能 | 優先 | 狀態 | 說明 |
+|------|------|------|------|
+| 多軌選擇 | 中 | ✅ | `TrackSelector` + `useAlphaTabTracks`，偏好存 localStorage |
+| GP → .gflow 簡化轉換 | 低 | ○ | 提取主旋律 tab 到 gflow sections，失敗則 fallback |
+| 與音訊檔同步 | 低 | ○ | alphaTab 支援 external media sync |
+| MusicXML 匯出 | 低 | ○ | 長期目標 |
+
+#### B3.1 多軌選擇（已完成）
+
+- `scoreLoaded` 後列出所有 tracks（名稱、shortName、是否 percussion）
+- 點選 chip 切換顯示，`api.renderTracks()` 重绘
+- **Guitar** / **All** 快捷按鈕
+- 每首 GP 歌曲的選取存 `localStorage`（`guitarflow-tracks-{id}`）
+
+#### B3.2 驗收標準
+
+- [x] 多軌 GP 檔可切換顯示軌道
+- [x] 重新開啟同一首歌曲記住軌道選取
+- [ ] GP → .gflow 轉換 PoC
+- [ ] MusicXML 匯出
 
 ---
 
@@ -322,27 +368,25 @@ interface PlaybackEngine {
 ### 6.1 前端 `types.ts` 擴充
 
 ```typescript
-export interface TabSection {
-  id: string;
-  title: string;
-  capo: number;
-  timeSignature?: [number, number];  // 預設 [4, 4]，Phase A3
-  measures: string[][][];
-  chords: (string | null)[][];
-  lyrics: (string | null)[][];
-}
-
+// types/playback.ts
 export interface PlaybackPosition {
   sectionIdx: number;
   measureIdx: number;
   colIdx: number;
 }
 
-export interface GuitarSong {
-  // 現有欄位...
-  source?: 'gflow' | 'imported';  // Phase B
+export interface PlayerBarBindings {
+  mode: 'gflow' | 'alphatab';
+  // ... PlayerBar 共用 props
 }
+
+// types.ts — gflow 與 imported 分離（比單一 model 更清晰）
+export interface GuitarSong { /* sections, source?: 'gflow' */ }
+export interface ImportedSong { source: 'imported'; importFormat; fileName; }
+export type LibrarySong = GuitarSong | ImportedSong;
 ```
+
+**Phase B PoC**：GP 二進位存 `IndexedDB`（`importedSongsDb.ts`），尚未擴充 backend。
 
 ### 6.2 後端 Phase A 無必要改動
 
@@ -359,12 +403,11 @@ Phase B 再新增 `source`、`import_file` 欄位與 migration。
 ```
 Home
  ├── Create New → Edit
- ├── Open Song → Edit | Practice（記住上次視圖）
- └── Import GP → ImportPreview → Practice（Phase B）
+ ├── Open .gflow → Edit | Preview | Practice | Chords
+ └── Import GP → Song Shell（Preview | Practice + PlayerBar）
 
-Edit ──→ Preview（列印）
-  │
-  └──→ Practice（練習）
+GFlow：Edit ──→ Preview / Practice / Chords
+GP：Preview（唯讀樂譜）/ Practice（PlayerBar + alphaTab cursor）
 ```
 
 ### 7.2 色彩與游標
@@ -443,21 +486,33 @@ const loadAlphaTab = () => import('@coderline/alphatab');
 ## 11. 執行順序總覽
 
 ```
-Phase A
-  Sprint A1  穩定化（bug、匯入、section）
-  Sprint A2  PlayerBar + Practice View + SoundFont
-  Sprint A3  記號、和弦辨識、UX 細節
+✅ Phase A
+  ✅ Sprint A1  穩定化（bug、匯入、section）
+  ✅ Sprint A2  PlayerBar + Practice View + SoundFont（缺 Zoom / mm:ss）
+  ✅ Sprint A3  記號、和弦辨識、UX 細節（缺 timeSignature）
 
-Phase B
-  Sprint B1  alphaTab PoC（GP 匯入 + 渲染 + 播放）
-  Sprint B2  雙引擎 Player + 視圖路由
-  Sprint B3  進階（多軌、轉換，選做）
+✅ Sprint B1  alphaTab PoC（GP 匯入 + 渲染 + 播放 + IndexedDB）
+
+🔄 Sprint B2  雙引擎 Player + 視圖路由（✅ 完成）
+  ✅ PlayerBarBindings + useAlphaTabPlayback + playbackRange A-B
+  ✅ SongShellHeader 統一 App Shell
+  ✅ GP Preview/Practice + 共用 PlayerBar
+
+○  Sprint B3  進階（多軌、轉換，選做）
+
+○  Backlog    GP backend 持久化、前端測試、MPL-2.0 確認
 ```
 
 ---
 
 ## 12. 下一步
 
-1. **請 review 本文件**，確認 Phase A Sprint 拆分與優先順序。
-2. 確認後，產出 **Sprint A1 實作計畫**（具體檔案、task 順序、預估工時）。
-3. 開始 A1.1：抽出 `PlayerBar` + 修播放 bug。
+1. ~~Review 本文件、確認 Phase A Sprint 拆分~~ ✅
+2. ~~完成 Sprint A1–A3 核心功能~~ ✅
+3. ~~完成 Sprint B1 GP PoC~~ ✅
+4. ~~**進行中：Sprint B2 收尾**~~ ✅
+5. **Sprint B3 / Backlog（依需求）**
+   - 多軌選擇 UI
+   - GP → `.gflow` 簡化轉換
+   - 前端测试（`tabNotation`、`usePlayback` 时间轴）
+   - 決定 GP 是否上傳 backend
