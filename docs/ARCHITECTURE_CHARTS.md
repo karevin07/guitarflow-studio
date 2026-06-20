@@ -15,7 +15,6 @@ graph TD
     root --> makefile["Makefile"]
     root --> pginit["postgres-init/init.sql"]
     root --> readme["README.md"]
-    root --> meta["metadata.json"]
 
     root --> frontendDir["frontend/"]
     frontendDir --> f_docker["Dockerfile"]

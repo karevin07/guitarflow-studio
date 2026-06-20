@@ -15,7 +15,6 @@ guitar-flow/
 ├── postgres-init/         # PostgreSQL init scripts (global chord seed data)
 │   └── init.sql
 ├── README.md
-├── metadata.json
 ├── frontend/              # React frontend (Vite)
 │   ├── App.tsx            # Main app layout, editor & playback
 │   ├── index.html
