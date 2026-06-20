@@ -3,10 +3,10 @@ FROM node:20-slim
 WORKDIR /app
 
 # Copy dependency configuration
-COPY package.json ./
+COPY package.json package-lock.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm ci
 
 # Copy all project files
 COPY . .
