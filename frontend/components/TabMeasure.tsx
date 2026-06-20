@@ -19,6 +19,7 @@ interface TabMeasureProps {
   onDropChord?: (colIdx: number, chordName: string) => void;
   canDelete?: boolean;
   theme?: 'light' | 'dark';
+  playCol?: number | null;
 }
 
 const TabMeasure: React.FC<TabMeasureProps> = ({ 
@@ -36,7 +37,8 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
   onClearColumn,
   onDropChord,
   canDelete = true,
-  theme = 'dark'
+  theme = 'dark',
+  playCol = null
 }) => {
   const [dragOverCol, setDragOverCol] = useState<number | null>(null);
 
@@ -91,6 +93,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
               className={`relative group/col transition-colors rounded 
                 ${dragOverCol === cIdx ? 'bg-indigo-50 dark:bg-violet-900/45 ring-2 ring-indigo-500/50 dark:ring-violet-500/50' : ''}
                 ${isPrimaryBeat(cIdx) && dragOverCol !== cIdx ? 'bg-slate-50 dark:bg-zinc-800/40' : ''}
+                ${playCol === cIdx ? 'bg-emerald-500/10 dark:bg-emerald-500/20 ring-1 ring-emerald-500/40 shadow-sm' : ''}
               `}
               onDragOver={(e) => handleDragOver(e, cIdx)}
               onDragLeave={handleDragLeave}
@@ -136,7 +139,8 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                     ${activeString === sIdx && activeCol === cIdx ? 'bg-gradient-to-tr from-indigo-600 to-violet-650 dark:from-violet-600 dark:to-indigo-650 text-white font-bold ring-2 ring-indigo-500 dark:ring-violet-500 z-10 shadow-lg shadow-indigo-500/20 dark:shadow-violet-500/35 scale-110 rounded' : 'hover:bg-slate-100 dark:hover:bg-zinc-800/80 rounded'}
                     ${activeCol === cIdx && !(activeString === sIdx) ? 'bg-indigo-500/5 dark:bg-violet-500/5' : ''}
                     ${dragOverCol === cIdx ? 'bg-indigo-500/10 dark:bg-violet-900/20' : ''}
-                    ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx ? 'bg-slate-100/40 dark:bg-zinc-800/25' : ''}
+                    ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx && playCol !== cIdx ? 'bg-slate-100/40 dark:bg-zinc-800/25' : ''}
+                    ${playCol === cIdx && !(activeString === sIdx && activeCol === cIdx) ? 'bg-emerald-500/20 dark:bg-emerald-500/30 border-x border-emerald-500/30' : ''}
                   `}
                 >
                   {renderNote(note)}
@@ -156,7 +160,10 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
           {lyrics.map((lyric, cIdx) => (
             <div 
               key={cIdx} 
-              className={`w-6 h-8 relative group/lyric ${isPrimaryBeat(cIdx) ? 'bg-slate-50/30 dark:bg-zinc-800/15' : ''}`}
+              className={`w-6 h-8 relative group/lyric 
+                ${isPrimaryBeat(cIdx) ? 'bg-slate-50/30 dark:bg-zinc-800/15' : ''}
+                ${playCol === cIdx ? 'bg-emerald-500/10 dark:bg-emerald-500/20 shadow-sm' : ''}
+              `}
             >
               <input
                 type="text"

@@ -4,9 +4,11 @@ import {
   Music, Plus, Save, Download,
   Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2,
   ChevronDown, ArrowLeft, FileText,
-  Sun, Moon
+  Sun, Moon,
+  Play, Pause, Square, Repeat, Volume2, Activity
 } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
+import Fretboard from './components/Fretboard';
 import ChordDiagram from './components/ChordDiagram';
 import SongPreview from './components/SongPreview';
 import ChordManager from './components/ChordManager';
@@ -43,6 +45,139 @@ const App: React.FC = () => {
 
   // ─── Editor state ──────────────────────────────────────────────────────────
   const editor = useEditorState();
+
+  // ─── Playback state ────────────────────────────────────────────────────────
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playBpm, setPlayBpm] = useState(120);
+  const [playState, setPlayState] = useState<{
+    sectionIdx: number;
+    measureIdx: number;
+    colIdx: number;
+  } | null>(null);
+  const [isLooping, setIsLooping] = useState(false);
+  const [isMetronomeOn, setIsMetronomeOn] = useState(false);
+  const [playbackVolume, setPlaybackVolume] = useState(0.5);
+
+  // Playback sound & cursor sync via Web Audio API
+  useEffect(() => {
+    if (!isPlaying) {
+      setPlayState(null);
+      return;
+    }
+
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    let audioCtx: AudioContext | null = null;
+    try {
+      audioCtx = new AudioContextClass();
+    } catch (e) {
+      console.error('Web Audio API not supported', e);
+    }
+
+    const msPerCol = (60 / playBpm) / 4 * 1000;
+
+    let currentSectionIdx = 0;
+    let currentMeasureIdx = 0;
+    let currentColIdx = 0;
+
+    setPlayState({
+      sectionIdx: currentSectionIdx,
+      measureIdx: currentMeasureIdx,
+      colIdx: currentColIdx
+    });
+
+    const playSoundForCol = (secIdx: number, measIdx: number, cIdx: number) => {
+      if (!audioCtx) return;
+      const section = editor.sections[secIdx];
+      if (!section) return;
+      const measure = section.measures[measIdx];
+      if (!measure) return;
+
+      // Metronome beat indicator
+      if (isMetronomeOn && cIdx % 4 === 0) {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(cIdx === 0 ? 1000 : 750, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08 * playbackVolume, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.04);
+      }
+
+      // Guitar frequencies synth
+      const TUNING_PITCHES = [64, 59, 55, 50, 45, 40];
+      const capo = section.capo || 0;
+
+      for (let sIdx = 0; sIdx < 6; sIdx++) {
+        const noteStr = measure[sIdx][cIdx];
+        if (noteStr && noteStr !== '-' && noteStr !== '·' && noteStr.toLowerCase() !== 'x') {
+          const match = noteStr.match(/^(\d+)/);
+          if (match) {
+            const fret = parseInt(match[1], 10);
+            const pitch = TUNING_PITCHES[sIdx] + fret + capo + editor.transposeOffset;
+            const frequency = 440 * Math.pow(2, (pitch - 69) / 12);
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+
+            gain.gain.setValueAtTime(0.12 * playbackVolume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.45);
+          }
+        }
+      }
+    };
+
+    playSoundForCol(currentSectionIdx, currentMeasureIdx, currentColIdx);
+
+    const intervalId = setInterval(() => {
+      currentColIdx++;
+      if (currentColIdx >= 16) {
+        currentColIdx = 0;
+        currentMeasureIdx++;
+
+        const currentSec = editor.sections[currentSectionIdx];
+        if (currentSec && currentMeasureIdx >= currentSec.measures.length) {
+          currentMeasureIdx = 0;
+          currentSectionIdx++;
+
+          if (currentSectionIdx >= editor.sections.length) {
+            if (isLooping) {
+              currentSectionIdx = 0;
+            } else {
+              setIsPlaying(false);
+              clearInterval(intervalId);
+              return;
+            }
+          }
+        }
+      }
+
+      setPlayState({
+        sectionIdx: currentSectionIdx,
+        measureIdx: currentMeasureIdx,
+        colIdx: currentColIdx
+      });
+
+      playSoundForCol(currentSectionIdx, currentMeasureIdx, currentColIdx);
+    }, msPerCol);
+
+    return () => {
+      clearInterval(intervalId);
+      if (audioCtx) {
+        audioCtx.close();
+      }
+    };
+  }, [isPlaying, playBpm, isLooping, isMetronomeOn, playbackVolume, editor.sections, editor.transposeOffset]);
 
   // ─── Song library ──────────────────────────────────────────────────────────
   const library = useSongLibrary({
@@ -380,28 +515,62 @@ const App: React.FC = () => {
 
                   {/* Measures grid: 2 per row on xl screens */}
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-12 gap-y-16">
-                    {currentSection.measures.map((measure, mIdx) => (
-                      <div key={mIdx} className="w-full overflow-x-auto xl:overflow-visible">
-                        <TabMeasure
-                          measure={measure}
-                          chords={currentSection.chords[mIdx]}
-                          lyrics={currentSection.lyrics[mIdx]}
-                          activeCol={editor.selection?.measureIdx === mIdx ? editor.selection.colIdx : null}
-                          activeString={editor.selection?.measureIdx === mIdx ? editor.selection.stringIdx : null}
-                          onCellClick={(sIdx, cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: sIdx, colIdx: cIdx })}
-                          onChordClick={(cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: 0, colIdx: cIdx })}
-                          onChordNameChange={(cIdx, name) => editor.handleChordNameChange(editor.activeSectionId, mIdx, cIdx, name)}
-                          onLyricChange={(cIdx, text) => editor.updateLyric(editor.activeSectionId, mIdx, cIdx, text)}
-                          onDelete={() => editor.deleteMeasure(editor.activeSectionId, mIdx)}
-                          onCopy={() => editor.copyMeasure(editor.activeSectionId, mIdx)}
-                          onClearColumn={(cIdx) => editor.clearColumn(editor.activeSectionId, mIdx, cIdx)}
-                          onDropChord={(cIdx, chordName) => editor.handleDropChord(editor.activeSectionId, mIdx, cIdx, chordName)}
-                          canDelete={currentSection.measures.length > 1}
-                          theme={theme}
-                        />
-                      </div>
-                    ))}
+                    {currentSection.measures.map((measure, mIdx) => {
+                      const isSecPlaying = playState && editor.sections[playState.sectionIdx]?.id === currentSection.id;
+                      const isMeasPlaying = isSecPlaying && playState?.measureIdx === mIdx;
+
+                      return (
+                        <div key={mIdx} className="w-full overflow-x-auto xl:overflow-visible">
+                          <TabMeasure
+                            measure={measure}
+                            chords={currentSection.chords[mIdx]}
+                            lyrics={currentSection.lyrics[mIdx]}
+                            activeCol={editor.selection?.measureIdx === mIdx ? editor.selection.colIdx : null}
+                            activeString={editor.selection?.measureIdx === mIdx ? editor.selection.stringIdx : null}
+                            playCol={isMeasPlaying ? playState.colIdx : null}
+                            onCellClick={(sIdx, cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: sIdx, colIdx: cIdx })}
+                            onChordClick={(cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: 0, colIdx: cIdx })}
+                            onChordNameChange={(cIdx, name) => editor.handleChordNameChange(editor.activeSectionId, mIdx, cIdx, name)}
+                            onLyricChange={(cIdx, text) => editor.updateLyric(editor.activeSectionId, mIdx, cIdx, text)}
+                            onDelete={() => editor.deleteMeasure(editor.activeSectionId, mIdx)}
+                            onCopy={() => editor.copyMeasure(editor.activeSectionId, mIdx)}
+                            onClearColumn={(cIdx) => editor.clearColumn(editor.activeSectionId, mIdx, cIdx)}
+                            onDropChord={(cIdx, chordName) => editor.handleDropChord(editor.activeSectionId, mIdx, cIdx, chordName)}
+                            canDelete={currentSection.measures.length > 1}
+                            theme={theme}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
+                  
+                  {/* Fretboard Panel */}
+                  {editor.selection && (
+                    <div className="mt-12 bg-white/70 dark:bg-zinc-900/35 backdrop-blur-md p-6 rounded-3xl border border-slate-200 dark:border-zinc-800/60 shadow-md animate-in slide-in-from-bottom-2 duration-200">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
+                            Interactive Guitar Fretboard
+                          </h4>
+                          <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">Select a cell in the tab above, then click a fret below to write a note.</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-indigo-600 dark:text-violet-400 uppercase tracking-widest bg-indigo-50 dark:bg-violet-900/40 px-3 py-1.5 rounded-xl border border-indigo-100/50 dark:border-violet-900/30">
+                            Focused: Measure {editor.selection.measureIdx + 1}, String {editor.selection.stringIdx + 1}, Col {editor.selection.colIdx + 1}
+                          </span>
+                        </div>
+                      </div>
+                      <Fretboard 
+                        selectedString={editor.selection.stringIdx}
+                        selectedCol={editor.selection.colIdx}
+                        onNoteClick={(stringIdx, fret) => {
+                          const { sectionId, measureIdx, colIdx } = editor.selection!;
+                          handleCellInput(sectionId, measureIdx, stringIdx, colIdx, fret.toString());
+                        }} 
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -472,6 +641,184 @@ const App: React.FC = () => {
           />
         )}
       </main>
+
+      {/* ─ Playback Control Bottom Bar ───────────────────────────────────── */}
+      {(viewMode === 'edit' || viewMode === 'preview') && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-8 py-4 rounded-2xl shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-6 z-50 animate-in slide-in-from-bottom-6 duration-300 w-11/12 max-w-4xl">
+          {/* Play/Pause/Stop Buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-650 dark:to-fuchsia-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 active:scale-95 transition-all"
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
+            </button>
+            {isPlaying && (
+              <button
+                onClick={() => setIsPlaying(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                title="Stop"
+              >
+                <Square size={16} fill="currentColor" />
+              </button>
+            )}
+          </div>
+
+          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+
+          {/* BPM Tempo Control */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Tempo</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="40"
+                max="240"
+                value={playBpm}
+                onChange={e => setPlayBpm(Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 120)))}
+                className="w-14 px-2 py-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-center text-xs font-bold text-slate-700 dark:text-zinc-300 outline-none"
+              />
+              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">BPM</span>
+            </div>
+            <input 
+              type="range"
+              min="40"
+              max="240"
+              value={playBpm}
+              onChange={e => setPlayBpm(parseInt(e.target.value, 10))}
+              className="w-20 sm:w-28 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
+            />
+          </div>
+
+          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+
+          {/* Controls: Loop & Metronome */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => setIsLooping(!isLooping)}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isLooping ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
+              title="Loop Score"
+            >
+              <Repeat size={14} />
+              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Loop</span>
+            </button>
+            <button
+              onClick={() => setIsMetronomeOn(!isMetronomeOn)}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isMetronomeOn ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
+              title="Metronome"
+            >
+              <Activity size={14} />
+              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Metronome</span>
+            </button>
+          </div>
+
+          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+
+          {/* Volume Control */}
+          <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 justify-end min-w-[80px]">
+            <Volume2 size={14} className="text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={playbackVolume}
+              onChange={e => setPlaybackVolume(parseFloat(e.target.value))}
+              className="w-16 sm:w-24 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ─ Playback Control Bottom Bar ───────────────────────────────────── */}
+      {(viewMode === 'edit' || viewMode === 'preview') && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-8 py-4 rounded-2xl shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-6 z-50 animate-in slide-in-from-bottom-6 duration-300 w-11/12 max-w-4xl">
+          {/* Play/Pause/Stop Buttons */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-650 dark:to-fuchsia-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 active:scale-95 transition-all"
+              title={isPlaying ? "Pause" : "Play"}
+            >
+              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
+            </button>
+            {isPlaying && (
+              <button
+                onClick={() => setIsPlaying(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                title="Stop"
+              >
+                <Square size={16} fill="currentColor" />
+              </button>
+            )}
+          </div>
+
+          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+
+          {/* BPM Tempo Control */}
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Tempo</span>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min="40"
+                max="240"
+                value={playBpm}
+                onChange={e => setPlayBpm(Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 120)))}
+                className="w-14 px-2 py-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-center text-xs font-bold text-slate-700 dark:text-zinc-300 outline-none"
+              />
+              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">BPM</span>
+            </div>
+            <input 
+              type="range"
+              min="40"
+              max="240"
+              value={playBpm}
+              onChange={e => setPlayBpm(parseInt(e.target.value, 10))}
+              className="w-20 sm:w-28 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
+            />
+          </div>
+
+          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+
+          {/* Controls: Loop & Metronome */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              onClick={() => setIsLooping(!isLooping)}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isLooping ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
+              title="Loop Score"
+            >
+              <Repeat size={14} />
+              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Loop</span>
+            </button>
+            <button
+              onClick={() => setIsMetronomeOn(!isMetronomeOn)}
+              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isMetronomeOn ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
+              title="Metronome"
+            >
+              <Activity size={14} />
+              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Metronome</span>
+            </button>
+          </div>
+
+          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+
+          {/* Volume Control */}
+          <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 justify-end min-w-[80px]">
+            <Volume2 size={14} className="text-slate-400 dark:text-zinc-500 flex-shrink-0" />
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={playbackVolume}
+              onChange={e => setPlaybackVolume(parseFloat(e.target.value))}
+              className="w-16 sm:w-24 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
+            />
+          </div>
+        </div>
+      )}
 
       {/* ─ Toast notifications ─────────────────────────────────────────────── */}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
