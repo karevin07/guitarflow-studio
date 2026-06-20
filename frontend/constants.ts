@@ -1,16 +1,4 @@
-
-import React from 'react';
-
 export const TUNING_STANDARD = ['e', 'B', 'G', 'D', 'A', 'E'];
-
-export const EMPTY_MEASURE = [
-  Array(16).fill('-'),
-  Array(16).fill('-'),
-  Array(16).fill('-'),
-  Array(16).fill('-'),
-  Array(16).fill('-'),
-  Array(16).fill('-'),
-];
 
 export const COMMON_CHORDS = [
   { name: 'C', frets: [0, 1, 0, 2, 3, null] },

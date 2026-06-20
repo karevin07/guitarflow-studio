@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { TabSection, ChordDefinition } from '../types';
-import { EMPTY_MEASURE, COMMON_CHORDS } from '../constants';
+import { COMMON_CHORDS } from '../constants';
 
 export const createEmptyMeasure = (): string[][] =>
   Array.from({ length: 6 }, () => Array(16).fill('-'));
