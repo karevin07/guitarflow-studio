@@ -39,5 +39,9 @@ class GlobalChord(models.Model):
     name = models.CharField(max_length=50, unique=True)
     frets = models.JSONField(help_text="Array of 6 numbers or nulls representing frets")
 
+    class Meta:
+        db_table = 'guitarflow_globalchord'
+        managed = False
+
     def __str__(self):
         return self.name
