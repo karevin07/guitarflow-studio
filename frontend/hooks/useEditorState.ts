@@ -1,0 +1,381 @@
+import { useState, useMemo, useCallback } from 'react';
+import { TabSection, ChordDefinition } from '../types';
+import { EMPTY_MEASURE, COMMON_CHORDS } from '../constants';
+
+export const createEmptyMeasure = (): string[][] =>
+  Array.from({ length: 6 }, () => Array(16).fill('-'));
+
+export const useEditorState = () => {
+  const [songTitle, setSongTitle] = useState('My Awesome Riff');
+  const [sections, setSections] = useState<TabSection[]>([]);
+  const [customChords, setCustomChords] = useState<ChordDefinition[]>([]);
+  const [transposeOffset, setTransposeOffset] = useState(0);
+
+  const [activeSectionId, setActiveSectionId] = useState<string>('');
+  const [selection, setSelectionRaw] = useState<{
+    sectionId: string;
+    measureIdx: number;
+    stringIdx: number;
+    colIdx: number;
+  } | null>(null);
+  const [previewChord, setPreviewChord] = useState<ChordDefinition | null>(null);
+
+  const [history, setHistory] = useState<TabSection[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
+  const chordLibrary = useMemo(() => [...COMMON_CHORDS, ...customChords], [customChords]);
+
+  // Clear previewChord whenever selection changes so we show the column's real chord
+  const setSelection = useCallback(
+    (sel: typeof selection) => {
+      setSelectionRaw(sel);
+      setPreviewChord(null);
+    },
+    []
+  );
+
+  /** Load a song's data into the editor (called when opening a song) */
+  const loadSong = useCallback(
+    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number) => {
+      setSongTitle(title);
+      setSections(newSections);
+      setCustomChords(chords);
+      setTransposeOffset(transpose);
+      setActiveSectionId(newSections[0]?.id || '');
+      setHistory([newSections]);
+      setHistoryIndex(0);
+      setSelectionRaw(null);
+      setPreviewChord(null);
+    },
+    []
+  );
+
+  const commitToHistory = useCallback((newSections: TabSection[]) => {
+    setHistory(prev => {
+      const nextHistory = prev.slice(0, prev.length); // keep reference
+      // We use the functional form to access current historyIndex
+      return nextHistory;
+    });
+    // Use functional updates to avoid stale closure issues
+    setHistoryIndex(prevIdx => {
+      const nextHistory = history.slice(0, prevIdx + 1);
+      nextHistory.push(JSON.parse(JSON.stringify(newSections)));
+      if (nextHistory.length > 50) nextHistory.shift();
+      setHistory(nextHistory);
+      setSections(newSections);
+      return nextHistory.length - 1;
+    });
+  }, [history]);
+
+  const undo = useCallback(() => {
+    setHistoryIndex(prevIdx => {
+      if (prevIdx > 0) {
+        const nextIndex = prevIdx - 1;
+        setSections(JSON.parse(JSON.stringify(history[nextIndex])));
+        return nextIndex;
+      }
+      return prevIdx;
+    });
+  }, [history]);
+
+  const redo = useCallback(() => {
+    setHistoryIndex(prevIdx => {
+      if (prevIdx < history.length - 1) {
+        const nextIndex = prevIdx + 1;
+        setSections(JSON.parse(JSON.stringify(history[nextIndex])));
+        return nextIndex;
+      }
+      return prevIdx;
+    });
+  }, [history]);
+
+  const updateLyric = useCallback((sectionId: string, mIdx: number, cIdx: number, text: string) => {
+    setSections(prev => {
+      const next = prev.map(sec => {
+        if (sec.id !== sectionId) return sec;
+        const newLyrics = [...sec.lyrics];
+        newLyrics[mIdx] = [...newLyrics[mIdx]];
+        newLyrics[mIdx][cIdx] = text || null;
+        return { ...sec, lyrics: newLyrics };
+      });
+      // commit inline
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const setCapo = useCallback((sectionId: string, fret: number) => {
+    setSections(prev => {
+      const next = prev.map(sec =>
+        sec.id === sectionId ? { ...sec, capo: fret } : sec
+      );
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const addMeasure = useCallback((sectionId: string) => {
+    setSections(prev => {
+      const next = prev.map(sec => {
+        if (sec.id !== sectionId) return sec;
+        return {
+          ...sec,
+          measures: [...sec.measures, createEmptyMeasure()],
+          chords: [...sec.chords, Array(16).fill(null)],
+          lyrics: [...sec.lyrics, Array(16).fill(null)],
+        };
+      });
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const deleteMeasure = useCallback((sectionId: string, mIdx: number) => {
+    setSections(prev => {
+      const next = prev.map(sec => {
+        if (sec.id !== sectionId) return sec;
+        if (sec.measures.length <= 1) return sec;
+        const newMeasures = [...sec.measures];
+        const newChords = [...sec.chords];
+        const newLyrics = [...sec.lyrics];
+        newMeasures.splice(mIdx, 1);
+        newChords.splice(mIdx, 1);
+        newLyrics.splice(mIdx, 1);
+        return { ...sec, measures: newMeasures, chords: newChords, lyrics: newLyrics };
+      });
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+    setSelectionRaw(null);
+  }, [history]);
+
+  const copyMeasure = useCallback((sectionId: string, mIdx: number) => {
+    setSections(prev => {
+      const next = prev.map(sec => {
+        if (sec.id !== sectionId) return sec;
+        const newMeasures = [...sec.measures];
+        const newChords = [...sec.chords];
+        const newLyrics = [...sec.lyrics];
+        newMeasures.splice(mIdx + 1, 0, JSON.parse(JSON.stringify(newMeasures[mIdx])));
+        newChords.splice(mIdx + 1, 0, [...newChords[mIdx]]);
+        newLyrics.splice(mIdx + 1, 0, [...newLyrics[mIdx]]);
+        return { ...sec, measures: newMeasures, chords: newChords, lyrics: newLyrics };
+      });
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const clearColumn = useCallback((sectionId: string, mIdx: number, cIdx: number) => {
+    setSections(prev => {
+      const next = prev.map(sec => {
+        if (sec.id !== sectionId) return sec;
+        const newMeasures = [...sec.measures];
+        const newChords = [...sec.chords];
+        const newLyrics = [...sec.lyrics];
+        for (let s = 0; s < 6; s++) {
+          newMeasures[mIdx][s][cIdx] = '-';
+        }
+        newChords[mIdx][cIdx] = null;
+        newLyrics[mIdx][cIdx] = null;
+        return { ...sec, measures: newMeasures, chords: newChords, lyrics: newLyrics };
+      });
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const addSection = useCallback(() => {
+    const newId = Math.random().toString(36).slice(2, 11);
+    setSections(prev => {
+      const next = [
+        ...prev,
+        {
+          id: newId,
+          title: 'New Section',
+          capo: 0,
+          measures: [createEmptyMeasure()],
+          chords: [Array(16).fill(null)],
+          lyrics: [Array(16).fill(null)],
+        },
+      ];
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+    setActiveSectionId(newId);
+  }, [history]);
+
+  const applyChordToColumn = useCallback(
+    (sectionId: string, mIdx: number, cIdx: number, chord: ChordDefinition) => {
+      setSections(prev => {
+        const next = prev.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          const newMeasures = [...sec.measures];
+          const newChords = [...sec.chords];
+          chord.frets.forEach((fret, sIdx) => {
+            newMeasures[mIdx][sIdx][cIdx] = fret === null ? '-' : fret.toString();
+          });
+          newChords[mIdx][cIdx] = chord.name;
+          return { ...sec, measures: newMeasures, chords: newChords };
+        });
+        setHistoryIndex(prevIdx => {
+          const nextHistory = history.slice(0, prevIdx + 1);
+          nextHistory.push(JSON.parse(JSON.stringify(next)));
+          if (nextHistory.length > 50) nextHistory.shift();
+          setHistory(nextHistory);
+          return nextHistory.length - 1;
+        });
+        return next;
+      });
+    },
+    [history]
+  );
+
+  const handleChordNameChange = useCallback(
+    (sectionId: string, mIdx: number, cIdx: number, name: string) => {
+      setSections(prev => {
+        const next = prev.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          const newChords = [...sec.chords];
+          newChords[mIdx] = [...newChords[mIdx]];
+          newChords[mIdx][cIdx] = name || null;
+          const foundChord = chordLibrary.find(c => c.name.toLowerCase() === name.toLowerCase());
+          if (foundChord) {
+            const newMeasures = [...sec.measures];
+            newMeasures[mIdx] = [...newMeasures[mIdx]];
+            foundChord.frets.forEach((fret, sIdx) => {
+              newMeasures[mIdx][sIdx] = [...newMeasures[mIdx][sIdx]];
+              newMeasures[mIdx][sIdx][cIdx] = fret === null ? '-' : fret.toString();
+            });
+            return { ...sec, chords: newChords, measures: newMeasures };
+          }
+          return { ...sec, chords: newChords };
+        });
+        setHistoryIndex(prevIdx => {
+          const nextHistory = history.slice(0, prevIdx + 1);
+          nextHistory.push(JSON.parse(JSON.stringify(next)));
+          if (nextHistory.length > 50) nextHistory.shift();
+          setHistory(nextHistory);
+          return nextHistory.length - 1;
+        });
+        return next;
+      });
+    },
+    [history, chordLibrary]
+  );
+
+  const handleDropChord = useCallback(
+    (sectionId: string, mIdx: number, cIdx: number, chordName: string) => {
+      const chord = chordLibrary.find(c => c.name === chordName);
+      if (chord) applyChordToColumn(sectionId, mIdx, cIdx, chord);
+    },
+    [chordLibrary, applyChordToColumn]
+  );
+
+  const handleChordInput = useCallback(
+    (chord: ChordDefinition, currentSelection: typeof selection) => {
+      if (!currentSelection) return;
+      applyChordToColumn(currentSelection.sectionId, currentSelection.measureIdx, currentSelection.colIdx, chord);
+      setPreviewChord(chord);
+      setSelectionRaw(prev => {
+        if (!prev) return null;
+        const nextCol = prev.colIdx + 1;
+        return nextCol < 16 ? { ...prev, colIdx: nextCol } : prev;
+      });
+    },
+    [applyChordToColumn]
+  );
+
+  const getActiveChord = useCallback(
+    (currentSection: TabSection | undefined): ChordDefinition | null => {
+      if (previewChord) return previewChord;
+      if (selection && currentSection) {
+        const { measureIdx, colIdx } = selection;
+        const chordName = currentSection.chords[measureIdx]?.[colIdx];
+        if (chordName) {
+          const namedChord = chordLibrary.find(c => c.name === chordName);
+          if (namedChord) return namedChord;
+        }
+        const columnNotes = currentSection.measures[measureIdx]?.map(str => str[colIdx]);
+        if (columnNotes) {
+          const hasNotes = columnNotes.some(n => n !== '-' && n !== '·');
+          if (hasNotes) {
+            const frets = columnNotes.map(n => {
+              if (n === '-' || n === '·') return null;
+              const match = n.match(/^(\d+)/);
+              return match ? parseInt(match[1], 10) : null;
+            });
+            return { name: 'Custom', frets } as ChordDefinition;
+          }
+        }
+      }
+      return null;
+    },
+    [previewChord, selection, chordLibrary]
+  );
+
+  return {
+    // State
+    songTitle, setSongTitle,
+    sections, setSections,
+    customChords, setCustomChords,
+    transposeOffset, setTransposeOffset,
+    activeSectionId, setActiveSectionId,
+    selection, setSelection,
+    previewChord, setPreviewChord,
+    history, historyIndex,
+    chordLibrary,
+    // Actions
+    loadSong,
+    commitToHistory,
+    undo, redo,
+    updateLyric, setCapo,
+    addMeasure, deleteMeasure, copyMeasure, clearColumn,
+    addSection,
+    applyChordToColumn,
+    handleChordNameChange, handleDropChord, handleChordInput,
+    getActiveChord,
+  };
+};

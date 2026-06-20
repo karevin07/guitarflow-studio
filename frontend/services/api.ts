@@ -1,6 +1,6 @@
 import { GuitarSong } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
 
 export const api = {
   async fetchSongs(): Promise<GuitarSong[]> {
@@ -22,9 +22,7 @@ export const api = {
   async createSong(song: Omit<GuitarSong, 'id'>): Promise<GuitarSong> {
     const response = await fetch(`${API_BASE_URL}/songs/`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(song),
     });
     if (!response.ok) {
@@ -36,9 +34,7 @@ export const api = {
   async updateSong(id: string, song: Omit<GuitarSong, 'id'>): Promise<GuitarSong> {
     const response = await fetch(`${API_BASE_URL}/songs/${id}/`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(song),
     });
     if (!response.ok) {
