@@ -453,6 +453,7 @@ const App: React.FC = () => {
             <SongPreview
               sections={editor.sections}
               customChords={editor.customChords}
+              globalChords={editor.globalChords}
               externalTranspose={editor.transposeOffset}
               onTransposeChange={editor.setTransposeOffset}
               theme={theme}
@@ -464,6 +465,7 @@ const App: React.FC = () => {
         {viewMode === 'library' && (
           <ChordManager
             customChords={editor.customChords}
+            globalChords={editor.globalChords}
             onAddChord={c => editor.setCustomChords([...editor.customChords, c])}
             onDeleteChord={name => editor.setCustomChords(editor.customChords.filter(c => c.name !== name))}
             theme={theme}

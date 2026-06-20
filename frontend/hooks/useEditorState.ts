@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TabSection, ChordDefinition } from '../types';
-import { COMMON_CHORDS } from '../constants';
+import { api } from '../services/api';
 
 export const createEmptyMeasure = (): string[][] =>
   Array.from({ length: 6 }, () => Array(16).fill('-'));
@@ -9,6 +9,7 @@ export const useEditorState = () => {
   const [songTitle, setSongTitle] = useState('My Awesome Riff');
   const [sections, setSections] = useState<TabSection[]>([]);
   const [customChords, setCustomChords] = useState<ChordDefinition[]>([]);
+  const [globalChords, setGlobalChords] = useState<ChordDefinition[]>([]);
   const [transposeOffset, setTransposeOffset] = useState(0);
 
   const [activeSectionId, setActiveSectionId] = useState<string>('');
@@ -23,7 +24,13 @@ export const useEditorState = () => {
   const [history, setHistory] = useState<TabSection[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const chordLibrary = useMemo(() => [...COMMON_CHORDS, ...customChords], [customChords]);
+  useEffect(() => {
+    api.fetchGlobalChords()
+      .then(setGlobalChords)
+      .catch(err => console.error("Failed to load global chords:", err));
+  }, []);
+
+  const chordLibrary = useMemo(() => [...globalChords, ...customChords], [globalChords, customChords]);
 
   // Clear previewChord whenever selection changes so we show the column's real chord
   const setSelection = useCallback(
@@ -361,6 +368,7 @@ export const useEditorState = () => {
     songTitle, setSongTitle,
     sections, setSections,
     customChords, setCustomChords,
+    globalChords, setGlobalChords,
     transposeOffset, setTransposeOffset,
     activeSectionId, setActiveSectionId,
     selection, setSelection,

@@ -51,4 +51,12 @@ export const api = {
       throw new Error('Failed to delete song');
     }
   },
+
+  async fetchGlobalChords(): Promise<Omit<GuitarSong['customChords'][number], 'isStandard'>[]> {
+    const response = await fetch(`${API_BASE_URL}/global-chords/`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch global chords');
+    }
+    return response.json();
+  },
 };

@@ -22,4 +22,4 @@ COPY . .
 EXPOSE 8000
 
 # Run migrations and start Django development server on startup
-CMD ["sh", "-c", "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python manage.py migrate --fake-initial && python manage.py runserver 0.0.0.0:8000"]

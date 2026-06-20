@@ -33,3 +33,11 @@ class CustomChord(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.song.title})"
+
+
+class GlobalChord(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    frets = models.JSONField(help_text="Array of 6 numbers or nulls representing frets")
+
+    def __str__(self):
+        return self.name

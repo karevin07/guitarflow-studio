@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import GuitarSong, TabSection, CustomChord
+from .models import GuitarSong, TabSection, CustomChord, GlobalChord
 
 
 class TabSectionSerializer(serializers.ModelSerializer):
@@ -138,3 +138,9 @@ class GuitarSongSerializer(serializers.ModelSerializer):
                 chord.delete()
 
         return instance
+
+
+class GlobalChordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GlobalChord
+        fields = ('id', 'name', 'frets')

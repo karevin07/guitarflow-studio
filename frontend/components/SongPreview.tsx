@@ -2,12 +2,12 @@
 import React, { useMemo } from 'react';
 import { TabSection, ChordDefinition } from '../types';
 import ChordDiagram from './ChordDiagram';
-import { COMMON_CHORDS } from '../constants';
 import { Anchor, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
 
 interface SongPreviewProps {
   sections: TabSection[];
   customChords?: ChordDefinition[];
+  globalChords?: ChordDefinition[];
   externalTranspose?: number;
   onTransposeChange?: (newVal: number) => void;
   theme?: 'light' | 'dark';
@@ -52,6 +52,7 @@ const transposeFret = (fretStr: string, semitones: number): string => {
 const SongPreview: React.FC<SongPreviewProps> = ({ 
   sections, 
   customChords = [], 
+  globalChords = [],
   externalTranspose = 0,
   onTransposeChange,
   theme = 'dark'
@@ -59,7 +60,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   const transpose = externalTranspose;
 
   // Combine libraries
-  const chordLibrary = useMemo(() => [...COMMON_CHORDS, ...customChords], [customChords]);
+  const chordLibrary = useMemo(() => [...globalChords, ...customChords], [globalChords, customChords]);
 
   // Pre-process all sections for the preview
   const renderedSections = useMemo(() => {

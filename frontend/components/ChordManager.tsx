@@ -3,16 +3,23 @@ import React, { useState, useMemo } from 'react';
 import { ChordDefinition } from '../types';
 import { Trash2, Plus, Music, Search, Info, Grid, PenTool, Star, X, Guitar } from 'lucide-react';
 import ChordDiagram from './ChordDiagram';
-import { COMMON_CHORDS, TUNING_STANDARD } from '../constants';
+import { TUNING_STANDARD } from '../constants';
 
 interface ChordManagerProps {
   customChords: ChordDefinition[];
+  globalChords?: ChordDefinition[];
   onAddChord: (chord: ChordDefinition) => void;
   onDeleteChord: (name: string) => void;
   theme?: 'light' | 'dark';
 }
 
-const ChordManager: React.FC<ChordManagerProps> = ({ customChords, onAddChord, onDeleteChord, theme = 'dark' }) => {
+const ChordManager: React.FC<ChordManagerProps> = ({ 
+  customChords, 
+  globalChords = [],
+  onAddChord, 
+  onDeleteChord, 
+  theme = 'dark' 
+}) => {
   const [activeTab, setActiveTab] = useState<'create' | 'browse'>('browse');
   const [selectedChordName, setSelectedChordName] = useState<string | null>(null);
   const [newChordName, setNewChordName] = useState('');
@@ -20,9 +27,9 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, onAddChord, o
   const [searchTerm, setSearchTerm] = useState('');
 
   const fullLibrary = useMemo(() => [
-    ...COMMON_CHORDS.map(c => ({ ...c, isStandard: true })),
+    ...globalChords.map(c => ({ ...c, isStandard: true })),
     ...customChords.map(c => ({ ...c, isStandard: false }))
-  ], [customChords]);
+  ], [globalChords, customChords]);
 
   const filteredChords = fullLibrary.filter(c => 
     c.name.toLowerCase().includes(searchTerm.toLowerCase())
