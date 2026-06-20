@@ -80,6 +80,21 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
     [currentSongId, onError]
   );
 
+  const importSong = useCallback(
+    async (songData: Omit<GuitarSong, 'id' | 'lastModified'>) => {
+      try {
+        const newSong = await api.createSong(songData as Omit<GuitarSong, 'id'>);
+        setSongs(prev => [newSong, ...prev]);
+        setCurrentSongId(newSong.id);
+        onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0);
+        onSuccess(`Imported "${newSong.title}" successfully.`);
+      } catch {
+        onError('Failed to import song. Please try again.');
+      }
+    },
+    [onSongOpened, onError, onSuccess]
+  );
+
   return {
     songs, setSongs,
     currentSongId,
@@ -89,5 +104,6 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
     openSong,
     deleteSong,
     saveCurrentSong,
+    importSong,
   };
 };

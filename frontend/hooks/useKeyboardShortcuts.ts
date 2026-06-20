@@ -9,7 +9,7 @@ type Selection = {
 } | null;
 
 interface UseKeyboardShortcutsOptions {
-  viewMode: 'home' | 'edit' | 'preview' | 'library';
+  viewMode: 'home' | 'edit' | 'preview' | 'practice' | 'library' | 'imported';
   selection: Selection;
   setSelection: (sel: Selection) => void;
   sections: TabSection[];
@@ -17,6 +17,7 @@ interface UseKeyboardShortcutsOptions {
   redo: () => void;
   onCellInput: (sectionId: string, measureIdx: number, stringIdx: number, colIdx: number, value: string) => void;
   onCellClear: (sectionId: string, measureIdx: number, stringIdx: number, colIdx: number) => void;
+  onOpenHelp?: () => void;
 }
 
 export const useKeyboardShortcuts = ({
@@ -28,6 +29,7 @@ export const useKeyboardShortcuts = ({
   redo,
   onCellInput,
   onCellClear,
+  onOpenHelp,
 }: UseKeyboardShortcutsOptions) => {
   const moveCursor = useCallback(
     (direction: 'up' | 'down' | 'left' | 'right' | 'nextMeasure' | 'nextBeat') => {
@@ -68,7 +70,16 @@ export const useKeyboardShortcuts = ({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (viewMode === 'home') return;
+      if (viewMode === 'home' || viewMode === 'imported') return;
+
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        const tag = document.activeElement?.tagName;
+        if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+          e.preventDefault();
+          onOpenHelp?.();
+          return;
+        }
+      }
 
       // Undo/Redo
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
@@ -79,6 +90,8 @@ export const useKeyboardShortcuts = ({
         document.activeElement?.tagName === 'INPUT' ||
         document.activeElement?.tagName === 'TEXTAREA'
       ) return;
+
+      if (viewMode !== 'edit') return;
 
       if (selection) {
         if (e.key === 'ArrowUp') { e.preventDefault(); moveCursor('up'); return; }
@@ -91,13 +104,28 @@ export const useKeyboardShortcuts = ({
 
       if (!selection) return;
 
+      const currentSection = sections.find(s => s.id === selection.sectionId);
+      if (!currentSection) return;
+      const currentVal = currentSection.measures[selection.measureIdx]?.[selection.stringIdx]?.[selection.colIdx] ?? '-';
+
+      const key = e.key.toLowerCase();
       const isNum = e.key >= '0' && e.key <= '9';
-      const isSlide = e.key.toLowerCase() === 's' || e.key === '/';
+      const isSlide = key === 's' || e.key === '/';
+      const isTechnique = key === 'h' || key === 'p' || key === 'b';
+
+      if (key === 'x') {
+        e.preventDefault();
+        onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, 'x');
+        return;
+      }
+
+      if (isTechnique && /^\d+$/.test(currentVal)) {
+        e.preventDefault();
+        onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, currentVal + key);
+        return;
+      }
 
       if (isNum || isSlide) {
-        const currentSection = sections.find(s => s.id === selection.sectionId);
-        if (!currentSection) return;
-        const currentVal = currentSection.measures[selection.measureIdx]?.[selection.stringIdx]?.[selection.colIdx];
         let newVal = e.key;
 
         if (isSlide) {
@@ -109,16 +137,15 @@ export const useKeyboardShortcuts = ({
             !currentVal.includes('s') &&
             !currentVal.includes('/')
           ) {
-            newVal = currentVal + e.key.toLowerCase();
+            newVal = currentVal + key;
           } else {
-            newVal = e.key.toLowerCase();
+            newVal = key;
           }
-        } else {
-          // Smart double-digit: combine if current is a single digit
-          if (currentVal && currentVal !== '-' && currentVal !== '·' && /^\d+$/.test(currentVal)) {
-            const combined = parseInt(currentVal + e.key, 10);
-            if (combined <= 24 && currentVal.length < 2) newVal = combined.toString();
-          }
+        } else if (/^(\d+)([hpb])$/.test(currentVal)) {
+          newVal = currentVal + e.key;
+        } else if (currentVal && currentVal !== '-' && currentVal !== '·' && /^\d+$/.test(currentVal)) {
+          const combined = parseInt(currentVal + e.key, 10);
+          if (combined <= 24 && currentVal.length < 2) newVal = combined.toString();
         }
 
         onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, newVal);
@@ -126,7 +153,7 @@ export const useKeyboardShortcuts = ({
         onCellClear(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx);
       }
     },
-    [viewMode, selection, sections, undo, redo, moveCursor, onCellInput, onCellClear]
+    [viewMode, selection, sections, undo, redo, moveCursor, onCellInput, onCellClear, onOpenHelp]
   );
 
   useEffect(() => {

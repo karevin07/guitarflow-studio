@@ -4,6 +4,7 @@ import { ChordDefinition } from '../types';
 import { Trash2, Plus, Music, Search, Info, Grid, PenTool, Star, X, Guitar } from 'lucide-react';
 import ChordDiagram from './ChordDiagram';
 import { TUNING_STANDARD } from '../constants';
+import { detectChordName } from '../services/chordDetector';
 
 interface ChordManagerProps {
   customChords: ChordDefinition[];
@@ -38,6 +39,11 @@ const ChordManager: React.FC<ChordManagerProps> = ({
   const selectedChord = useMemo(() => 
     fullLibrary.find(c => c.name === selectedChordName), 
   [selectedChordName, fullLibrary]);
+
+  const suggestedName = useMemo(
+    () => detectChordName(newFrets, fullLibrary),
+    [newFrets, fullLibrary]
+  );
 
   const toggleFret = (sIdx: number, fIdx: number | null) => {
     const next = [...newFrets];
@@ -297,6 +303,20 @@ const ChordManager: React.FC<ChordManagerProps> = ({
                       placeholder="e.g. Amaj9"
                       className="w-full text-xl font-bold px-5 py-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-2xl focus:border-indigo-500 focus:bg-white dark:focus:border-violet-500 dark:focus:bg-zinc-900/80 text-slate-800 dark:text-zinc-100 outline-none transition-all"
                     />
+                    {suggestedName && suggestedName !== newChordName && (
+                      <div className="mt-2 flex items-center justify-between gap-2 px-1">
+                        <span className="text-xs text-slate-500 dark:text-zinc-400">
+                          Suggested: <span className="font-bold text-indigo-600 dark:text-violet-400">{suggestedName}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setNewChordName(suggestedName)}
+                          className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-violet-400 hover:underline"
+                        >
+                          Use
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="relative pt-6">

@@ -1,11 +1,10 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Music, Plus, Save, Download,
   Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2,
-  ChevronDown, ArrowLeft, FileText,
-  Sun, Moon,
-  Play, Pause, Square, Repeat, Volume2, Activity
+  ChevronDown, ChevronUp, ArrowLeft, FileText, Trash2,
+  Sun, Moon, Keyboard,
 } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
 import Fretboard from './components/Fretboard';
@@ -13,21 +12,37 @@ import ChordDiagram from './components/ChordDiagram';
 import SongPreview from './components/SongPreview';
 import ChordManager from './components/ChordManager';
 import Home from './components/Home';
+import PlayerBar from './components/PlayerBar';
+import PracticeView from './components/PracticeView';
+import ImportedSongView from './components/ImportedSongView';
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import { ToastContainer } from './components/Toast';
-import { GuitarSong } from './types';
+import { ImportedSong, LibrarySong, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
+import { readGflowFile } from './services/gflowImport';
+import { updateImportedSongTitle } from './services/importedSongsDb';
 import { useEditorState, createEmptyMeasure } from './hooks/useEditorState';
 import { useSongLibrary } from './hooks/useSongLibrary';
+import { useImportedSongs } from './hooks/useImportedSongs';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
+import { usePlayback } from './hooks/usePlayback';
+import { useAutosave } from './hooks/useAutosave';
 
 const App: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'library'>('home');
+  const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library' | 'imported'>('home');
+  const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('guitarflow-theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'dark';
   });
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [autosaveEnabled, setAutosaveEnabled] = useState(
+    () => localStorage.getItem('guitarflow-autosave') !== 'false'
+  );
+  const skipDirtyRef = useRef(true);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -46,148 +61,89 @@ const App: React.FC = () => {
   // ─── Editor state ──────────────────────────────────────────────────────────
   const editor = useEditorState();
 
-  // ─── Playback state ────────────────────────────────────────────────────────
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playBpm, setPlayBpm] = useState(120);
-  const [playState, setPlayState] = useState<{
-    sectionIdx: number;
-    measureIdx: number;
-    colIdx: number;
-  } | null>(null);
-  const [isLooping, setIsLooping] = useState(false);
-  const [isMetronomeOn, setIsMetronomeOn] = useState(false);
-  const [playbackVolume, setPlaybackVolume] = useState(0.5);
-
-  // Playback sound & cursor sync via Web Audio API
-  useEffect(() => {
-    if (!isPlaying) {
-      setPlayState(null);
-      return;
-    }
-
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-    let audioCtx: AudioContext | null = null;
-    try {
-      audioCtx = new AudioContextClass();
-    } catch (e) {
-      console.error('Web Audio API not supported', e);
-    }
-
-    const msPerCol = (60 / playBpm) / 4 * 1000;
-
-    let currentSectionIdx = 0;
-    let currentMeasureIdx = 0;
-    let currentColIdx = 0;
-
-    setPlayState({
-      sectionIdx: currentSectionIdx,
-      measureIdx: currentMeasureIdx,
-      colIdx: currentColIdx
-    });
-
-    const playSoundForCol = (secIdx: number, measIdx: number, cIdx: number) => {
-      if (!audioCtx) return;
-      const section = editor.sections[secIdx];
-      if (!section) return;
-      const measure = section.measures[measIdx];
-      if (!measure) return;
-
-      // Metronome beat indicator
-      if (isMetronomeOn && cIdx % 4 === 0) {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.frequency.setValueAtTime(cIdx === 0 ? 1000 : 750, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.08 * playbackVolume, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.04);
-      }
-
-      // Guitar frequencies synth
-      const TUNING_PITCHES = [64, 59, 55, 50, 45, 40];
-      const capo = section.capo || 0;
-
-      for (let sIdx = 0; sIdx < 6; sIdx++) {
-        const noteStr = measure[sIdx][cIdx];
-        if (noteStr && noteStr !== '-' && noteStr !== '·' && noteStr.toLowerCase() !== 'x') {
-          const match = noteStr.match(/^(\d+)/);
-          if (match) {
-            const fret = parseInt(match[1], 10);
-            const pitch = TUNING_PITCHES[sIdx] + fret + capo + editor.transposeOffset;
-            const frequency = 440 * Math.pow(2, (pitch - 69) / 12);
-
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-
-            gain.gain.setValueAtTime(0.12 * playbackVolume, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.45);
-
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.45);
-          }
-        }
-      }
-    };
-
-    playSoundForCol(currentSectionIdx, currentMeasureIdx, currentColIdx);
-
-    const intervalId = setInterval(() => {
-      currentColIdx++;
-      if (currentColIdx >= 16) {
-        currentColIdx = 0;
-        currentMeasureIdx++;
-
-        const currentSec = editor.sections[currentSectionIdx];
-        if (currentSec && currentMeasureIdx >= currentSec.measures.length) {
-          currentMeasureIdx = 0;
-          currentSectionIdx++;
-
-          if (currentSectionIdx >= editor.sections.length) {
-            if (isLooping) {
-              currentSectionIdx = 0;
-            } else {
-              setIsPlaying(false);
-              clearInterval(intervalId);
-              return;
-            }
-          }
-        }
-      }
-
-      setPlayState({
-        sectionIdx: currentSectionIdx,
-        measureIdx: currentMeasureIdx,
-        colIdx: currentColIdx
-      });
-
-      playSoundForCol(currentSectionIdx, currentMeasureIdx, currentColIdx);
-    }, msPerCol);
-
-    return () => {
-      clearInterval(intervalId);
-      if (audioCtx) {
-        audioCtx.close();
-      }
-    };
-  }, [isPlaying, playBpm, isLooping, isMetronomeOn, playbackVolume, editor.sections, editor.transposeOffset]);
+  const playback = usePlayback({
+    sections: editor.sections,
+    transposeOffset: editor.transposeOffset,
+  });
 
   // ─── Song library ──────────────────────────────────────────────────────────
   const library = useSongLibrary({
     onSongOpened: (title, sections, chords, transpose) => {
       editor.loadSong(title, sections, chords, transpose);
+      skipDirtyRef.current = true;
+      setIsDirty(false);
+      setActiveImportedSong(null);
       setViewMode('edit');
     },
     onError: toast.error,
     onSuccess: toast.success,
   });
+
+  const imported = useImportedSongs({
+    onSongOpened: song => {
+      setActiveImportedSong(song);
+      setViewMode('imported');
+    },
+    onError: toast.error,
+    onSuccess: toast.success,
+  });
+
+  const librarySongs: LibrarySong[] = [
+    ...imported.songs,
+    ...library.songs.map(s => ({ ...s, source: 'gflow' as const })),
+  ].sort((a, b) => b.lastModified - a.lastModified);
+
+  const performSave = useCallback(() => {
+    library.saveCurrentSong({
+      title: editor.songTitle,
+      sections: editor.sections,
+      customChords: editor.customChords,
+      transposeOffset: editor.transposeOffset,
+    });
+  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.transposeOffset]);
+
+  useEffect(() => {
+    if (viewMode === 'home' || !library.currentSongId) return;
+    if (skipDirtyRef.current) {
+      skipDirtyRef.current = false;
+      return;
+    }
+    setIsDirty(true);
+  }, [editor.sections, editor.songTitle, editor.customChords, editor.transposeOffset, viewMode, library.currentSongId]);
+
+  useEffect(() => {
+    if (library.saveStatus === 'saved') {
+      setIsDirty(false);
+      skipDirtyRef.current = true;
+    }
+  }, [library.saveStatus]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty && viewMode !== 'home') {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty, viewMode]);
+
+  useAutosave({
+    enabled: autosaveEnabled,
+    delayMs: 30000,
+    isDirty,
+    canSave: viewMode !== 'home' && !!library.currentSongId && library.saveStatus !== 'saving',
+    onSave: performSave,
+  });
+
+  const toggleAutosave = () => {
+    setAutosaveEnabled(prev => {
+      const next = !prev;
+      localStorage.setItem('guitarflow-autosave', next ? 'true' : 'false');
+      return next;
+    });
+  };
 
   // Load songs on mount
   useEffect(() => { library.fetchSongs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -229,6 +185,7 @@ const App: React.FC = () => {
     redo: editor.redo,
     onCellInput: handleCellInput,
     onCellClear: handleCellClear,
+    onOpenHelp: () => setShortcutsOpen(true),
   });
 
   // ─── Create new song ───────────────────────────────────────────────────────
@@ -251,12 +208,7 @@ const App: React.FC = () => {
 
   // ─── Save ──────────────────────────────────────────────────────────────────
   const saveCurrentSong = () => {
-    library.saveCurrentSong({
-      title: editor.songTitle,
-      sections: editor.sections,
-      customChords: editor.customChords,
-      transposeOffset: editor.transposeOffset,
-    });
+    performSave();
   };
 
   // ─── Export ────────────────────────────────────────────────────────────────
@@ -294,21 +246,84 @@ const App: React.FC = () => {
     }
   };
 
+  const handleImportFile = useCallback(async (file: File) => {
+    const result = await readGflowFile(file);
+    if (result.ok === false) {
+      toast.error(result.error);
+      return;
+    }
+    await library.importSong(result.data);
+  }, [library, toast]);
+
+  const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
+    if (isImportedSong(song)) {
+      imported.openSong(song);
+      return;
+    }
+    library.openSong(song);
+  }, [imported, library]);
+
+  const handleDeleteLibrarySong = useCallback((song: LibrarySong) => {
+    if (isImportedSong(song)) {
+      imported.deleteSong(song.id);
+      if (activeImportedSong?.id === song.id) {
+        setActiveImportedSong(null);
+        setViewMode('home');
+      }
+      return;
+    }
+    library.deleteSong(song.id);
+  }, [activeImportedSong?.id, imported, library]);
+
+  const handleImportedTitleChange = useCallback(async (title: string) => {
+    if (!activeImportedSong) return;
+    await updateImportedSongTitle(activeImportedSong.id, title);
+    setActiveImportedSong(prev => (prev ? { ...prev, title, lastModified: Date.now() } : prev));
+    imported.refresh();
+  }, [activeImportedSong, imported]);
+
   // ─── Derived state ─────────────────────────────────────────────────────────
   const currentSection = editor.sections.find(s => s.id === editor.activeSectionId);
   const activeChord = editor.getActiveChord(currentSection);
+  const selectionPosition = editor.selection
+    ? (() => {
+        const sectionIdx = editor.sections.findIndex(s => s.id === editor.selection!.sectionId);
+        return sectionIdx >= 0
+          ? { sectionIdx, measureIdx: editor.selection!.measureIdx, colIdx: editor.selection!.colIdx }
+          : null;
+      })()
+    : null;
 
   // ─── Home view ─────────────────────────────────────────────────────────────
   if (viewMode === 'home') {
     return (
       <>
         <Home
-          songs={library.songs}
+          songs={librarySongs}
           onCreateNew={createNewSong}
-          onOpen={library.openSong}
-          onDelete={library.deleteSong}
+          onOpen={handleOpenLibrarySong}
+          onDelete={handleDeleteLibrarySong}
+          onImportGflow={handleImportFile}
+          onImportGp={imported.importFile}
           theme={theme}
           onToggleTheme={toggleTheme}
+        />
+        <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      </>
+    );
+  }
+
+  if (viewMode === 'imported' && activeImportedSong) {
+    return (
+      <>
+        <ImportedSongView
+          song={activeImportedSong}
+          onBack={() => {
+            setActiveImportedSong(null);
+            setViewMode('home');
+          }}
+          onTitleChange={handleImportedTitleChange}
+          onError={toast.error}
         />
         <ToastContainer toasts={toasts} onDismiss={dismiss} />
       </>
@@ -339,7 +354,7 @@ const App: React.FC = () => {
         </div>
 
         <nav className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800 p-1 rounded-xl mx-4 transition-colors">
-          {(['edit', 'preview', 'library'] as const).map(mode => (
+          {(['edit', 'preview', 'practice', 'library'] as const).map(mode => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
@@ -351,6 +366,7 @@ const App: React.FC = () => {
             >
               {mode === 'edit' && <Edit3 size={16} />}
               {mode === 'preview' && <Eye size={16} />}
+              {mode === 'practice' && <Music size={16} />}
               {mode === 'library' && <Book size={16} />}
               {mode === 'library' ? 'Chords' : mode.charAt(0).toUpperCase() + mode.slice(1)}
             </button>
@@ -385,6 +401,28 @@ const App: React.FC = () => {
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
+          {/* Keyboard shortcuts */}
+          <button
+            onClick={() => setShortcutsOpen(true)}
+            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
+            title="Keyboard shortcuts (?)"
+          >
+            <Keyboard size={18} />
+          </button>
+
+          {/* Autosave toggle */}
+          <button
+            onClick={toggleAutosave}
+            className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
+              autosaveEnabled
+                ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400'
+                : 'bg-slate-100 dark:bg-zinc-900/50 border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-500'
+            }`}
+            title="Toggle autosave (30s)"
+          >
+            Auto {autosaveEnabled ? 'On' : 'Off'}
           </button>
 
           {/* Save */}
@@ -456,18 +494,56 @@ const App: React.FC = () => {
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {editor.sections.map(sec => (
-                  <button
+                {editor.sections.map((sec, idx) => (
+                  <div
                     key={sec.id}
-                    onClick={() => editor.setActiveSectionId(sec.id)}
-                    className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
+                    className={`group flex items-center gap-1 rounded-xl border transition-all ${
                       editor.activeSectionId === sec.id
-                        ? 'border-indigo-500 bg-indigo-50/70 text-indigo-600 dark:border-violet-500 dark:bg-violet-500/10 dark:text-violet-400 shadow-md'
-                        : 'border-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                        ? 'border-indigo-500 bg-indigo-50/70 dark:border-violet-500 dark:bg-violet-500/10 shadow-md'
+                        : 'border-transparent hover:bg-slate-100 dark:hover:bg-zinc-800'
                     }`}
                   >
-                    {sec.title}
-                  </button>
+                    <button
+                      onClick={() => editor.setActiveSectionId(sec.id)}
+                      className={`flex-1 text-left px-4 py-3 text-sm font-bold transition-all ${
+                        editor.activeSectionId === sec.id
+                          ? 'text-indigo-600 dark:text-violet-400'
+                          : 'text-slate-500 dark:text-zinc-400'
+                      }`}
+                    >
+                      {sec.title}
+                    </button>
+                    <div className="flex flex-col pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={e => { e.stopPropagation(); editor.moveSection(sec.id, 'up'); }}
+                        disabled={idx === 0}
+                        className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-violet-400 disabled:opacity-30"
+                        title="Move up"
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); editor.moveSection(sec.id, 'down'); }}
+                        disabled={idx === editor.sections.length - 1}
+                        className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-violet-400 disabled:opacity-30"
+                        title="Move down"
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (editor.sections.length <= 1) return;
+                        if (confirm(`Delete section "${sec.title}"?`)) editor.deleteSection(sec.id);
+                      }}
+                      disabled={editor.sections.length <= 1}
+                      className="p-2 mr-1 text-slate-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-30 transition-all"
+                      title="Delete section"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 ))}
               </div>
             </aside>
@@ -480,12 +556,7 @@ const App: React.FC = () => {
                     <div className="flex items-center gap-6">
                       <input
                         value={currentSection.title}
-                        onChange={e => {
-                          const next = editor.sections.map(s =>
-                            s.id === editor.activeSectionId ? { ...s, title: e.target.value } : s
-                          );
-                          editor.setSections(next);
-                        }}
+                        onChange={e => editor.updateSectionTitle(editor.activeSectionId, e.target.value)}
                         className="text-2xl font-bold text-slate-800 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
                       />
                       <div className="h-8 w-[1px] bg-slate-200 dark:bg-zinc-800" />
@@ -516,8 +587,8 @@ const App: React.FC = () => {
                   {/* Measures grid: 2 per row on xl screens */}
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-12 gap-y-16">
                     {currentSection.measures.map((measure, mIdx) => {
-                      const isSecPlaying = playState && editor.sections[playState.sectionIdx]?.id === currentSection.id;
-                      const isMeasPlaying = isSecPlaying && playState?.measureIdx === mIdx;
+                      const isSecPlaying = playback.playState && editor.sections[playback.playState.sectionIdx]?.id === currentSection.id;
+                      const isMeasPlaying = isSecPlaying && playback.playState?.measureIdx === mIdx;
 
                       return (
                         <div key={mIdx} className="w-full overflow-x-auto xl:overflow-visible">
@@ -527,7 +598,7 @@ const App: React.FC = () => {
                             lyrics={currentSection.lyrics[mIdx]}
                             activeCol={editor.selection?.measureIdx === mIdx ? editor.selection.colIdx : null}
                             activeString={editor.selection?.measureIdx === mIdx ? editor.selection.stringIdx : null}
-                            playCol={isMeasPlaying ? playState.colIdx : null}
+                            playCol={isMeasPlaying ? playback.playState!.colIdx : null}
                             onCellClick={(sIdx, cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: sIdx, colIdx: cIdx })}
                             onChordClick={(cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: 0, colIdx: cIdx })}
                             onChordNameChange={(cIdx, name) => editor.handleChordNameChange(editor.activeSectionId, mIdx, cIdx, name)}
@@ -630,6 +701,20 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {/* ── Practice view ───────────────────────────────────────────────── */}
+        {viewMode === 'practice' && (
+          <PracticeView
+            sections={editor.sections}
+            activeSectionId={editor.activeSectionId}
+            playState={playback.playState}
+            theme={theme}
+            onSelectSection={editor.setActiveSectionId}
+            onSelectCell={(sectionId, measureIdx, stringIdx, colIdx) =>
+              editor.setSelection({ sectionId, measureIdx, stringIdx, colIdx })
+            }
+          />
+        )}
+
         {/* ── Chord library view ───────────────────────────────────────────── */}
         {viewMode === 'library' && (
           <ChordManager
@@ -642,186 +727,40 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* ─ Playback Control Bottom Bar ───────────────────────────────────── */}
-      {(viewMode === 'edit' || viewMode === 'preview') && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-8 py-4 rounded-2xl shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-6 z-50 animate-in slide-in-from-bottom-6 duration-300 w-11/12 max-w-4xl">
-          {/* Play/Pause/Stop Buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-650 dark:to-fuchsia-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 active:scale-95 transition-all"
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
-            </button>
-            {isPlaying && (
-              <button
-                onClick={() => setIsPlaying(false)}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                title="Stop"
-              >
-                <Square size={16} fill="currentColor" />
-              </button>
-            )}
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-          {/* BPM Tempo Control */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Tempo</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="40"
-                max="240"
-                value={playBpm}
-                onChange={e => setPlayBpm(Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 120)))}
-                className="w-14 px-2 py-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-center text-xs font-bold text-slate-700 dark:text-zinc-300 outline-none"
-              />
-              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">BPM</span>
-            </div>
-            <input 
-              type="range"
-              min="40"
-              max="240"
-              value={playBpm}
-              onChange={e => setPlayBpm(parseInt(e.target.value, 10))}
-              className="w-20 sm:w-28 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
-            />
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-          {/* Controls: Loop & Metronome */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => setIsLooping(!isLooping)}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isLooping ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
-              title="Loop Score"
-            >
-              <Repeat size={14} />
-              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Loop</span>
-            </button>
-            <button
-              onClick={() => setIsMetronomeOn(!isMetronomeOn)}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isMetronomeOn ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
-              title="Metronome"
-            >
-              <Activity size={14} />
-              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Metronome</span>
-            </button>
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-          {/* Volume Control */}
-          <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 justify-end min-w-[80px]">
-            <Volume2 size={14} className="text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={playbackVolume}
-              onChange={e => setPlaybackVolume(parseFloat(e.target.value))}
-              className="w-16 sm:w-24 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ─ Playback Control Bottom Bar ───────────────────────────────────── */}
-      {(viewMode === 'edit' || viewMode === 'preview') && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-8 py-4 rounded-2xl shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-6 z-50 animate-in slide-in-from-bottom-6 duration-300 w-11/12 max-w-4xl">
-          {/* Play/Pause/Stop Buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={() => setIsPlaying(!isPlaying)}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-650 dark:to-fuchsia-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 active:scale-95 transition-all"
-              title={isPlaying ? "Pause" : "Play"}
-            >
-              {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
-            </button>
-            {isPlaying && (
-              <button
-                onClick={() => setIsPlaying(false)}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-                title="Stop"
-              >
-                <Square size={16} fill="currentColor" />
-              </button>
-            )}
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-          {/* BPM Tempo Control */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Tempo</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min="40"
-                max="240"
-                value={playBpm}
-                onChange={e => setPlayBpm(Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 120)))}
-                className="w-14 px-2 py-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-center text-xs font-bold text-slate-700 dark:text-zinc-300 outline-none"
-              />
-              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">BPM</span>
-            </div>
-            <input 
-              type="range"
-              min="40"
-              max="240"
-              value={playBpm}
-              onChange={e => setPlayBpm(parseInt(e.target.value, 10))}
-              className="w-20 sm:w-28 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
-            />
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-          {/* Controls: Loop & Metronome */}
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <button
-              onClick={() => setIsLooping(!isLooping)}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isLooping ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
-              title="Loop Score"
-            >
-              <Repeat size={14} />
-              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Loop</span>
-            </button>
-            <button
-              onClick={() => setIsMetronomeOn(!isMetronomeOn)}
-              className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isMetronomeOn ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
-              title="Metronome"
-            >
-              <Activity size={14} />
-              <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Metronome</span>
-            </button>
-          </div>
-
-          <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-          {/* Volume Control */}
-          <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 justify-end min-w-[80px]">
-            <Volume2 size={14} className="text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={playbackVolume}
-              onChange={e => setPlaybackVolume(parseFloat(e.target.value))}
-              className="w-16 sm:w-24 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
-            />
-          </div>
-        </div>
+      {(viewMode === 'edit' || viewMode === 'preview' || viewMode === 'practice') && (
+        <PlayerBar
+          isPlaying={playback.isPlaying}
+          isPaused={playback.isPaused}
+          onTogglePlayPause={() => {
+            if (!playback.isPlaying && (selectionPosition || playback.isPaused)) {
+              playback.play(selectionPosition ?? undefined);
+              return;
+            }
+            playback.togglePlayPause();
+          }}
+          onStop={playback.stop}
+          playIndex={playback.playIndex}
+          totalCols={playback.totalCols}
+          onSeek={playback.seek}
+          abLoop={playback.abLoop}
+          onSetLoopA={playback.setLoopA}
+          onSetLoopB={playback.setLoopB}
+          onToggleAbLoop={playback.toggleAbLoop}
+          onClearAbLoop={playback.clearAbLoop}
+          playBpm={playback.playBpm}
+          onBpmChange={playback.setPlayBpm}
+          isLooping={playback.isLooping}
+          onToggleLoop={() => playback.setIsLooping(v => !v)}
+          isMetronomeOn={playback.isMetronomeOn}
+          onToggleMetronome={() => playback.setIsMetronomeOn(v => !v)}
+          playbackVolume={playback.playbackVolume}
+          onVolumeChange={playback.setPlaybackVolume}
+        />
       )}
 
       {/* ─ Toast notifications ─────────────────────────────────────────────── */}
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 };

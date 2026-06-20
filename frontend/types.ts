@@ -10,6 +10,8 @@ export interface TabSection {
   lyrics: (string | null)[][]; // [measureIndex][columnIdx]
 }
 
+export type SongSource = 'gflow' | 'imported';
+
 export interface GuitarSong {
   id: string;
   title: string;
@@ -17,7 +19,22 @@ export interface GuitarSong {
   sections: TabSection[];
   customChords: ChordDefinition[];
   transposeOffset: number;
+  source?: 'gflow';
 }
+
+export interface ImportedSong {
+  id: string;
+  title: string;
+  lastModified: number;
+  source: 'imported';
+  importFormat: string;
+  fileName: string;
+}
+
+export type LibrarySong = GuitarSong | ImportedSong;
+
+export const isImportedSong = (song: LibrarySong): song is ImportedSong =>
+  song.source === 'imported';
 
 export interface ChordDefinition {
   name: string;

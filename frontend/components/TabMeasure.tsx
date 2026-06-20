@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { TUNING_STANDARD } from '../constants';
 import { Copy, Trash2, X, MessageSquare } from 'lucide-react';
+import { renderTabNote } from '../services/tabNotation';
 
 interface TabMeasureProps {
   measure: string[][];
@@ -63,23 +64,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
   // Helper to determine if a column is a primary beat (1, 2, 3, 4)
   const isPrimaryBeat = (cIdx: number) => cIdx % 4 === 0;
 
-  const renderNote = (note: string) => {
-    if (note === '-' || note === '·') return <span className="text-slate-300 dark:text-zinc-700 font-semibold">•</span>;
-    
-    // Check if the note contains a slide
-    const hasSlide = note.includes('s') || note.includes('/');
-    if (hasSlide) {
-      const parts = note.split(/([s/])/);
-      return (
-        <span className="text-indigo-600 dark:text-violet-400 font-bold">
-          {parts[0]}
-          <span className="text-pink-500 dark:text-fuchsia-400 italic font-bold text-[10px] ml-[1px]">{parts[1]}</span>
-        </span>
-      );
-    }
-    
-    return <span className="text-slate-800 dark:text-zinc-200 font-bold">{note}</span>;
-  };
+  const renderNote = (note: string) => renderTabNote(note);
 
   return (
     <div className="flex-shrink-0 bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 p-4 rounded-2xl group relative transition-all duration-300 hover:border-slate-300 dark:hover:border-zinc-700/60 shadow-md dark:shadow-xl">

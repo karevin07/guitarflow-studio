@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TabSection, ChordDefinition } from '../types';
 import { api } from '../services/api';
+import { detectChordFromColumn } from '../services/chordDetector';
 
 export const createEmptyMeasure = (): string[][] =>
   Array.from({ length: 6 }, () => Array(16).fill('-'));
@@ -228,6 +229,56 @@ export const useEditorState = () => {
     });
   }, [history]);
 
+  const updateSectionTitle = useCallback((sectionId: string, title: string) => {
+    setSections(prev => {
+      const next = prev.map(sec => (sec.id === sectionId ? { ...sec, title } : sec));
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const deleteSection = useCallback((sectionId: string) => {
+    setSections(prev => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter(sec => sec.id !== sectionId);
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      setActiveSectionId(current => (current === sectionId ? next[0]?.id ?? current : current));
+      setSelectionRaw(null);
+      return next;
+    });
+  }, [history]);
+
+  const moveSection = useCallback((sectionId: string, direction: 'up' | 'down') => {
+    setSections(prev => {
+      const idx = prev.findIndex(s => s.id === sectionId);
+      if (idx < 0) return prev;
+      const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
   const addSection = useCallback(() => {
     const newId = Math.random().toString(36).slice(2, 11);
     setSections(prev => {
@@ -347,15 +398,8 @@ export const useEditorState = () => {
         }
         const columnNotes = currentSection.measures[measureIdx]?.map(str => str[colIdx]);
         if (columnNotes) {
-          const hasNotes = columnNotes.some(n => n !== '-' && n !== '·');
-          if (hasNotes) {
-            const frets = columnNotes.map(n => {
-              if (n === '-' || n === '·') return null;
-              const match = n.match(/^(\d+)/);
-              return match ? parseInt(match[1], 10) : null;
-            });
-            return { name: 'Custom', frets } as ChordDefinition;
-          }
+          const detected = detectChordFromColumn(columnNotes, chordLibrary);
+          if (detected) return detected;
         }
       }
       return null;
@@ -381,7 +425,7 @@ export const useEditorState = () => {
     undo, redo,
     updateLyric, setCapo,
     addMeasure, deleteMeasure, copyMeasure, clearColumn,
-    addSection,
+    addSection, updateSectionTitle, deleteSection, moveSection,
     applyChordToColumn,
     handleChordNameChange, handleDropChord, handleChordInput,
     getActiveChord,

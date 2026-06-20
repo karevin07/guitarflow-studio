@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { TabSection, ChordDefinition } from '../types';
 import ChordDiagram from './ChordDiagram';
 import { Anchor, ChevronUp, ChevronDown, RotateCcw } from 'lucide-react';
+import { renderTabNote } from '../services/tabNotation';
 
 interface SongPreviewProps {
   sections: TabSection[];
@@ -96,25 +97,13 @@ const SongPreview: React.FC<SongPreviewProps> = ({
     });
   }, [sections, transpose]);
 
-  // Aggregate unique chords from ALL sections
-  const allUniqueTransposedNames = useMemo(() => {
-    const allNames = renderedSections.flatMap(s => s.transposedChordsGrid.flat());
-    const filtered = allNames.filter((c): c is string => c !== null);
-    return Array.from(new Set(filtered));
-  }, [renderedSections]);
+  // Unique original chord names (lookup library by original, display transposed label)
+  const originalChordNames = useMemo(() => {
+    const names = sections.flatMap(s => s.chords.flat()).filter((c): c is string => c !== null);
+    return Array.from(new Set(names));
+  }, [sections]);
 
-  const renderFretValue = (fret: string) => {
-    const parts = fret.split(/([s/])/);
-    if (parts.length > 1) {
-      return (
-        <span className="text-indigo-600 dark:text-violet-400 font-bold">
-          {parts[0]}
-          <span className="text-pink-500 dark:text-fuchsia-400 italic text-[9px] ml-[0.5px]">{parts[1]}</span>
-        </span>
-      );
-    }
-    return <span className="text-slate-800 dark:text-zinc-200 font-bold">{fret}</span>;
-  };
+  const renderFretValue = (fret: string) => renderTabNote(fret);
 
   return (
     <div className="bg-white/85 dark:bg-zinc-900/20 backdrop-blur-md min-h-full p-6 md:p-12 shadow-xl dark:shadow-2xl rounded-3xl border border-slate-200 dark:border-zinc-800/60 animate-in fade-in slide-in-from-bottom-4 duration-700 transition-colors duration-250">
@@ -267,18 +256,19 @@ const SongPreview: React.FC<SongPreviewProps> = ({
             </div>            <div className="bg-white/70 dark:bg-zinc-900/40 backdrop-blur-sm p-4 rounded-2xl border border-slate-200/85 dark:border-zinc-800/80 transition-colors duration-250">
               <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-6 text-center leading-tight">Song Chord Shapes</h3>
               <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-                {allUniqueTransposedNames.length > 0 ? (
-                  allUniqueTransposedNames.map((name) => {
-                    const chordDef = chordLibrary.find(c => c.name === name);
+                {originalChordNames.length > 0 ? (
+                  originalChordNames.map(originalName => {
+                    const displayName = transposeChordName(originalName, transpose) ?? originalName;
+                    const chordDef = chordLibrary.find(c => c.name === originalName);
                     return (
-                      <div key={name} className="flex flex-col items-center">
+                      <div key={originalName} className="flex flex-col items-center">
                         <div className="transform scale-[0.75] origin-top opacity-100 transition-all duration-500">
                           {chordDef ? (
-                            <ChordDiagram chord={chordDef} size={130} theme={theme} />
+                            <ChordDiagram chord={{ ...chordDef, name: displayName }} size={130} theme={theme} />
                           ) : (
                             <div className="w-[130px] h-[150px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-2xl flex flex-col items-center justify-center p-4 text-center shadow-sm">
-                              <span className="text-xl font-bold text-slate-700 dark:text-zinc-200 mb-2">{name}</span>
-                              <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none text-balance">Shape not found</span>
+                              <span className="text-xl font-bold text-slate-700 dark:text-zinc-200 mb-2">{displayName}</span>
+                              <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none text-balance">Custom shape</span>
                             </div>
                           )}
                         </div>
