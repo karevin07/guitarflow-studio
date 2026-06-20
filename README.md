@@ -17,35 +17,109 @@ GuitarFlow Studio 是一個專業級的網頁版吉他譜編輯器，專為詞�
   - `Backspace`: Delete notes.
 - **Smart Measures**: Add, delete, or copy measures. Organize songs into sections (Intro, Verse, Chorus).
 - **Lyrics Integration**: Add lyrics directly beneath the tablature.
+- **Interactive Fretboard**: Visual fretboard with audio playback via Web Audio API.
 
 ### 🎼 Chord Management (和弦管理)
 - **Visual Library**: Drag-and-drop chord library with standard and custom chords.
+- **Global Chord Library**: Pre-seeded standard chords served from the backend API.
 - **Chord Detector**: Automatically detects and names chords based on the notes entered in the tab.
-- **Custom Chords**: Create your own chord shapes with a visual designer and save them to your library.
+- **Custom Chords**: Create your own chord shapes with a visual designer and save them per song.
 
-### 👁️ Preview & Export (預覽與匯出)
+### 👁️ Preview, Playback & Export (預覽、播放與匯出)
 - **Clean Mode**: View your song in a read-only, clean format optimized for practice.
 - **Transposition**: Instantly transpose the entire song (notes and chord names) up or down.
-- **Export**: Save your projects as `.gflow` files or export simply by saving to local storage automatically.
+- **Playback**: Play back tablature with BPM control, loop, metronome, and volume.
+- **Export**: Export songs as `.gflow` files or MIDI.
+- **Cloud Save**: Songs are persisted to the backend (PostgreSQL in Docker, SQLite for local-only dev).
+
+---
+
+## Quick Start (快速開始)
+
+### Option A: Docker (Recommended)
+
+Requires Docker and Docker Compose.
+
+```bash
+make docker          # or: docker compose up -d --build
+```
+
+| Service  | URL |
+|----------|-----|
+| Frontend | http://localhost:3003 |
+| Backend API | http://localhost:8000/api/ |
+| Django Admin | http://localhost:8000/admin/ |
+
+Stop services:
+
+```bash
+make docker-down     # or: docker compose down
+```
+
+### Option B: Local Development
+
+Requires Python 3.10+, [uv](https://docs.astral.sh/uv/), and Node.js 18+.
+
+```bash
+make install         # install backend + frontend dependencies
+
+# Terminal 1 — backend (SQLite by default)
+make dev-backend     # http://localhost:8000
+
+# Terminal 2 — frontend
+make dev-frontend    # http://localhost:5173
+```
+
+For local frontend, set `VITE_API_URL=http://localhost:8000/api` in `frontend/.env`.
+
+Run database migrations after first install:
+
+```bash
+make migrate
+```
 
 ---
 
 ## Getting Started (開始使用)
 
 1. **Create a Song**: Click "Create New" on the home screen.
-2. **Edit**: 
+2. **Edit**:
    - Use your mouse or keyboard to select a cell.
    - Type numbers to add notes.
    - Drag chords from the sidebar to the top of the measure.
 3. **Sections**: Add new sections using the sidebar (e.g., "Chorus") to keep your song organized.
-4. **Save**: Your work is automatically saved to your browser's local storage.
+4. **Save**: Click Save to persist your song to the backend API.
+
+---
 
 ## Tech Stack (技術棧)
 
-- **React 18**: Core UI framework.
-- **Tailwind CSS**: Styling and responsive design.
-- **Lucide React**: Iconography.
-- **TypeScript**: Type safety and code quality.
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 19, TypeScript, Vite |
+| UI | Tailwind CSS (via CDN), Lucide React |
+| Backend | Django 5, Django REST Framework |
+| Database | PostgreSQL 15 (Docker) / SQLite (local dev) |
+| Package Management | uv (Python), npm (Node) |
+| Deployment | Docker Compose |
+
+---
+
+## Development Commands
+
+Run `make help` to see all available targets.
+
+| Command | Description |
+|---------|-------------|
+| `make install` | Install all dependencies |
+| `make dev-backend` | Start Django dev server |
+| `make dev-frontend` | Start Vite dev server |
+| `make migrate` | Run Django migrations |
+| `make test` | Run backend tests |
+| `make build` | Build frontend production bundle |
+| `make docker` | Start full stack with Docker Compose |
+
+See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details and [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes.
 
 ---
 

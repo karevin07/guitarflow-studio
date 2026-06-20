@@ -2,7 +2,9 @@
 # GuitarFlow Studio — project automation
 # Run `make` or `make help` to see all available targets.
 
-PYTHON  := backend/.venv/bin/python
+PYTHON  := $(CURDIR)/backend/.venv/bin/python
+BACKEND := backend
+FRONTEND := frontend
 UV      := uv
 NPM     := npm
 
@@ -22,46 +24,46 @@ NPM     := npm
 install: install-backend install-frontend  ## install all dependencies (backend + frontend)
 
 install-backend:  ## install Python dependencies via uv
-	cd backend && $(UV) sync
+	cd $(BACKEND) && $(UV) sync
 
 install-frontend:  ## install Node dependencies via npm
-	cd frontend && $(NPM) install
+	cd $(FRONTEND) && $(NPM) install
 
 ##@ Development
 
 dev-backend:  ## start Django dev server (localhost:8000)
-	cd backend && $(PYTHON) manage.py runserver
+	cd $(BACKEND) && $(PYTHON) manage.py runserver
 
 dev-frontend:  ## start Vite dev server (localhost:5173)
-	cd frontend && $(NPM) run dev
+	cd $(FRONTEND) && $(NPM) run dev
 
 migrate:  ## run Django database migrations
-	cd backend && $(PYTHON) manage.py migrate
+	cd $(BACKEND) && $(PYTHON) manage.py migrate
 
 makemigrations:  ## create new Django migration files
-	cd backend && $(PYTHON) manage.py makemigrations
+	cd $(BACKEND) && $(PYTHON) manage.py makemigrations
 
 ##@ Format & Lint
 
 format: format-backend format-frontend  ## format all code (backend + frontend)
 
 format-backend:  ## format Python code with ruff
-	cd backend && $(UV) run ruff format .
+	cd $(BACKEND) && $(UV) run ruff format .
 
 format-frontend:  ## type-check TypeScript with tsc --noEmit
-	cd frontend && npx tsc --noEmit
+	cd $(FRONTEND) && npx tsc --noEmit
 
 ##@ Test
 
 test: test-backend  ## run all tests
 
 test-backend:  ## run Django backend tests
-	cd backend && $(PYTHON) manage.py test
+	cd $(BACKEND) && $(PYTHON) manage.py test
 
 ##@ Build
 
 build:  ## build frontend production bundle
-	cd frontend && $(NPM) run build
+	cd $(FRONTEND) && $(NPM) run build
 
 ##@ Docker
 
