@@ -188,7 +188,7 @@ const App: React.FC = () => {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setViewMode('home')}
-            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-850 rounded-xl transition-all"
+            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all"
             title="Back to Home"
           >
             <ArrowLeft size={20} />
@@ -199,19 +199,19 @@ const App: React.FC = () => {
           <input
             value={editor.songTitle}
             onChange={e => editor.setSongTitle(e.target.value)}
-            className="text-xl font-bold text-slate-850 dark:text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-indigo-500/50 dark:focus:border-violet-500/50 w-64 md:w-auto"
+            className="text-xl font-bold text-slate-800 dark:text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-indigo-500/50 dark:focus:border-violet-500/50 w-64 md:w-auto"
           />
         </div>
 
-        <nav className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-950 border border-slate-250/50 dark:border-zinc-850 p-1 rounded-xl mx-4 transition-colors">
+        <nav className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800 p-1 rounded-xl mx-4 transition-colors">
           {(['edit', 'preview', 'library'] as const).map(mode => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all capitalize ${
                 viewMode === mode
-                  ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-250/30 dark:border-zinc-800 shadow-sm'
-                  : 'text-slate-500 dark:text-zinc-500 hover:text-slate-850 dark:hover:text-zinc-300'
+                  ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-200/30 dark:border-zinc-800 shadow-sm'
+                  : 'text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-300'
               }`}
             >
               {mode === 'edit' && <Edit3 size={16} />}
@@ -224,7 +224,7 @@ const App: React.FC = () => {
 
         <div className="flex items-center gap-4">
           {/* Undo / Redo */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-900/50 p-1 rounded-xl border border-slate-200 dark:border-zinc-850 transition-colors">
+          <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-900/50 p-1 rounded-xl border border-slate-200 dark:border-zinc-800 transition-colors">
             <button
               onClick={editor.undo}
               disabled={editor.historyIndex === 0}
@@ -246,7 +246,7 @@ const App: React.FC = () => {
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-850 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
+            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
             title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -257,12 +257,12 @@ const App: React.FC = () => {
             onClick={saveCurrentSong}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
               library.saveStatus === 'saved'
-                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-850 text-slate-700 dark:text-zinc-300 hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 shadow-sm dark:shadow-md'
+                ? 'bg-emerald-50 dark:bg-emerald-900/40 border-emerald-500 text-emerald-600 dark:text-emerald-400'
+                : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 shadow-sm dark:shadow-md'
             }`}
           >
             {library.saveStatus === 'saving' ? (
-              <div className="w-4 h-4 border-2 border-slate-350 dark:border-zinc-650 border-t-slate-600 dark:border-t-zinc-300 rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-slate-300 dark:border-zinc-600 border-t-slate-600 dark:border-t-zinc-300 rounded-full animate-spin" />
             ) : library.saveStatus === 'saved' ? (
               <CheckCircle2 size={18} />
             ) : (
@@ -275,7 +275,7 @@ const App: React.FC = () => {
           <div className="relative print:hidden">
             <button
               onClick={() => setIsExportOpen(!isExportOpen)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-650 to-violet-650 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-xl text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/20"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-xl text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/20"
             >
               <Download size={18} /> Export <ChevronDown size={14} />
             </button>
@@ -286,7 +286,7 @@ const App: React.FC = () => {
                   onClick={() => { exportAsFile(); setIsExportOpen(false); }}
                   className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
                 >
-                  <FileText size={16} className="text-slate-400 dark:text-zinc-550" /> Export Project (.gflow)
+                  <FileText size={16} className="text-slate-400 dark:text-zinc-500" /> Export Project (.gflow)
                 </button>
                 <button
                   onClick={() => { triggerMidiExport(); setIsExportOpen(false); }}
@@ -316,7 +316,7 @@ const App: React.FC = () => {
             <aside className="w-64 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-r border-slate-200 dark:border-zinc-800/80 flex flex-col transition-colors duration-250">
               <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80 flex items-center justify-between">
                 <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Sections</h3>
-                <button onClick={editor.addSection} className="p-1 text-indigo-650 dark:text-violet-400 hover:bg-indigo-50 dark:hover:bg-violet-955/30 rounded-lg transition-colors">
+                <button onClick={editor.addSection} className="p-1 text-indigo-600 dark:text-violet-400 hover:bg-indigo-50 dark:hover:bg-violet-900/30 rounded-lg transition-colors">
                   <Plus size={18} />
                 </button>
               </div>
@@ -327,8 +327,8 @@ const App: React.FC = () => {
                     onClick={() => editor.setActiveSectionId(sec.id)}
                     className={`w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition-all border ${
                       editor.activeSectionId === sec.id
-                        ? 'border-indigo-500 bg-indigo-50/70 text-indigo-650 dark:border-violet-500 dark:bg-violet-500/10 dark:text-violet-400 shadow-md'
-                        : 'border-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-850'
+                        ? 'border-indigo-500 bg-indigo-50/70 text-indigo-600 dark:border-violet-500 dark:bg-violet-500/10 dark:text-violet-400 shadow-md'
+                        : 'border-transparent text-slate-500 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-zinc-800'
                     }`}
                   >
                     {sec.title}
@@ -351,19 +351,19 @@ const App: React.FC = () => {
                           );
                           editor.setSections(next);
                         }}
-                        className="text-2xl font-bold text-slate-805 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
+                        className="text-2xl font-bold text-slate-800 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
                       />
                       <div className="h-8 w-[1px] bg-slate-200 dark:bg-zinc-800" />
-                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-950 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
-                        <Anchor size={14} className="text-slate-400 dark:text-zinc-500 group-hover:text-indigo-650 dark:group-hover:text-violet-400 transition-colors" />
-                        <span className="text-[10px] font-bold text-slate-450 dark:text-zinc-555 uppercase tracking-widest">Capo</span>
+                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
+                        <Anchor size={14} className="text-slate-400 dark:text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-violet-400 transition-colors" />
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Capo</span>
                         <select
                           value={currentSection.capo}
                           onChange={e => editor.setCapo(editor.activeSectionId, parseInt(e.target.value, 10))}
-                          className="bg-transparent text-sm font-bold text-slate-650 dark:text-zinc-350 outline-none cursor-pointer"
+                          className="bg-transparent text-sm font-bold text-slate-600 dark:text-zinc-300 outline-none cursor-pointer"
                         >
                           {Array.from({ length: 13 }).map((_, i) => (
-                            <option key={i} value={i} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-355">
+                            <option key={i} value={i} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-300">
                               {i === 0 ? 'None' : i}
                             </option>
                           ))}
@@ -372,7 +372,7 @@ const App: React.FC = () => {
                     </div>
                     <button
                       onClick={() => editor.addMeasure(editor.activeSectionId)}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-violet-955/40 text-indigo-600 dark:text-violet-400 border border-indigo-200/50 dark:border-violet-900/30 rounded-xl text-xs font-bold transition-all shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-violet-900/40 text-indigo-600 dark:text-violet-400 border border-indigo-200/50 dark:border-violet-900/30 rounded-xl text-xs font-bold transition-all shadow-sm"
                     >
                       <Plus size={16} /> Add Measure
                     </button>
@@ -421,8 +421,8 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="h-64 bg-slate-100/50 dark:bg-zinc-950/40 rounded-3xl border border-slate-200 dark:border-zinc-850 flex items-center justify-center p-8 text-center shadow-inner">
-                    <p className="text-xs font-semibold text-slate-400 dark:text-zinc-650">Select a column or enter notes to see a chord preview</p>
+                  <div className="h-64 bg-slate-100/50 dark:bg-zinc-950/40 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center justify-center p-8 text-center shadow-inner">
+                    <p className="text-xs font-semibold text-slate-400 dark:text-zinc-600">Select a column or enter notes to see a chord preview</p>
                   </div>
                 )}
 

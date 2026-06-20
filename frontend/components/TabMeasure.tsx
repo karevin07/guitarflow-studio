@@ -62,7 +62,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
   const isPrimaryBeat = (cIdx: number) => cIdx % 4 === 0;
 
   const renderNote = (note: string) => {
-    if (note === '-' || note === '·') return <span className="text-slate-350 dark:text-zinc-750 font-semibold">•</span>;
+    if (note === '-' || note === '·') return <span className="text-slate-300 dark:text-zinc-700 font-semibold">•</span>;
     
     // Check if the note contains a slide
     const hasSlide = note.includes('s') || note.includes('/');
@@ -89,8 +89,8 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
             <div 
               key={cIdx} 
               className={`relative group/col transition-colors rounded 
-                ${dragOverCol === cIdx ? 'bg-indigo-50 dark:bg-violet-950/45 ring-2 ring-indigo-500/50 dark:ring-violet-500/50' : ''}
-                ${isPrimaryBeat(cIdx) && dragOverCol !== cIdx ? 'bg-slate-50 dark:bg-zinc-850/40' : ''}
+                ${dragOverCol === cIdx ? 'bg-indigo-50 dark:bg-violet-900/45 ring-2 ring-indigo-500/50 dark:ring-violet-500/50' : ''}
+                ${isPrimaryBeat(cIdx) && dragOverCol !== cIdx ? 'bg-slate-50 dark:bg-zinc-800/40' : ''}
               `}
               onDragOver={(e) => handleDragOver(e, cIdx)}
               onDragLeave={handleDragLeave}
@@ -102,7 +102,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                 onChange={(e) => onChordNameChange?.(cIdx, e.target.value)}
                 onFocus={() => onChordClick?.(cIdx)}
                 placeholder="-"
-                className={`w-6 h-6 flex items-center justify-center rounded text-center bg-transparent border-none outline-none hover:bg-slate-100 dark:hover:bg-zinc-850 transition-colors focus:bg-slate-200 dark:focus:bg-zinc-800 focus:text-indigo-600 dark:focus:text-violet-400 placeholder:text-slate-300 dark:placeholder:text-zinc-750 ${activeCol === cIdx ? 'bg-indigo-500/10 text-indigo-650 dark:bg-violet-500/10 dark:text-violet-400' : ''}`}
+                className={`w-6 h-6 flex items-center justify-center rounded text-center bg-transparent border-none outline-none hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors focus:bg-slate-200 dark:focus:bg-zinc-800 focus:text-indigo-600 dark:focus:text-violet-400 placeholder:text-slate-300 dark:placeholder:text-zinc-700 ${activeCol === cIdx ? 'bg-indigo-500/10 text-indigo-600 dark:bg-violet-500/10 dark:text-violet-400' : ''}`}
               />
               
               <button 
@@ -135,8 +135,8 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                   className={`w-6 h-6 flex items-center justify-center transition-all overflow-visible
                     ${activeString === sIdx && activeCol === cIdx ? 'bg-gradient-to-tr from-indigo-600 to-violet-650 dark:from-violet-600 dark:to-indigo-650 text-white font-bold ring-2 ring-indigo-500 dark:ring-violet-500 z-10 shadow-lg shadow-indigo-500/20 dark:shadow-violet-500/35 scale-110 rounded' : 'hover:bg-slate-100 dark:hover:bg-zinc-800/80 rounded'}
                     ${activeCol === cIdx && !(activeString === sIdx) ? 'bg-indigo-500/5 dark:bg-violet-500/5' : ''}
-                    ${dragOverCol === cIdx ? 'bg-indigo-500/10 dark:bg-violet-950/20' : ''}
-                    ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx ? 'bg-slate-100/40 dark:bg-zinc-850/25' : ''}
+                    ${dragOverCol === cIdx ? 'bg-indigo-500/10 dark:bg-violet-900/20' : ''}
+                    ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx ? 'bg-slate-100/40 dark:bg-zinc-800/25' : ''}
                   `}
                 >
                   {renderNote(note)}
@@ -149,21 +149,21 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
 
       {/* Lyrics row */}
       <div className="mt-3 flex items-center h-10">
-        <span className="w-4 mr-2 flex items-center justify-center text-slate-400 dark:text-zinc-650">
+        <span className="w-4 mr-2 flex items-center justify-center text-slate-400 dark:text-zinc-600">
           <MessageSquare size={10} />
         </span>
         <div className="flex">
           {lyrics.map((lyric, cIdx) => (
             <div 
               key={cIdx} 
-              className={`w-6 h-8 relative group/lyric ${isPrimaryBeat(cIdx) ? 'bg-slate-50/30 dark:bg-zinc-850/15' : ''}`}
+              className={`w-6 h-8 relative group/lyric ${isPrimaryBeat(cIdx) ? 'bg-slate-50/30 dark:bg-zinc-800/15' : ''}`}
             >
               <input
                 type="text"
                 value={lyric || ''}
                 onChange={(e) => onLyricChange?.(cIdx, e.target.value)}
                 placeholder="..."
-                className={`w-full h-full bg-transparent text-[9px] font-bold text-slate-600 dark:text-zinc-300 text-center border-b border-dashed border-slate-200 dark:border-zinc-800 focus:border-indigo-500 focus:text-indigo-600 dark:focus:border-violet-500 dark:focus:text-violet-400 outline-none transition-all placeholder:text-transparent hover:placeholder:text-slate-450 dark:hover:placeholder:text-zinc-605 ${lyric ? 'border-indigo-500/35 text-indigo-605 dark:border-violet-500/30 dark:text-violet-300' : ''}`}
+                className={`w-full h-full bg-transparent text-[9px] font-bold text-slate-600 dark:text-zinc-300 text-center border-b border-dashed border-slate-200 dark:border-zinc-800 focus:border-indigo-500 focus:text-indigo-600 dark:focus:border-violet-500 dark:focus:text-violet-400 outline-none transition-all placeholder:text-transparent hover:placeholder:text-slate-400 dark:hover:placeholder:text-zinc-600 ${lyric ? 'border-indigo-500/35 text-indigo-600 dark:border-violet-500/30 dark:text-violet-300' : ''}`}
               />
             </div>
           ))}
@@ -171,11 +171,11 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
       </div>
       
       <div className="mt-4 flex items-center justify-between px-1">
-        <div className="text-[9px] font-bold text-slate-450 dark:text-zinc-550 uppercase tracking-widest flex items-center gap-2">
+        <div className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
           Measure
           <div className="flex gap-0.5">
             {[0, 1, 2, 3].map(i => (
-              <div key={i} className="w-1 h-1 rounded-full bg-slate-200 dark:bg-zinc-850" />
+              <div key={i} className="w-1 h-1 rounded-full bg-slate-200 dark:bg-zinc-800" />
             ))}
           </div>
         </div>
