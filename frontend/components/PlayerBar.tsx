@@ -1,30 +1,19 @@
 import React from 'react';
 import { Play, Pause, Square, Repeat, Volume2, Activity, Flag, FlagOff } from 'lucide-react';
 
-interface PlayerBarProps {
-  isPlaying: boolean;
-  isPaused: boolean;
-  onTogglePlayPause: () => void;
-  onStop: () => void;
-  playIndex: number;
-  totalCols: number;
-  onSeek: (index: number) => void;
-  abLoop: { enabled: boolean; start: number | null; end: number | null };
-  onSetLoopA: () => void;
-  onSetLoopB: () => void;
-  onToggleAbLoop: () => void;
-  onClearAbLoop: () => void;
-  playBpm: number;
-  onBpmChange: (bpm: number) => void;
-  isLooping: boolean;
-  onToggleLoop: () => void;
-  isMetronomeOn: boolean;
-  onToggleMetronome: () => void;
-  playbackVolume: number;
-  onVolumeChange: (volume: number) => void;
-}
+import { PlayerBarBindings } from '../types/playback';
+
+type PlayerBarProps = PlayerBarBindings;
+
+const formatMs = (ms: number) => {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
+  mode,
   isPlaying,
   isPaused,
   onTogglePlayPause,
@@ -46,10 +35,14 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   playbackVolume,
   onVolumeChange,
 }) => {
+  const isAlphaTab = mode === 'alphatab';
   const showStop = isPlaying || isPaused;
   const canSeek = totalCols > 1;
   const safeMax = Math.max(1, totalCols - 1);
   const canAb = abLoop.start !== null && abLoop.end !== null;
+  const seekLabel = isAlphaTab
+    ? `${formatMs(playIndex)} / ${formatMs(totalCols)}`
+    : null;
 
   return (
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-8 py-4 rounded-2xl shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-6 z-50 animate-in slide-in-from-bottom-6 duration-300 w-11/12 max-w-4xl">
@@ -79,7 +72,9 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
       <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
 
       <div className="flex items-center gap-3 flex-grow min-w-[140px]">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none whitespace-nowrap">Seek</span>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none whitespace-nowrap">
+          {seekLabel ?? 'Seek'}
+        </span>
         <input
           type="range"
           min={0}
@@ -143,22 +138,24 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
       <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
 
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">Tempo</span>
+        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">
+          {isAlphaTab ? 'Speed' : 'Tempo'}
+        </span>
         <div className="flex items-center gap-2">
           <input
             type="number"
-            min="40"
-            max="240"
+            min={isAlphaTab ? '50' : '40'}
+            max={isAlphaTab ? '150' : '240'}
             value={playBpm}
-            onChange={e => onBpmChange(Math.max(40, Math.min(240, parseInt(e.target.value, 10) || 120)))}
+            onChange={e => onBpmChange(Math.max(isAlphaTab ? 50 : 40, Math.min(isAlphaTab ? 150 : 240, parseInt(e.target.value, 10) || (isAlphaTab ? 100 : 120))))}
             className="w-14 px-2 py-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-center text-xs font-bold text-slate-700 dark:text-zinc-300 outline-none"
           />
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">BPM</span>
+          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">{isAlphaTab ? '%' : 'BPM'}</span>
         </div>
         <input
           type="range"
-          min="40"
-          max="240"
+          min={isAlphaTab ? '50' : '40'}
+          max={isAlphaTab ? '150' : '240'}
           value={playBpm}
           onChange={e => onBpmChange(parseInt(e.target.value, 10))}
           className="w-20 sm:w-28 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"

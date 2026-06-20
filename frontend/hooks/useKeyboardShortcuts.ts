@@ -9,7 +9,7 @@ type Selection = {
 } | null;
 
 interface UseKeyboardShortcutsOptions {
-  viewMode: 'home' | 'edit' | 'preview' | 'practice' | 'library' | 'imported';
+  viewMode: 'home' | 'edit' | 'preview' | 'practice' | 'library';
   selection: Selection;
   setSelection: (sel: Selection) => void;
   sections: TabSection[];
@@ -70,7 +70,7 @@ export const useKeyboardShortcuts = ({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
-      if (viewMode === 'home' || viewMode === 'imported') return;
+      if (viewMode === 'home') return;
 
       if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
         const tag = document.activeElement?.tagName;

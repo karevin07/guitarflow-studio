@@ -1,13 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { TabSection } from '../types';
+import { PlaybackPosition } from '../types/playback';
 import Soundfont from 'soundfont-player';
 import { isMutedCell, parseTabCellPitches } from '../services/tabNotation';
 
-export interface PlaybackPosition {
-  sectionIdx: number;
-  measureIdx: number;
-  colIdx: number;
-}
+export type { PlaybackPosition };
 
 const TUNING_PITCHES = [64, 59, 55, 50, 45, 40];
 

@@ -1,10 +1,8 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Music, Plus, Save, Download,
-  Eye, Edit3, Book, Undo2, Redo2, Anchor, CheckCircle2,
-  ChevronDown, ChevronUp, ArrowLeft, FileText, Trash2,
-  Sun, Moon, Keyboard,
+  Music, Plus, Anchor,
+  ChevronDown, ChevronUp, FileText, Trash2,
 } from 'lucide-react';
 import TabMeasure from './components/TabMeasure';
 import Fretboard from './components/Fretboard';
@@ -14,7 +12,8 @@ import ChordManager from './components/ChordManager';
 import Home from './components/Home';
 import PlayerBar from './components/PlayerBar';
 import PracticeView from './components/PracticeView';
-import ImportedSongView from './components/ImportedSongView';
+import ImportedScorePanel from './components/ImportedScorePanel';
+import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import { ToastContainer } from './components/Toast';
 import { ImportedSong, LibrarySong, isImportedSong } from './types';
@@ -28,10 +27,14 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
 import { usePlayback } from './hooks/usePlayback';
 import { useAutosave } from './hooks/useAutosave';
+import { useImportedScore } from './hooks/useImportedScore';
+import { useAlphaTabPlayback } from './hooks/useAlphaTabPlayback';
+import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
 
 const App: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library' | 'imported'>('home');
+  const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library'>('home');
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
+  const [importedTitle, setImportedTitle] = useState('');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('guitarflow-theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'dark';
@@ -82,11 +85,25 @@ const App: React.FC = () => {
   const imported = useImportedSongs({
     onSongOpened: song => {
       setActiveImportedSong(song);
-      setViewMode('imported');
+      setImportedTitle(song.title);
+      playback.stop();
+      setViewMode('practice');
     },
     onError: toast.error,
     onSuccess: toast.success,
   });
+
+  const isImported = !!activeImportedSong;
+  const importedScore = useImportedScore(activeImportedSong?.id ?? null, toast.error);
+  const alphaPlayback = useAlphaTabPlayback(isImported ? importedScore.api : null);
+  const alphaTracks = useAlphaTabTracks(
+    isImported ? importedScore.api : null,
+    activeImportedSong?.id ?? null
+  );
+
+  useEffect(() => {
+    if (activeImportedSong) setImportedTitle(activeImportedSong.title);
+  }, [activeImportedSong]);
 
   const librarySongs: LibrarySong[] = [
     ...imported.songs,
@@ -267,8 +284,7 @@ const App: React.FC = () => {
     if (isImportedSong(song)) {
       imported.deleteSong(song.id);
       if (activeImportedSong?.id === song.id) {
-        setActiveImportedSong(null);
-        setViewMode('home');
+        goHome();
       }
       return;
     }
@@ -277,10 +293,19 @@ const App: React.FC = () => {
 
   const handleImportedTitleChange = useCallback(async (title: string) => {
     if (!activeImportedSong) return;
-    await updateImportedSongTitle(activeImportedSong.id, title);
-    setActiveImportedSong(prev => (prev ? { ...prev, title, lastModified: Date.now() } : prev));
+    const trimmed = title.trim() || activeImportedSong.title;
+    setImportedTitle(trimmed);
+    await updateImportedSongTitle(activeImportedSong.id, trimmed);
+    setActiveImportedSong(prev => (prev ? { ...prev, title: trimmed, lastModified: Date.now() } : prev));
     imported.refresh();
   }, [activeImportedSong, imported]);
+
+  const goHome = useCallback(() => {
+    playback.stop();
+    alphaPlayback.onStop();
+    setActiveImportedSong(null);
+    setViewMode('home');
+  }, [playback, alphaPlayback]);
 
   // ─── Derived state ─────────────────────────────────────────────────────────
   const currentSection = editor.sections.find(s => s.id === editor.activeSectionId);
@@ -313,177 +338,66 @@ const App: React.FC = () => {
     );
   }
 
-  if (viewMode === 'imported' && activeImportedSong) {
-    return (
-      <>
-        <ImportedSongView
-          song={activeImportedSong}
-          onBack={() => {
-            setActiveImportedSong(null);
-            setViewMode('home');
-          }}
-          onTitleChange={handleImportedTitleChange}
-          onError={toast.error}
-        />
-        <ToastContainer toasts={toasts} onDismiss={dismiss} />
-      </>
-    );
-  }
 
-  // ─── Editor / Preview / Library view ──────────────────────────────────────
+  // ─── Song shell (gflow + imported) ─────────────────────────────────────────
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200">
-      {/* ─ Header ─────────────────────────────────────────────────────────── */}
-      <header className="bg-white dark:bg-zinc-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-800/80 px-8 py-4 flex items-center justify-between sticky top-0 z-50 shadow-sm dark:shadow-md transition-colors duration-200">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setViewMode('home')}
-            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all"
-            title="Back to Home"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-600 dark:to-fuchsia-600 p-2 rounded-xl text-white shadow-lg shadow-indigo-500/10 dark:shadow-violet-500/25">
-            <Music size={24} />
-          </div>
-          <input
-            value={editor.songTitle}
-            onChange={e => editor.setSongTitle(e.target.value)}
-            className="text-xl font-bold text-slate-800 dark:text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-indigo-500/50 dark:focus:border-violet-500/50 w-64 md:w-auto"
-          />
-        </div>
-
-        <nav className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800 p-1 rounded-xl mx-4 transition-colors">
-          {(['edit', 'preview', 'practice', 'library'] as const).map(mode => (
-            <button
-              key={mode}
-              onClick={() => setViewMode(mode)}
-              className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all capitalize ${
-                viewMode === mode
-                  ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-200/30 dark:border-zinc-800 shadow-sm'
-                  : 'text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-300'
-              }`}
-            >
-              {mode === 'edit' && <Edit3 size={16} />}
-              {mode === 'preview' && <Eye size={16} />}
-              {mode === 'practice' && <Music size={16} />}
-              {mode === 'library' && <Book size={16} />}
-              {mode === 'library' ? 'Chords' : mode.charAt(0).toUpperCase() + mode.slice(1)}
-            </button>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-4">
-          {/* Undo / Redo */}
-          <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-900/50 p-1 rounded-xl border border-slate-200 dark:border-zinc-800 transition-colors">
-            <button
-              onClick={editor.undo}
-              disabled={editor.historyIndex === 0}
-              className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg"
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo2 size={18} />
-            </button>
-            <button
-              onClick={editor.redo}
-              disabled={editor.historyIndex === editor.history.length - 1}
-              className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg"
-              title="Redo (Ctrl+Y)"
-            >
-              <Undo2 size={18} className="scale-x-[-1]" />
-            </button>
-          </div>
-
-          {/* Theme toggle */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
-            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </button>
-
-          {/* Keyboard shortcuts */}
-          <button
-            onClick={() => setShortcutsOpen(true)}
-            className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
-            title="Keyboard shortcuts (?)"
-          >
-            <Keyboard size={18} />
-          </button>
-
-          {/* Autosave toggle */}
-          <button
-            onClick={toggleAutosave}
-            className={`px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all ${
-              autosaveEnabled
-                ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400'
-                : 'bg-slate-100 dark:bg-zinc-900/50 border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-500'
-            }`}
-            title="Toggle autosave (30s)"
-          >
-            Auto {autosaveEnabled ? 'On' : 'Off'}
-          </button>
-
-          {/* Save */}
-          <button
-            onClick={saveCurrentSong}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${
-              library.saveStatus === 'saved'
-                ? 'bg-emerald-50 dark:bg-emerald-900/40 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 shadow-sm dark:shadow-md'
-            }`}
-          >
-            {library.saveStatus === 'saving' ? (
-              <div className="w-4 h-4 border-2 border-slate-300 dark:border-zinc-600 border-t-slate-600 dark:border-t-zinc-300 rounded-full animate-spin" />
-            ) : library.saveStatus === 'saved' ? (
-              <CheckCircle2 size={18} />
-            ) : (
-              <Save size={18} />
-            )}
-            {library.saveStatus === 'saving' ? 'Saving…' : library.saveStatus === 'saved' ? 'Saved' : 'Save'}
-          </button>
-
-          {/* Export dropdown */}
-          <div className="relative print:hidden">
-            <button
-              onClick={() => setIsExportOpen(!isExportOpen)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-xl text-sm font-bold hover:opacity-95 transition-all shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/20"
-            >
-              <Download size={18} /> Export <ChevronDown size={14} />
-            </button>
-
-            {isExportOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                <button
-                  onClick={() => { exportAsFile(); setIsExportOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                >
-                  <FileText size={16} className="text-slate-400 dark:text-zinc-500" /> Export Project (.gflow)
-                </button>
-                <button
-                  onClick={() => { triggerMidiExport(); setIsExportOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                >
-                  <Music size={16} className="text-indigo-600 dark:text-violet-400" /> Export MIDI (.mid)
-                </button>
-                <button
-                  onClick={() => { triggerPdfExport(); setIsExportOpen(false); }}
-                  className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                >
-                  <Eye size={16} className="text-emerald-600 dark:text-emerald-400" /> Export PDF Sheet
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </header>
+      <SongShellHeader
+        isImported={isImported}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
+        onBack={goHome}
+        title={isImported ? importedTitle : editor.songTitle}
+        onTitleChange={title => {
+          if (isImported) setImportedTitle(title);
+          else editor.setSongTitle(title);
+        }}
+        onTitleBlur={() => {
+          if (isImported) handleImportedTitleChange(importedTitle);
+        }}
+        importedSong={activeImportedSong}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onOpenShortcuts={() => setShortcutsOpen(true)}
+        autosaveEnabled={autosaveEnabled}
+        onToggleAutosave={toggleAutosave}
+        saveStatus={library.saveStatus}
+        onSave={saveCurrentSong}
+        isExportOpen={isExportOpen}
+        onToggleExport={() => setIsExportOpen(v => !v)}
+        onExportGflow={() => { exportAsFile(); setIsExportOpen(false); }}
+        onExportMidi={() => { triggerMidiExport(); setIsExportOpen(false); }}
+        onExportPdf={() => { triggerPdfExport(); setIsExportOpen(false); }}
+        canUndo={editor.historyIndex > 0}
+        canRedo={editor.historyIndex < editor.history.length - 1}
+        onUndo={editor.undo}
+        onRedo={editor.redo}
+      />
 
       {/* ─ Main ───────────────────────────────────────────────────────────── */}
       <main className="flex-1 flex overflow-hidden">
+        {isImported && activeImportedSong && (viewMode === 'preview' || viewMode === 'practice') && (
+          <ImportedScorePanel
+            songId={activeImportedSong.id}
+            scoreData={importedScore.scoreData}
+            loading={importedScore.loading}
+            onReady={importedScore.onApiReady}
+            onScoreLoaded={loadedTitle => {
+              if (loadedTitle && loadedTitle !== importedTitle) {
+                setImportedTitle(loadedTitle);
+                handleImportedTitleChange(loadedTitle);
+              }
+            }}
+            onError={toast.error}
+            tracks={alphaTracks.tracks}
+            selectedTracks={alphaTracks.selected}
+            onToggleTrack={alphaTracks.toggleTrack}
+            onSelectAllTracks={alphaTracks.selectAll}
+            onSelectGuitarTracks={alphaTracks.selectGuitarTracks}
+          />
+        )}
 
-        {/* ── Edit view ───────────────────────────────────────────────────── */}
-        {viewMode === 'edit' && (
+        {!isImported && viewMode === 'edit' && (
           <>
             {/* Sections sidebar */}
             <aside className="w-64 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-r border-slate-200 dark:border-zinc-800/80 flex flex-col transition-colors duration-250">
@@ -688,7 +602,7 @@ const App: React.FC = () => {
         )}
 
         {/* ── Preview view ─────────────────────────────────────────────────── */}
-        {viewMode === 'preview' && (
+        {!isImported && viewMode === 'preview' && (
           <div className="flex-1 p-8 overflow-y-auto bg-slate-100 dark:bg-zinc-950 transition-colors duration-250">
             <SongPreview
               sections={editor.sections}
@@ -702,7 +616,7 @@ const App: React.FC = () => {
         )}
 
         {/* ── Practice view ───────────────────────────────────────────────── */}
-        {viewMode === 'practice' && (
+        {!isImported && viewMode === 'practice' && (
           <PracticeView
             sections={editor.sections}
             activeSectionId={editor.activeSectionId}
@@ -716,7 +630,7 @@ const App: React.FC = () => {
         )}
 
         {/* ── Chord library view ───────────────────────────────────────────── */}
-        {viewMode === 'library' && (
+        {!isImported && viewMode === 'library' && (
           <ChordManager
             customChords={editor.customChords}
             globalChords={editor.globalChords}
@@ -727,8 +641,12 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {(viewMode === 'edit' || viewMode === 'preview' || viewMode === 'practice') && (
+      {(isImported ? viewMode === 'practice' : (viewMode === 'edit' || viewMode === 'preview' || viewMode === 'practice')) && (
+        isImported ? (
+          <PlayerBar {...alphaPlayback} />
+        ) : (
         <PlayerBar
+          mode="gflow"
           isPlaying={playback.isPlaying}
           isPaused={playback.isPaused}
           onTogglePlayPause={() => {
@@ -756,6 +674,7 @@ const App: React.FC = () => {
           playbackVolume={playback.playbackVolume}
           onVolumeChange={playback.setPlaybackVolume}
         />
+        )
       )}
 
       {/* ─ Toast notifications ─────────────────────────────────────────────── */}
