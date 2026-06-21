@@ -54,7 +54,7 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme })
       fretColor: isDark ? '#27272a' : '#e2e8f0',        // zinc-800 vs slate-200
       stringColor: isDark ? '#3f3f46' : '#cbd5e1',      // zinc-700 vs slate-300
       fretLabelColor: isDark ? '#71717a' : '#64748b',   // zinc-500 vs slate-500
-      tuningsColor: isDark ? '#52525b' : '#64748b',     // zinc-650 vs slate-500
+      tuningsColor: 'transparent',
       fingerColor: isDark ? '#8b5cf6' : '#4f46e5',      // violet-500 vs indigo-600
       fingerTextColor: '#ffffff',  // white text inside fingers
       fingerTextSize: 11,
@@ -84,11 +84,11 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme })
         {chord.name === 'Custom' && <span className="text-[9px] bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-250/50 dark:border-zinc-700/50 px-1.5 py-0.5 rounded-full font-bold">DETECTED</span>}
       </div>
       
-      <div className="flex-1 flex items-center justify-center min-h-0 w-full relative">
-        <div ref={containerRef} style={{ width: `${size}px`, height: `${size + 20}px` }} className="overflow-visible flex items-center justify-center svguitar-container" />
+      <div className="flex-1 flex items-center justify-center min-h-0 w-full relative pb-1">
+        <div ref={containerRef} style={{ width: `${size}px`, height: `${size}px` }} className="overflow-hidden flex items-center justify-center svguitar-container" />
       </div>
       
-      <div className="mt-2 text-[10px] font-bold text-slate-400 dark:text-zinc-555 uppercase tracking-widest flex items-center gap-2 flex-shrink-0">
+      <div className="mt-3 pt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2 flex-shrink-0 border-t border-slate-100 dark:border-zinc-800/80 w-full justify-center">
         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 dark:bg-violet-500/50 animate-pulse" />
         Standard Tuning
       </div>

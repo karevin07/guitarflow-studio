@@ -2,15 +2,9 @@ import React from 'react';
 import { Play, Pause, Square, Repeat, Volume2, Activity, Flag, FlagOff } from 'lucide-react';
 
 import { PlayerBarBindings } from '../types/playback';
+import { colIndexToMs, formatPlaybackMs } from '../services/playbackTime';
 
 type PlayerBarProps = PlayerBarBindings;
-
-const formatMs = (ms: number) => {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
-};
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
   mode,
@@ -41,11 +35,11 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   const safeMax = Math.max(1, totalCols - 1);
   const canAb = abLoop.start !== null && abLoop.end !== null;
   const seekLabel = isAlphaTab
-    ? `${formatMs(playIndex)} / ${formatMs(totalCols)}`
-    : null;
+    ? `${formatPlaybackMs(playIndex)} / ${formatPlaybackMs(totalCols)}`
+    : `${formatPlaybackMs(colIndexToMs(playIndex, playBpm))} / ${formatPlaybackMs(colIndexToMs(totalCols, playBpm))}`;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-8 py-4 rounded-2xl shadow-2xl flex flex-wrap sm:flex-nowrap items-center justify-between gap-6 z-50 animate-in slide-in-from-bottom-6 duration-300 w-11/12 max-w-4xl">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-4 sm:px-6 py-4 rounded-2xl shadow-2xl flex flex-nowrap items-center gap-3 sm:gap-4 z-50 animate-in slide-in-from-bottom-6 duration-300 w-[calc(100%-1.5rem)] max-w-6xl overflow-x-auto overflow-y-hidden">
       <div className="flex items-center gap-2 flex-shrink-0">
         <button
           onClick={onTogglePlayPause}
@@ -71,9 +65,9 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
       <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
 
-      <div className="flex items-center gap-3 flex-grow min-w-[140px]">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none whitespace-nowrap">
-          {seekLabel ?? 'Seek'}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 basis-0">
+        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none whitespace-nowrap shrink-0">
+          {seekLabel}
         </span>
         <input
           type="range"
@@ -82,7 +76,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           value={Math.min(playIndex, safeMax)}
           disabled={!canSeek}
           onChange={e => onSeek(parseInt(e.target.value, 10))}
-          className="w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800 disabled:opacity-30"
+          className="w-full min-w-0 max-w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800 disabled:opacity-30"
         />
       </div>
 
@@ -158,7 +152,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           max={isAlphaTab ? '150' : '240'}
           value={playBpm}
           onChange={e => onBpmChange(parseInt(e.target.value, 10))}
-          className="w-20 sm:w-28 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
+          className="w-16 sm:w-20 min-w-0 max-w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
         />
       </div>
 
@@ -185,7 +179,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
       <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
 
-      <div className="flex items-center gap-2 flex-grow sm:flex-grow-0 justify-end min-w-[80px]">
+      <div className="flex items-center gap-1.5 flex-shrink-0 w-[72px] sm:w-[88px]">
         <Volume2 size={14} className="text-slate-400 dark:text-zinc-500 flex-shrink-0" />
         <input
           type="range"
@@ -194,7 +188,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           step="0.05"
           value={playbackVolume}
           onChange={e => onVolumeChange(parseFloat(e.target.value))}
-          className="w-16 sm:w-24 accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
+          className="w-full min-w-0 max-w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
         />
       </div>
     </div>
