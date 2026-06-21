@@ -9,12 +9,12 @@
 
 | 階段 | 狀態 | 完成度 |
 |------|------|--------|
-| Phase A（A1–A3） | ✅ 核心完成 | ~90% |
-| Sprint B1（GP PoC） | ✅ 完成 | ~85% |
+| Phase A（A1–A3） | ✅ 完成 | ~98% |
+| Sprint B1（GP PoC） | ✅ 完成 | ~95% |
 | Sprint B2（雙引擎） | ✅ 完成 | ~95% |
 | Sprint B3（進階） | 🔄 進行中 | ~35% |
 
-**當前 Sprint：B3** — 多軌選擇 ✅；Backlog：GP→gflow、MusicXML 匯出
+**當前 Sprint：Backlog** — B3 低優先（GP→gflow、MusicXML）；Phase A 收尾 ✅
 
 ---
 
@@ -43,18 +43,17 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 - **`.gflow` 匯入/匯出**、MIDI / Print 匯出
 - 記譜擴充：`x`、slide、`h`/`p`/`b`（渲染 + 播放）
 - Autosave、快捷鍵面板、離開提示
-- **Guitar Pro PoC**：alphaTab 渲染 + IndexedDB 本機存檔 + lazy load
-- **B2 進行中**：`PlayerBarBindings` 介面、`useAlphaTabPlayback`、GP Practice 共用 PlayerBar
+- **Guitar Pro**：alphaTab 渲染 + **backend 持久化**（PostgreSQL + media）+ lazy load
+- **B2 完成**：`PlayerBarBindings`、`useAlphaTabPlayback`、GP Practice 共用 PlayerBar、`SongShellHeader`
+- **Phase A 收尾**：PlayerBar mm:ss、Practice Zoom、`ScoreLine.tsx`、`timeSignature` UI
+- **B1 收尾**：GP ImportPreview 確認步驟
 
 ### 仍待完成
-- Practice **Zoom** 四档（80/100/125/150%）
-- PlayerBar **mm:ss 時間顯示**（gflow 模式）
-- `timeSignature` 欄位（Phase A3 規劃）
-- `ScoreLine.tsx` 元件拆分（目前直接重用 TabMeasure）
-- GP 歌曲 **backend 持久化**（跨裝置同步）
+- `b`（bend）鍵盤輸入 UX 可再優化
 - **MPL-2.0** 授權結論
 - 前端 unit / integration 測試
 - 使用者隔離
+- B3 低優先：GP→gflow 轉換、MusicXML 匯出、音訊同步
 
 ---
 
@@ -200,9 +199,9 @@ Edit / Preview / Practice 三模式共用 `PlayerBar`。
 - [x] 可 seek、A-B loop、從選取格播放
 - [x] 吉他音色可辨識（SoundFont `acoustic_guitar_steel`）
 - [x] Practice 模式 auto-scroll 正常
-- [ ] PlayerBar 顯示 mm:ss 時間（目前為 col index seek）
-- [ ] Practice Zoom 四档
-- [ ] `ScoreLine.tsx` 獨立元件（目前重用 TabMeasure）
+- [x] PlayerBar 顯示 mm:ss 時間（gflow 依 BPM 換算）
+- [x] Practice Zoom 四档（80/100/125/150%）
+- [x] `ScoreLine.tsx` 獨立元件（Practice 唯讀小節）
 
 ---
 
@@ -243,7 +242,7 @@ Edit / Preview / Practice 三模式共用 `PlayerBar`。
 - [x] 和弦欄位自動命名常見和弦
 - [x] Autosave 正常，離開有提示
 - [x] 快捷鍵面板完整
-- [ ] `timeSignature` 欄位與 UI
+- [x] `timeSignature` 欄位與 UI（Section 編輯器 + Practice 顯示）
 - [~] `b`（bend）鍵盤輸入 UX 可再優化
 
 ---
@@ -280,7 +279,8 @@ class GuitarSong(models.Model):
     # gflow 資料仍走 sections JSON；imported 歌曲 sections 可為空
 ```
 
-或 Phase B 初期：**匯入檔案仅存 frontend IndexedDB / 不上傳 backend**，降低後端改動。
+或 Phase B 初期：**匯入檔案仅存 frontend IndexedDB / 不上傳 backend**，降低後端改動。  
+→ **已升級**：GP 檔案上傳至 Django `import_file`，跨瀏覽器/裝置由 backend 同步。
 
 #### B1.3 新視圖：`import`
 
@@ -290,9 +290,9 @@ Home 加「Import Guitar Pro」→ 檔案選擇 → alphaTab 渲染 → Practice
 - [x] 可匯入 .gp5 檔並看到樂譜（需實檔 smoke test）
 - [x] alphaTab SoundFont 播放正常
 - [x] 播放游標與 alphaTab 內建 cursor 同步
-- [x] IndexedDB 本機存檔（PoC 方案）
+- [x] IndexedDB 本機存檔（PoC，已改為 backend 持久化）
 - [x] alphaTab lazy load（Vite 7 + `@coderline/alphatab-vite`）
-- [ ] ImportPreview 確認步驟（目前選檔後直接匯入）
+- [x] ImportPreview 確認步驟（`ImportPreviewModal`）
 
 ---
 
@@ -386,7 +386,7 @@ export interface ImportedSong { source: 'imported'; importFormat; fileName; }
 export type LibrarySong = GuitarSong | ImportedSong;
 ```
 
-**Phase B PoC**：GP 二進位存 `IndexedDB`（`importedSongsDb.ts`），尚未擴充 backend。
+**Phase B**：GP 二進位存 backend `import_file`（`POST /songs/import-score/`），Docker `media_data` volume 持久化。
 
 ### 6.2 後端 Phase A 無必要改動
 
@@ -488,10 +488,10 @@ const loadAlphaTab = () => import('@coderline/alphatab');
 ```
 ✅ Phase A
   ✅ Sprint A1  穩定化（bug、匯入、section）
-  ✅ Sprint A2  PlayerBar + Practice View + SoundFont（缺 Zoom / mm:ss）
-  ✅ Sprint A3  記號、和弦辨識、UX 細節（缺 timeSignature）
+  ✅ Sprint A2  PlayerBar + Practice View + SoundFont
+  ✅ Sprint A3  記號、和弦辨識、UX 細節（bend UX 可再優化）
 
-✅ Sprint B1  alphaTab PoC（GP 匯入 + 渲染 + 播放 + IndexedDB）
+✅ Sprint B1  alphaTab PoC（GP 匯入 + 渲染 + 播放 + IndexedDB + ImportPreview）
 
 🔄 Sprint B2  雙引擎 Player + 視圖路由（✅ 完成）
   ✅ PlayerBarBindings + useAlphaTabPlayback + playbackRange A-B
@@ -511,8 +511,12 @@ const loadAlphaTab = () => import('@coderline/alphatab');
 2. ~~完成 Sprint A1–A3 核心功能~~ ✅
 3. ~~完成 Sprint B1 GP PoC~~ ✅
 4. ~~**進行中：Sprint B2 收尾**~~ ✅
-5. **Sprint B3 / Backlog（依需求）**
-   - 多軌選擇 UI
+5. ~~**Sprint B3 多軌選擇**~~ ✅
+6. ~~**Phase A 收尾**（mm:ss、Zoom、ScoreLine、timeSignature）~~ ✅
+7. ~~**GP backend 持久化**~~ ✅
+8. **Backlog（依需求）**
    - GP → `.gflow` 簡化轉換
+   - GP backend 持久化
    - 前端测试（`tabNotation`、`usePlayback` 时间轴）
-   - 決定 GP 是否上傳 backend
+   - MPL-2.0 授權結論
+   - 使用者隔離
