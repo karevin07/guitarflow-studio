@@ -55,10 +55,13 @@ format-frontend:  ## type-check TypeScript with tsc --noEmit
 
 ##@ Test
 
-test: test-backend  ## run all tests
+test: test-backend test-frontend  ## run all tests
 
 test-backend:  ## run Django backend tests
 	cd $(BACKEND) && $(PYTHON) manage.py test
+
+test-frontend:  ## run frontend unit tests (Vitest)
+	cd $(FRONTEND) && $(NPM) run test
 
 ##@ Build
 
