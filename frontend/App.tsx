@@ -15,11 +15,11 @@ import PracticeView from './components/PracticeView';
 import ImportedScorePanel from './components/ImportedScorePanel';
 import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import ImportPreviewModal from './components/ImportPreviewModal';
 import { ToastContainer } from './components/Toast';
 import { ImportedSong, LibrarySong, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { readGflowFile } from './services/gflowImport';
-import { updateImportedSongTitle } from './services/importedSongsDb';
 import { useEditorState, createEmptyMeasure } from './hooks/useEditorState';
 import { useSongLibrary } from './hooks/useSongLibrary';
 import { useImportedSongs } from './hooks/useImportedSongs';
@@ -30,11 +30,13 @@ import { useAutosave } from './hooks/useAutosave';
 import { useImportedScore } from './hooks/useImportedScore';
 import { useAlphaTabPlayback } from './hooks/useAlphaTabPlayback';
 import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
+import { DEFAULT_TIME_SIGNATURE, TIME_SIGNATURE_OPTIONS, formatTimeSignature } from './constants/practice';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library'>('home');
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [importedTitle, setImportedTitle] = useState('');
+  const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('guitarflow-theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'dark';
@@ -211,6 +213,7 @@ const App: React.FC = () => {
       id: Math.random().toString(36).slice(2, 11),
       title: 'Intro',
       capo: 0,
+      timeSignature: [...DEFAULT_TIME_SIGNATURE] as [number, number],
       measures: [createEmptyMeasure()],
       chords: [Array(16).fill(null)],
       lyrics: [Array(16).fill(null)],
@@ -295,7 +298,7 @@ const App: React.FC = () => {
     if (!activeImportedSong) return;
     const trimmed = title.trim() || activeImportedSong.title;
     setImportedTitle(trimmed);
-    await updateImportedSongTitle(activeImportedSong.id, trimmed);
+    await imported.updateTitle(activeImportedSong.id, trimmed);
     setActiveImportedSong(prev => (prev ? { ...prev, title: trimmed, lastModified: Date.now() } : prev));
     imported.refresh();
   }, [activeImportedSong, imported]);
@@ -329,10 +332,21 @@ const App: React.FC = () => {
           onOpen={handleOpenLibrarySong}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
-          onImportGp={imported.importFile}
+          onImportGp={file => setGpPreviewFile(file)}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
+        {gpPreviewFile && (
+          <ImportPreviewModal
+            file={gpPreviewFile}
+            onConfirm={title => {
+              imported.importFile(gpPreviewFile, title);
+              setGpPreviewFile(null);
+            }}
+            onCancel={() => setGpPreviewFile(null)}
+            onError={toast.error}
+          />
+        )}
         <ToastContainer toasts={toasts} onDismiss={dismiss} />
       </>
     );
@@ -474,6 +488,25 @@ const App: React.FC = () => {
                         className="text-2xl font-bold text-slate-800 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
                       />
                       <div className="h-8 w-[1px] bg-slate-200 dark:bg-zinc-800" />
+                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
+                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Time</span>
+                        <select
+                          value={formatTimeSignature(currentSection.timeSignature ?? DEFAULT_TIME_SIGNATURE)}
+                          onChange={e => {
+                            const [num, den] = e.target.value.split('/').map(v => parseInt(v, 10));
+                            if (num > 0 && den > 0) {
+                              editor.setTimeSignature(editor.activeSectionId, [num, den]);
+                            }
+                          }}
+                          className="bg-transparent text-sm font-bold text-slate-600 dark:text-zinc-300 outline-none cursor-pointer"
+                        >
+                          {TIME_SIGNATURE_OPTIONS.map(([num, den]) => (
+                            <option key={`${num}/${den}`} value={`${num}/${den}`} className="bg-white dark:bg-zinc-900">
+                              {num}/{den}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                       <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
                         <Anchor size={14} className="text-slate-400 dark:text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-violet-400 transition-colors" />
                         <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Capo</span>

@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TabSection, ChordDefinition } from '../types';
 import { api } from '../services/api';
 import { detectChordFromColumn } from '../services/chordDetector';
+import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
 
 export const createEmptyMeasure = (): string[][] =>
   Array.from({ length: 6 }, () => Array(16).fill('-'));
@@ -122,6 +123,22 @@ export const useEditorState = () => {
     setSections(prev => {
       const next = prev.map(sec =>
         sec.id === sectionId ? { ...sec, capo: fret } : sec
+      );
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
+  const setTimeSignature = useCallback((sectionId: string, timeSignature: [number, number]) => {
+    setSections(prev => {
+      const next = prev.map(sec =>
+        sec.id === sectionId ? { ...sec, timeSignature } : sec
       );
       setHistoryIndex(prevIdx => {
         const nextHistory = history.slice(0, prevIdx + 1);
@@ -288,6 +305,7 @@ export const useEditorState = () => {
           id: newId,
           title: 'New Section',
           capo: 0,
+          timeSignature: [...DEFAULT_TIME_SIGNATURE] as [number, number],
           measures: [createEmptyMeasure()],
           chords: [Array(16).fill(null)],
           lyrics: [Array(16).fill(null)],
@@ -423,7 +441,7 @@ export const useEditorState = () => {
     loadSong,
     commitToHistory,
     undo, redo,
-    updateLyric, setCapo,
+    updateLyric, setCapo, setTimeSignature,
     addMeasure, deleteMeasure, copyMeasure, clearColumn,
     addSection, updateSectionTitle, deleteSection, moveSection,
     applyChordToColumn,

@@ -5,6 +5,7 @@ export interface TabSection {
   id: string;
   title: string;
   capo: number;
+  timeSignature?: [number, number];
   measures: string[][][]; // [measureIndex][stringIndex][column]
   chords: (string | null)[][]; // [measureIndex][columnIdx]
   lyrics: (string | null)[][]; // [measureIndex][columnIdx]

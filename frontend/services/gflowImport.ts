@@ -1,5 +1,6 @@
 import { GuitarSong, TabSection, ChordDefinition } from '../types';
 import { createEmptyMeasure } from '../hooks/useEditorState';
+import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
 
 export type GflowImportResult =
   | { ok: true; data: Omit<GuitarSong, 'id' | 'lastModified'> }
@@ -31,11 +32,21 @@ const parseSection = (v: unknown, index: number): TabSection | null => {
   const capo = typeof obj.capo === 'number' ? Math.max(0, Math.min(12, obj.capo)) : 0;
   const id = typeof obj.id === 'string' ? obj.id : Math.random().toString(36).slice(2, 11);
 
+  let timeSignature: [number, number] | undefined;
+  if (Array.isArray(obj.timeSignature) && obj.timeSignature.length === 2) {
+    const num = obj.timeSignature[0];
+    const den = obj.timeSignature[1];
+    if (typeof num === 'number' && typeof den === 'number' && num > 0 && den > 0) {
+      timeSignature = [num, den];
+    }
+  }
+
   if (!Array.isArray(obj.measures) || obj.measures.length === 0) {
     return {
       id,
       title,
       capo,
+      timeSignature: timeSignature ?? [...DEFAULT_TIME_SIGNATURE],
       measures: [createEmptyMeasure()],
       chords: [Array(16).fill(null)],
       lyrics: [Array(16).fill(null)],
@@ -74,7 +85,15 @@ const parseSection = (v: unknown, index: number): TabSection | null => {
     for (let i = 0; i < measureCount; i++) lyrics.push(Array(16).fill(null));
   }
 
-  return { id, title, capo, measures, chords, lyrics };
+  return {
+    id,
+    title,
+    capo,
+    timeSignature: timeSignature ?? [...DEFAULT_TIME_SIGNATURE],
+    measures,
+    chords,
+    lyrics,
+  };
 };
 
 export const parseGflowFile = (raw: unknown): GflowImportResult => {

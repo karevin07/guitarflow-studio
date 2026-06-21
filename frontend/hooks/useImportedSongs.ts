@@ -1,10 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ImportedSong } from '../types';
-import {
-  deleteImportedSong,
-  listImportedSongs,
-  saveImportedSong,
-} from '../services/importedSongsDb';
+import { api } from '../services/api';
 import { isGuitarProFile } from '../services/gpImport';
 
 interface UseImportedSongsOptions {
@@ -19,10 +15,10 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
 
   const refresh = useCallback(async () => {
     try {
-      const loaded = await listImportedSongs();
+      const loaded = await api.fetchImportedScores();
       setSongs(loaded);
     } catch {
-      onError('Could not load imported Guitar Pro files from this browser.');
+      onError('Could not load imported Guitar Pro files from the server.');
     }
   }, [onError]);
 
@@ -31,19 +27,19 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
   }, [refresh]);
 
   const importFile = useCallback(
-    async (file: File) => {
+    async (file: File, title?: string) => {
       if (!isGuitarProFile(file.name)) {
         onError('Unsupported file type. Please choose a Guitar Pro or MusicXML file.');
         return;
       }
       try {
-        const song = await saveImportedSong(file);
+        const song = await api.uploadImportedScore(file, title);
         setSongs(prev => [song, ...prev.filter(s => s.id !== song.id)]);
         setCurrentSongId(song.id);
         onSongOpened(song);
         onSuccess(`Imported "${song.title}" from ${song.importFormat.toUpperCase()}.`);
       } catch {
-        onError('Failed to import file. The file may be corrupted or too large.');
+        onError('Failed to import file. The file may be corrupted or the server is unavailable.');
       }
     },
     [onError, onSuccess, onSongOpened]
@@ -60,15 +56,29 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
   const deleteSong = useCallback(
     async (id: string) => {
       try {
-        await deleteImportedSong(id);
+        await api.deleteSong(id);
         setSongs(prev => prev.filter(s => s.id !== id));
         if (currentSongId === id) setCurrentSongId(null);
-        onSuccess('Imported score removed from this browser.');
+        onSuccess('Imported score deleted.');
       } catch {
         onError('Failed to delete imported score.');
       }
     },
     [currentSongId, onError, onSuccess]
+  );
+
+  const updateTitle = useCallback(
+    async (id: string, title: string) => {
+      const trimmed = title.trim();
+      if (!trimmed) return;
+      try {
+        const updated = await api.updateImportedScoreTitle(id, trimmed);
+        setSongs(prev => prev.map(s => (s.id === id ? updated : s)));
+      } catch {
+        onError('Failed to update imported score title.');
+      }
+    },
+    [onError]
   );
 
   return {
@@ -78,5 +88,6 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
     importFile,
     openSong,
     deleteSong,
+    updateTitle,
   };
 };

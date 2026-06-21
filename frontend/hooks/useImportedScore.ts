@@ -1,36 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AlphaTabApi } from '@coderline/alphatab';
-import { getImportedSongData } from '../services/importedSongsDb';
+import { api as songApi } from '../services/api';
 
 export const useImportedScore = (songId: string | null, onError: (message: string) => void) => {
   const [scoreData, setScoreData] = useState<ArrayBuffer | null>(null);
   const [loading, setLoading] = useState(false);
-  const [api, setApi] = useState<AlphaTabApi | null>(null);
+  const [alphaTabApi, setAlphaTabApi] = useState<AlphaTabApi | null>(null);
 
   useEffect(() => {
     if (!songId) {
       setScoreData(null);
-      setApi(null);
+      setAlphaTabApi(null);
       setLoading(false);
       return;
     }
 
     let cancelled = false;
     setLoading(true);
-    setApi(null);
+    setAlphaTabApi(null);
     setScoreData(null);
 
-    getImportedSongData(songId)
+    songApi.fetchImportedScoreFile(songId)
       .then(data => {
         if (cancelled) return;
-        if (!data) {
-          onError('Imported file not found in this browser.');
+        if (!data || data.byteLength === 0) {
+          onError('Imported file not found on the server.');
           return;
         }
         setScoreData(data);
       })
       .catch(() => {
-        if (!cancelled) onError('Could not read imported file from storage.');
+        if (!cancelled) onError('Could not download imported score from the server.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -42,8 +42,8 @@ export const useImportedScore = (songId: string | null, onError: (message: strin
   }, [songId, onError]);
 
   const onApiReady = useCallback((nextApi: AlphaTabApi) => {
-    setApi(nextApi);
+    setAlphaTabApi(nextApi);
   }, []);
 
-  return { scoreData, loading, api, onApiReady };
+  return { scoreData, loading, api: alphaTabApi, onApiReady };
 };
