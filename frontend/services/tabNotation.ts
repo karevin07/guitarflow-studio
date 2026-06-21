@@ -29,6 +29,36 @@ export const parseTabCellPitches = (note: string): number[] => {
 
 export const isMutedCell = (note: string): boolean => note.toLowerCase() === 'x';
 
+export type TechniqueKind = 'hammer' | 'pull' | 'bend';
+
+export interface TechniqueInputHint {
+  kind: TechniqueKind;
+  message: string;
+}
+
+/** Hint when the user is mid-way through entering h / p / b notation. */
+export const getTechniqueInputHint = (note: string): TechniqueInputHint | null => {
+  const hammer = note.match(/^(\d+)h$/i);
+  if (hammer) {
+    return { kind: 'hammer', message: `輸入目標品絲完成 Hammer-on（例：${hammer[1]}h7）` };
+  }
+  const pull = note.match(/^(\d+)p$/i);
+  if (pull) {
+    return { kind: 'pull', message: `輸入目標品絲完成 Pull-off（例：${pull[1]}p5）` };
+  }
+  const bend = note.match(/^(\d+)b$/i);
+  if (bend) {
+    return { kind: 'bend', message: `輸入 Bend 目標音（例：${bend[1]}b9）` };
+  }
+  return null;
+};
+
+/** Strip a pending technique suffix (e.g. 7b → 7). */
+export const revertPendingTechnique = (note: string): string | null => {
+  const match = note.match(/^(\d+)[hpb]$/i);
+  return match ? match[1] : null;
+};
+
 /** Render a tab cell note with technique styling. */
 export const renderTabNote = (note: string): React.ReactNode => {
   if (note === '-' || note === '·') {

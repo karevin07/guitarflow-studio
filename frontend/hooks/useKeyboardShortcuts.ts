@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react';
 import { TabSection } from '../types';
+import { revertPendingTechnique } from '../services/tabNotation';
 
 type Selection = {
   sectionId: string;
@@ -92,6 +93,17 @@ export const useKeyboardShortcuts = ({
       ) return;
 
       if (viewMode !== 'edit') return;
+
+      if (e.key === 'Escape' && selection) {
+        const currentSection = sections.find(s => s.id === selection.sectionId);
+        const currentVal = currentSection?.measures[selection.measureIdx]?.[selection.stringIdx]?.[selection.colIdx] ?? '-';
+        const reverted = revertPendingTechnique(currentVal);
+        if (reverted) {
+          e.preventDefault();
+          onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, reverted);
+          return;
+        }
+      }
 
       if (selection) {
         if (e.key === 'ArrowUp') { e.preventDefault(); moveCursor('up'); return; }

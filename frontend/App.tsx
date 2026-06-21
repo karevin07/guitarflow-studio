@@ -20,6 +20,7 @@ import { ToastContainer } from './components/Toast';
 import { ImportedSong, LibrarySong, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { readGflowFile } from './services/gflowImport';
+import { getTechniqueInputHint } from './services/tabNotation';
 import { useEditorState, createEmptyMeasure } from './hooks/useEditorState';
 import { useSongLibrary } from './hooks/useSongLibrary';
 import { useImportedSongs } from './hooks/useImportedSongs';
@@ -313,6 +314,11 @@ const App: React.FC = () => {
   // ─── Derived state ─────────────────────────────────────────────────────────
   const currentSection = editor.sections.find(s => s.id === editor.activeSectionId);
   const activeChord = editor.getActiveChord(currentSection);
+  const techniqueHint = editor.selection && currentSection
+    ? getTechniqueInputHint(
+        currentSection.measures[editor.selection.measureIdx]?.[editor.selection.stringIdx]?.[editor.selection.colIdx] ?? '-'
+      )
+    : null;
   const selectionPosition = editor.selection
     ? (() => {
         const sectionIdx = editor.sections.findIndex(s => s.id === editor.selection!.sectionId);
@@ -572,6 +578,16 @@ const App: React.FC = () => {
                             Interactive Guitar Fretboard
                           </h4>
                           <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">Select a cell in the tab above, then click a fret below to write a note.</p>
+                          {techniqueHint && (
+                            <p className={`text-[10px] font-semibold mt-2 ${
+                              techniqueHint.kind === 'bend'
+                                ? 'text-orange-600 dark:text-orange-400'
+                                : 'text-indigo-600 dark:text-violet-400'
+                            }`}>
+                              {techniqueHint.message}
+                              <span className="text-slate-400 dark:text-zinc-500 font-normal ml-2">（Esc 取消）</span>
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold text-indigo-600 dark:text-violet-400 uppercase tracking-widest bg-indigo-50 dark:bg-violet-900/40 px-3 py-1.5 rounded-xl border border-indigo-100/50 dark:border-violet-900/30">
