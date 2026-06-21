@@ -47,7 +47,9 @@ backend/
 
 ### GuitarSong
 - `title`, `created_at`, `last_modified`, `transpose_offset`
-- Has many `TabSection` and `CustomChord` (cascade delete)
+- `source` — `gflow` (default) or `imported`
+- `import_format`, `import_file_name`, `import_file` — for Guitar Pro / MusicXML uploads
+- Has many `TabSection` and `CustomChord` (cascade delete; imported songs leave sections empty)
 
 ### TabSection
 - Nested under a song; ordered by `order` field
@@ -79,8 +81,10 @@ All routes are prefixed with `/api/`.
 
 | Method | Path | ViewSet | Description |
 | :--- | :--- | :--- | :--- |
-| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create songs |
+| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create gflow songs (`?source=gflow` or `imported`) |
 | `GET/PUT/DELETE` | `/songs/{id}/` | `GuitarSongViewSet` | Retrieve / update / delete |
+| `POST` | `/songs/import-score/` | `GuitarSongViewSet` | Multipart upload of GP / MusicXML file |
+| `GET` | `/songs/{id}/score-file/` | `GuitarSongViewSet` | Download imported score binary |
 | `GET` | `/global-chords/` | `GlobalChordViewSet` | List standard chords (read-only) |
 
 ### Update strategy

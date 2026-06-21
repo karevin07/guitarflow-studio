@@ -37,6 +37,7 @@ env/
 **/db.sqlite3-journal
 **/db.sqlite3-shm
 **/db.sqlite3-wal
+backend/media/
 
 # Frontend / Node
 frontend/dist/
