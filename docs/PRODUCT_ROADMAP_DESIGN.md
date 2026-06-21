@@ -49,11 +49,18 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 - **B1 收尾**：GP ImportPreview 確認步驟
 
 ### 仍待完成
-- `b`（bend）鍵盤輸入 UX 可再優化
-- **MPL-2.0** 授權結論
-- 前端 unit / integration 測試
-- 使用者隔離
+- **使用者隔離**（Phase C2）
 - B3 低優先：GP→gflow 轉換、MusicXML 匯出、音訊同步
+- App.tsx 進一步拆分（C2）
+
+### Sprint C1 — 品質 & 合規 ✅
+
+| 項目 | 狀態 |
+|------|------|
+| Vitest 單元測試（playbackTime、tabNotation、gflowImport） | ✅ |
+| GitHub Actions CI（backend + frontend + docker build） | ✅ |
+| MPL-2.0 授權結論（docs/MPL_LICENSING.md + NOTICE.md） | ✅ |
+| Bend 輸入 UX（提示 + Esc 取消 + 快捷鍵說明） | ✅ |
 
 ---
 
@@ -514,9 +521,8 @@ const loadAlphaTab = () => import('@coderline/alphatab');
 5. ~~**Sprint B3 多軌選擇**~~ ✅
 6. ~~**Phase A 收尾**（mm:ss、Zoom、ScoreLine、timeSignature）~~ ✅
 7. ~~**GP backend 持久化**~~ ✅
-8. **Backlog（依需求）**
-   - GP → `.gflow` 簡化轉換
-   - GP backend 持久化
-   - 前端测试（`tabNotation`、`usePlayback` 时间轴）
-   - MPL-2.0 授權結論
-   - 使用者隔離
+8. ~~**Sprint C1 品質 & 合規**~~ ✅
+9. **Phase C2（下一階段）**
+   - 使用者隔離（Django User + song ownership）
+   - App.tsx 拆分
+   - GP list API 優化

@@ -115,11 +115,22 @@ Run `make help` to see all available targets.
 | `make dev-backend` | Start Django dev server |
 | `make dev-frontend` | Start Vite dev server |
 | `make migrate` | Run Django migrations |
-| `make test` | Run backend tests |
+| `make test` | Run backend + frontend tests |
 | `make build` | Build frontend production bundle |
 | `make docker` | Start full stack with Docker Compose |
 
 See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details and [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes.
+
+---
+
+## Third-Party Licenses (第三方授權)
+
+Guitar Pro import uses [@coderline/alphatab](https://github.com/CoderLine/alphaTab) (MPL-2.0), lazy-loaded separately from the `.gflow` editor.
+
+| Document | Description |
+|----------|-------------|
+| [frontend/NOTICE.md](frontend/NOTICE.md) | Third-party component list |
+| [docs/MPL_LICENSING.md](docs/MPL_LICENSING.md) | MPL-2.0 analysis and compliance checklist |
 
 ---
 
