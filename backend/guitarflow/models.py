@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class GuitarSong(models.Model):
     SOURCE_GFLOW = 'gflow'
@@ -16,6 +17,13 @@ class GuitarSong(models.Model):
     import_format = models.CharField(max_length=20, null=True, blank=True)
     import_file_name = models.CharField(max_length=255, null=True, blank=True)
     import_file = models.FileField(upload_to='imports/%Y/%m/', null=True, blank=True)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='songs',
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return self.title

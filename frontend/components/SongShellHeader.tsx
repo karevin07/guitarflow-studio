@@ -1,9 +1,10 @@
 import React from 'react';
 import {
   Music, Save, Download, Eye, Edit3, Book, Undo2, Redo2,
-  ArrowLeft, FileText, Sun, Moon, Keyboard, CheckCircle2, ChevronDown,
+  ArrowLeft, FileText, Sun, Moon, Keyboard, CheckCircle2, ChevronDown, LogOut, User,
 } from 'lucide-react';
 import { ImportedSong } from '../types';
+import { AuthUser } from '../services/apiClient';
 
 type ShellViewMode = 'edit' | 'preview' | 'practice' | 'library';
 
@@ -28,10 +29,15 @@ interface SongShellHeaderProps {
   onExportGflow: () => void;
   onExportMidi: () => void;
   onExportPdf: () => void;
+  onExportMusicXml: () => void;
+  onConvertToGflow?: () => void;
+  convertToGflowDisabled?: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  user?: AuthUser | null;
+  onLogout?: () => void;
 }
 
 const SongShellHeader: React.FC<SongShellHeaderProps> = ({
@@ -55,10 +61,15 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   onExportGflow,
   onExportMidi,
   onExportPdf,
+  onExportMusicXml,
+  onConvertToGflow,
+  convertToGflowDisabled,
   canUndo,
   canRedo,
   onUndo,
   onRedo,
+  user,
+  onLogout,
 }) => {
   const navModes: { mode: ShellViewMode; icon: React.ReactNode; label: string }[] = isImported
     ? [
@@ -99,13 +110,23 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
             className="text-xl font-bold text-slate-800 dark:text-zinc-100 bg-transparent border-none outline-none focus:ring-0 focus:border-b focus:border-indigo-500/50 dark:focus:border-violet-500/50 w-full truncate"
           />
           {isImported && importedSong && (
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
                 {importedSong.importFormat.toUpperCase()}
               </span>
               <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
-                Read-only · Local storage
+                Backend · Read-only tab
               </span>
+              {onConvertToGflow && (
+                <button
+                  type="button"
+                  onClick={onConvertToGflow}
+                  disabled={convertToGflowDisabled}
+                  className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-violet-950/40 text-indigo-700 dark:text-violet-300 border border-indigo-200/60 dark:border-violet-900/40 hover:bg-indigo-200/60 dark:hover:bg-violet-950/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Convert to GFlow
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -157,6 +178,21 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
+
+        {user && onLogout && (
+          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-xl">
+            <User size={14} className="text-indigo-600 dark:text-violet-400" />
+            <span className="text-xs font-bold text-slate-600 dark:text-zinc-300 max-w-[80px] truncate">{user.username}</span>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
+              title="登出"
+            >
+              <LogOut size={16} />
+            </button>
+          </div>
+        )}
 
         {!isImported && (
           <>
@@ -221,6 +257,12 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
                     className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
                   >
                     <Eye size={16} className="text-emerald-600 dark:text-emerald-400" /> Export PDF Sheet
+                  </button>
+                  <button
+                    onClick={onExportMusicXml}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
+                  >
+                    <FileText size={16} className="text-sky-600 dark:text-sky-400" /> Export MusicXML
                   </button>
                 </div>
               )}

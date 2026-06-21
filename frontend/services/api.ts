@@ -1,76 +1,77 @@
 import { GuitarSong, ImportedSong } from '../types';
+import { apiFetch, authStorage, getApiBaseUrl } from './apiClient';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
 
-const parseJson = async <T>(response: Response): Promise<T> => {
-  if (!response.ok) {
-    throw new Error(`Request failed (${response.status})`);
+const fetchAllPages = async <T>(path: string): Promise<T[]> => {
+  const items: T[] = [];
+  let nextPath: string | null = path;
+
+  while (nextPath) {
+    const page = await apiFetch<PaginatedResponse<T> | T[]>(nextPath);
+    if (Array.isArray(page)) {
+      return page;
+    }
+    items.push(...page.results);
+    if (!page.next) break;
+    const url = new URL(page.next);
+    nextPath = `${url.pathname.replace(/^\/api/, '')}${url.search}`;
   }
-  return response.json() as Promise<T>;
+
+  return items;
 };
 
 export const api = {
-  async fetchSongs(): Promise<GuitarSong[]> {
-    const response = await fetch(`${API_BASE_URL}/songs/?source=gflow`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch songs');
-    }
-    const songs = await response.json();
-    return songs.map((song: GuitarSong) => ({ ...song, source: 'gflow' as const }));
+  async fetchSongs(search?: string): Promise<GuitarSong[]> {
+    const query = new URLSearchParams({ source: 'gflow', page_size: '200' });
+    if (search?.trim()) query.set('search', search.trim());
+    const songs = await fetchAllPages<GuitarSong>(`/songs/?${query.toString()}`);
+    return songs.map(song => ({ ...song, source: 'gflow' as const, isLegacy: song.isLegacy ?? false }));
   },
 
-  async fetchImportedScores(): Promise<ImportedSong[]> {
-    const response = await fetch(`${API_BASE_URL}/songs/?source=imported`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch imported scores');
-    }
-    const songs = await response.json();
-    return songs.map((song: ImportedSong) => ({
+  async fetchImportedScores(search?: string): Promise<ImportedSong[]> {
+    const query = new URLSearchParams({ source: 'imported', page_size: '200' });
+    if (search?.trim()) query.set('search', search.trim());
+    const songs = await fetchAllPages<ImportedSong & { importFormat?: string; fileName?: string; isLegacy?: boolean }>(
+      `/songs/?${query.toString()}`
+    );
+    return songs.map(song => ({
       id: song.id,
       title: song.title,
       lastModified: song.lastModified,
       source: 'imported' as const,
       importFormat: song.importFormat ?? 'unknown',
       fileName: song.fileName ?? 'imported-score',
+      isLegacy: song.isLegacy ?? false,
     }));
   },
 
   async getSong(id: string): Promise<GuitarSong> {
-    const response = await fetch(`${API_BASE_URL}/songs/${id}/`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch song');
-    }
-    return response.json();
+    return apiFetch(`/songs/${id}/`);
   },
 
   async createSong(song: Omit<GuitarSong, 'id'>): Promise<GuitarSong> {
-    const response = await fetch(`${API_BASE_URL}/songs/`, {
+    return apiFetch('/songs/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(song),
     });
-    if (!response.ok) {
-      throw new Error('Failed to create song');
-    }
-    return response.json();
   },
 
   async updateSong(id: string, song: Omit<GuitarSong, 'id'>): Promise<GuitarSong> {
-    const response = await fetch(`${API_BASE_URL}/songs/${id}/`, {
+    return apiFetch(`/songs/${id}/`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(song),
     });
-    if (!response.ok) {
-      throw new Error('Failed to update song');
-    }
-    return response.json();
   },
 
   async updateImportedScoreTitle(id: string, title: string): Promise<ImportedSong> {
-    const response = await fetch(`${API_BASE_URL}/songs/${id}/`, {
+    const song = await apiFetch<GuitarSong & { importFormat?: string; fileName?: string }>(`/songs/${id}/`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         title,
         transposeOffset: 0,
@@ -78,10 +79,6 @@ export const api = {
         customChords: [],
       }),
     });
-    if (!response.ok) {
-      throw new Error('Failed to update imported score');
-    }
-    const song = await response.json();
     return {
       id: song.id,
       title: song.title,
@@ -93,12 +90,15 @@ export const api = {
   },
 
   async deleteSong(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/songs/${id}/`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to delete song');
-    }
+    await apiFetch(`/songs/${id}/`, { method: 'DELETE' });
+  },
+
+  async claimSong(id: string): Promise<GuitarSong> {
+    return apiFetch(`/songs/${id}/claim/`, { method: 'POST' });
+  },
+
+  async claimLegacySongs(): Promise<{ claimed: number }> {
+    return apiFetch('/songs/claim-legacy/', { method: 'POST' });
   },
 
   async uploadImportedScore(file: File, title?: string): Promise<ImportedSong> {
@@ -106,15 +106,14 @@ export const api = {
     formData.append('file', file);
     if (title?.trim()) formData.append('title', title.trim());
 
-    const response = await fetch(`${API_BASE_URL}/songs/import-score/`, {
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) {
-      throw new Error('Failed to upload imported score');
-    }
+    const song = await apiFetch<ImportedSong & { importFormat?: string; fileName?: string }>(
+      '/songs/import-score/',
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
 
-    const song = await parseJson<ImportedSong & { importFormat?: string; fileName?: string }>(response);
     return {
       id: song.id,
       title: song.title,
@@ -126,7 +125,10 @@ export const api = {
   },
 
   async fetchImportedScoreFile(id: string): Promise<ArrayBuffer> {
-    const response = await fetch(`${API_BASE_URL}/songs/${id}/score-file/`);
+    const token = authStorage.getToken();
+    const response = await fetch(`${getApiBaseUrl()}/songs/${id}/score-file/`, {
+      headers: token ? { Authorization: `Token ${token}` } : {},
+    });
     if (!response.ok) {
       throw new Error('Failed to fetch score file');
     }
@@ -134,10 +136,6 @@ export const api = {
   },
 
   async fetchGlobalChords(): Promise<Omit<GuitarSong['customChords'][number], 'isStandard'>[]> {
-    const response = await fetch(`${API_BASE_URL}/global-chords/`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch global chords');
-    }
-    return response.json();
+    return apiFetch('/global-chords/');
   },
 };

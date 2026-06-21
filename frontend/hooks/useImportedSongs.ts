@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { ImportedSong } from '../types';
 import { api } from '../services/api';
 import { isGuitarProFile } from '../services/gpImport';
@@ -21,10 +21,6 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
       onError('Could not load imported Guitar Pro files from the server.');
     }
   }, [onError]);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   const importFile = useCallback(
     async (file: File, title?: string) => {

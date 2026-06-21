@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { TabSection } from '../types';
 import { revertPendingTechnique } from '../services/tabNotation';
+import { applyNotationAction, NotationAction } from '../services/notationInput';
 
 type Selection = {
   sectionId: string;
@@ -127,33 +128,31 @@ export const useKeyboardShortcuts = ({
 
       if (key === 'x') {
         e.preventDefault();
-        onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, 'x');
+        const next = applyNotationAction(currentVal, 'mute');
+        if (next) onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, next);
         return;
       }
 
-      if (isTechnique && /^\d+$/.test(currentVal)) {
+      if (isTechnique) {
         e.preventDefault();
-        onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, currentVal + key);
+        const action: NotationAction = key === 'h' ? 'hammer' : key === 'p' ? 'pull' : 'bend';
+        const next = applyNotationAction(currentVal, action);
+        if (next) onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, next);
         return;
       }
 
-      if (isNum || isSlide) {
+      if (isSlide) {
+        e.preventDefault();
+        const action: NotationAction = key === 's' ? 'slide-up' : 'slide-down';
+        const next = applyNotationAction(currentVal, action);
+        if (next) onCellInput(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx, next);
+        return;
+      }
+
+      if (isNum) {
         let newVal = e.key;
 
-        if (isSlide) {
-          if (
-            currentVal &&
-            currentVal !== '-' &&
-            currentVal !== '·' &&
-            !isNaN(parseInt(currentVal, 10)) &&
-            !currentVal.includes('s') &&
-            !currentVal.includes('/')
-          ) {
-            newVal = currentVal + key;
-          } else {
-            newVal = key;
-          }
-        } else if (/^(\d+)([hpb])$/.test(currentVal)) {
+        if (/^(\d+)([hpb])$/.test(currentVal)) {
           newVal = currentVal + e.key;
         } else if (currentVal && currentVal !== '-' && currentVal !== '·' && /^\d+$/.test(currentVal)) {
           const combined = parseInt(currentVal + e.key, 10);

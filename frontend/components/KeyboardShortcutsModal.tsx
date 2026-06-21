@@ -21,6 +21,7 @@ const shortcuts = [
   { keys: ['Ctrl/Cmd + Z'], desc: 'Undo' },
   { keys: ['Ctrl/Cmd + Y'], desc: 'Redo' },
   { keys: ['?'], desc: '開啟快捷鍵說明' },
+  { keys: ['Toolbar'], desc: 'Edit 模式上方工具列：x / h / p / b / s / /，與鍵盤行為相同' },
 ];
 
 const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ open, onClose }) => {

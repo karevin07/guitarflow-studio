@@ -1,12 +1,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  Music, Plus, Anchor,
-  ChevronDown, ChevronUp, FileText, Trash2,
-} from 'lucide-react';
-import TabMeasure from './components/TabMeasure';
-import Fretboard from './components/Fretboard';
-import ChordDiagram from './components/ChordDiagram';
+import EditView from './components/EditView';
 import SongPreview from './components/SongPreview';
 import ChordManager from './components/ChordManager';
 import Home from './components/Home';
@@ -16,10 +10,14 @@ import ImportedScorePanel from './components/ImportedScorePanel';
 import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import ImportPreviewModal from './components/ImportPreviewModal';
+import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
 import { ImportedSong, LibrarySong, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { readGflowFile } from './services/gflowImport';
+import { downloadMusicXml } from './services/musicXmlExport';
+import { convertAlphaTabScoreToGflow, pickGuitarTrackIndex } from './services/gpToGflow';
+import { api as songApi } from './services/api';
 import { getTechniqueInputHint } from './services/tabNotation';
 import { useEditorState, createEmptyMeasure } from './hooks/useEditorState';
 import { useSongLibrary } from './hooks/useSongLibrary';
@@ -31,7 +29,8 @@ import { useAutosave } from './hooks/useAutosave';
 import { useImportedScore } from './hooks/useImportedScore';
 import { useAlphaTabPlayback } from './hooks/useAlphaTabPlayback';
 import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
-import { DEFAULT_TIME_SIGNATURE, TIME_SIGNATURE_OPTIONS, formatTimeSignature } from './constants/practice';
+import { useAuth } from './hooks/useAuth';
+import { DEFAULT_TIME_SIGNATURE } from './constants/practice';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library'>('home');
@@ -44,6 +43,7 @@ const App: React.FC = () => {
   });
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [autosaveEnabled, setAutosaveEnabled] = useState(
     () => localStorage.getItem('guitarflow-autosave') !== 'false'
@@ -63,6 +63,7 @@ const App: React.FC = () => {
 
   // ─── Toast system ──────────────────────────────────────────────────────────
   const { toasts, dismiss, toast } = useToast();
+  const auth = useAuth();
 
   // ─── Editor state ──────────────────────────────────────────────────────────
   const editor = useEditorState();
@@ -165,8 +166,26 @@ const App: React.FC = () => {
     });
   };
 
-  // Load songs on mount
-  useEffect(() => { library.fetchSongs(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Load library when authenticated
+  useEffect(() => {
+    if (!auth.user) return;
+    library.fetchSongs();
+    imported.refresh();
+  }, [auth.user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const requireAuth = useCallback(() => {
+    if (auth.user) return true;
+    setAuthOpen(true);
+    return false;
+  }, [auth.user]);
+
+  const handleLogout = useCallback(async () => {
+    playback.stop();
+    alphaPlayback.onStop();
+    await auth.logout();
+    setActiveImportedSong(null);
+    setViewMode('home');
+  }, [auth, playback, alphaPlayback]);
 
   // ─── Cell input handlers (for keyboard shortcut hook) ─────────────────────
   const handleCellInput = useCallback(
@@ -210,6 +229,7 @@ const App: React.FC = () => {
 
   // ─── Create new song ───────────────────────────────────────────────────────
   const createNewSong = () => {
+    if (!requireAuth()) return;
     const initialSection = {
       id: Math.random().toString(36).slice(2, 11),
       title: 'Intro',
@@ -267,14 +287,60 @@ const App: React.FC = () => {
     }
   };
 
+  const triggerMusicXmlExport = () => {
+    downloadMusicXml({
+      title: editor.songTitle,
+      sections: editor.sections,
+      transposeOffset: editor.transposeOffset,
+    });
+  };
+
+  const handleConvertGpToGflow = useCallback(async () => {
+    const alphaApi = importedScore.api;
+    if (!alphaApi?.score) {
+      toast.error('Score not loaded yet. Please wait.');
+      return;
+    }
+    const trackIdx = pickGuitarTrackIndex(alphaApi.score);
+    const gflow = convertAlphaTabScoreToGflow(alphaApi.score, trackIdx);
+    if (!gflow) {
+      toast.error('Could not extract tab from this score.');
+      return;
+    }
+    await library.importSong(gflow);
+  }, [importedScore.api, library, toast]);
+
+  const handleClaimSong = useCallback(async (song: LibrarySong) => {
+    try {
+      await songApi.claimSong(song.id);
+      await library.fetchSongs();
+      await imported.refresh();
+      toast.success(`已認領「${song.title}」`);
+    } catch {
+      toast.error('認領失敗，請稍後再試。');
+    }
+  }, [library, imported, toast]);
+
+  const handleClaimAllLegacy = useCallback(async () => {
+    try {
+      const { claimed } = await songApi.claimLegacySongs();
+      await library.fetchSongs();
+      await imported.refresh();
+      toast.success(claimed > 0 ? `已認領 ${claimed} 首舊版樂譜` : '沒有需要認領的樂譜');
+    } catch {
+      toast.error('批量認領失敗，請稍後再試。');
+    }
+  }, [library, imported, toast]);
+
   const handleImportFile = useCallback(async (file: File) => {
+    if (!requireAuth()) return;
     const result = await readGflowFile(file);
     if (result.ok === false) {
       toast.error(result.error);
       return;
     }
     await library.importSong(result.data);
-  }, [library, toast]);
+  }, [library, toast, requireAuth]);
 
   const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
@@ -334,13 +400,28 @@ const App: React.FC = () => {
       <>
         <Home
           songs={librarySongs}
+          user={auth.user}
+          authLoading={auth.loading}
+          onOpenAuth={() => setAuthOpen(true)}
+          onLogout={handleLogout}
           onCreateNew={createNewSong}
           onOpen={handleOpenLibrarySong}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
-          onImportGp={file => setGpPreviewFile(file)}
+          onImportGp={file => {
+            if (!requireAuth()) return;
+            setGpPreviewFile(file);
+          }}
+          onClaimSong={handleClaimSong}
+          onClaimAllLegacy={handleClaimAllLegacy}
           theme={theme}
           onToggleTheme={toggleTheme}
+        />
+        <AuthModal
+          open={authOpen}
+          onClose={() => setAuthOpen(false)}
+          onLogin={auth.login}
+          onRegister={auth.register}
         />
         {gpPreviewFile && (
           <ImportPreviewModal
@@ -388,10 +469,15 @@ const App: React.FC = () => {
         onExportGflow={() => { exportAsFile(); setIsExportOpen(false); }}
         onExportMidi={() => { triggerMidiExport(); setIsExportOpen(false); }}
         onExportPdf={() => { triggerPdfExport(); setIsExportOpen(false); }}
+        onExportMusicXml={() => { triggerMusicXmlExport(); setIsExportOpen(false); }}
+        onConvertToGflow={isImported ? handleConvertGpToGflow : undefined}
+        convertToGflowDisabled={isImported && (!importedScore.api?.score || importedScore.loading)}
         canUndo={editor.historyIndex > 0}
         canRedo={editor.historyIndex < editor.history.length - 1}
         onUndo={editor.undo}
         onRedo={editor.redo}
+        user={auth.user}
+        onLogout={handleLogout}
       />
 
       {/* ─ Main ───────────────────────────────────────────────────────────── */}
@@ -418,236 +504,45 @@ const App: React.FC = () => {
         )}
 
         {!isImported && viewMode === 'edit' && (
-          <>
-            {/* Sections sidebar */}
-            <aside className="w-64 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-r border-slate-200 dark:border-zinc-800/80 flex flex-col transition-colors duration-250">
-              <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80 flex items-center justify-between">
-                <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Sections</h3>
-                <button onClick={editor.addSection} className="p-1 text-indigo-600 dark:text-violet-400 hover:bg-indigo-50 dark:hover:bg-violet-900/30 rounded-lg transition-colors">
-                  <Plus size={18} />
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
-                {editor.sections.map((sec, idx) => (
-                  <div
-                    key={sec.id}
-                    className={`group flex items-center gap-1 rounded-xl border transition-all ${
-                      editor.activeSectionId === sec.id
-                        ? 'border-indigo-500 bg-indigo-50/70 dark:border-violet-500 dark:bg-violet-500/10 shadow-md'
-                        : 'border-transparent hover:bg-slate-100 dark:hover:bg-zinc-800'
-                    }`}
-                  >
-                    <button
-                      onClick={() => editor.setActiveSectionId(sec.id)}
-                      className={`flex-1 text-left px-4 py-3 text-sm font-bold transition-all ${
-                        editor.activeSectionId === sec.id
-                          ? 'text-indigo-600 dark:text-violet-400'
-                          : 'text-slate-500 dark:text-zinc-400'
-                      }`}
-                    >
-                      {sec.title}
-                    </button>
-                    <div className="flex flex-col pr-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={e => { e.stopPropagation(); editor.moveSection(sec.id, 'up'); }}
-                        disabled={idx === 0}
-                        className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-violet-400 disabled:opacity-30"
-                        title="Move up"
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); editor.moveSection(sec.id, 'down'); }}
-                        disabled={idx === editor.sections.length - 1}
-                        className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-violet-400 disabled:opacity-30"
-                        title="Move down"
-                      >
-                        <ChevronDown size={14} />
-                      </button>
-                    </div>
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        if (editor.sections.length <= 1) return;
-                        if (confirm(`Delete section "${sec.title}"?`)) editor.deleteSection(sec.id);
-                      }}
-                      disabled={editor.sections.length <= 1}
-                      className="p-2 mr-1 text-slate-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-30 transition-all"
-                      title="Delete section"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </aside>
-
-            {/* Tab editor */}
-            <div className="flex-1 overflow-y-auto bg-slate-100 dark:bg-zinc-950 p-8 flex flex-col gap-8 transition-colors duration-250">
-              {currentSection && (
-                <div className="bg-white/80 dark:bg-zinc-900/20 backdrop-blur-md rounded-3xl border border-slate-200 dark:border-zinc-800/60 p-8 shadow-md dark:shadow-2xl">
-                  <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center gap-6">
-                      <input
-                        value={currentSection.title}
-                        onChange={e => editor.updateSectionTitle(editor.activeSectionId, e.target.value)}
-                        className="text-2xl font-bold text-slate-800 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
-                      />
-                      <div className="h-8 w-[1px] bg-slate-200 dark:bg-zinc-800" />
-                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Time</span>
-                        <select
-                          value={formatTimeSignature(currentSection.timeSignature ?? DEFAULT_TIME_SIGNATURE)}
-                          onChange={e => {
-                            const [num, den] = e.target.value.split('/').map(v => parseInt(v, 10));
-                            if (num > 0 && den > 0) {
-                              editor.setTimeSignature(editor.activeSectionId, [num, den]);
-                            }
-                          }}
-                          className="bg-transparent text-sm font-bold text-slate-600 dark:text-zinc-300 outline-none cursor-pointer"
-                        >
-                          {TIME_SIGNATURE_OPTIONS.map(([num, den]) => (
-                            <option key={`${num}/${den}`} value={`${num}/${den}`} className="bg-white dark:bg-zinc-900">
-                              {num}/{den}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 group transition-colors">
-                        <Anchor size={14} className="text-slate-400 dark:text-zinc-500 group-hover:text-indigo-600 dark:group-hover:text-violet-400 transition-colors" />
-                        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Capo</span>
-                        <select
-                          value={currentSection.capo}
-                          onChange={e => editor.setCapo(editor.activeSectionId, parseInt(e.target.value, 10))}
-                          className="bg-transparent text-sm font-bold text-slate-600 dark:text-zinc-300 outline-none cursor-pointer"
-                        >
-                          {Array.from({ length: 13 }).map((_, i) => (
-                            <option key={i} value={i} className="bg-white dark:bg-zinc-900 text-slate-800 dark:text-zinc-300">
-                              {i === 0 ? 'None' : i}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => editor.addMeasure(editor.activeSectionId)}
-                      className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-violet-900/40 text-indigo-600 dark:text-violet-400 border border-indigo-200/50 dark:border-violet-900/30 rounded-xl text-xs font-bold transition-all shadow-sm"
-                    >
-                      <Plus size={16} /> Add Measure
-                    </button>
-                  </div>
-
-                  {/* Measures grid: 2 per row on xl screens */}
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-12 gap-y-16">
-                    {currentSection.measures.map((measure, mIdx) => {
-                      const isSecPlaying = playback.playState && editor.sections[playback.playState.sectionIdx]?.id === currentSection.id;
-                      const isMeasPlaying = isSecPlaying && playback.playState?.measureIdx === mIdx;
-
-                      return (
-                        <div key={mIdx} className="w-full overflow-x-auto xl:overflow-visible">
-                          <TabMeasure
-                            measure={measure}
-                            chords={currentSection.chords[mIdx]}
-                            lyrics={currentSection.lyrics[mIdx]}
-                            activeCol={editor.selection?.measureIdx === mIdx ? editor.selection.colIdx : null}
-                            activeString={editor.selection?.measureIdx === mIdx ? editor.selection.stringIdx : null}
-                            playCol={isMeasPlaying ? playback.playState!.colIdx : null}
-                            onCellClick={(sIdx, cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: sIdx, colIdx: cIdx })}
-                            onChordClick={(cIdx) => editor.setSelection({ sectionId: editor.activeSectionId, measureIdx: mIdx, stringIdx: 0, colIdx: cIdx })}
-                            onChordNameChange={(cIdx, name) => editor.handleChordNameChange(editor.activeSectionId, mIdx, cIdx, name)}
-                            onLyricChange={(cIdx, text) => editor.updateLyric(editor.activeSectionId, mIdx, cIdx, text)}
-                            onDelete={() => editor.deleteMeasure(editor.activeSectionId, mIdx)}
-                            onCopy={() => editor.copyMeasure(editor.activeSectionId, mIdx)}
-                            onClearColumn={(cIdx) => editor.clearColumn(editor.activeSectionId, mIdx, cIdx)}
-                            onDropChord={(cIdx, chordName) => editor.handleDropChord(editor.activeSectionId, mIdx, cIdx, chordName)}
-                            canDelete={currentSection.measures.length > 1}
-                            theme={theme}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  {/* Fretboard Panel */}
-                  {editor.selection && (
-                    <div className="mt-12 bg-white/70 dark:bg-zinc-900/35 backdrop-blur-md p-6 rounded-3xl border border-slate-200 dark:border-zinc-800/60 shadow-md animate-in slide-in-from-bottom-2 duration-200">
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-                            Interactive Guitar Fretboard
-                          </h4>
-                          <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">Select a cell in the tab above, then click a fret below to write a note.</p>
-                          {techniqueHint && (
-                            <p className={`text-[10px] font-semibold mt-2 ${
-                              techniqueHint.kind === 'bend'
-                                ? 'text-orange-600 dark:text-orange-400'
-                                : 'text-indigo-600 dark:text-violet-400'
-                            }`}>
-                              {techniqueHint.message}
-                              <span className="text-slate-400 dark:text-zinc-500 font-normal ml-2">（Esc 取消）</span>
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-bold text-indigo-600 dark:text-violet-400 uppercase tracking-widest bg-indigo-50 dark:bg-violet-900/40 px-3 py-1.5 rounded-xl border border-indigo-100/50 dark:border-violet-900/30">
-                            Focused: Measure {editor.selection.measureIdx + 1}, String {editor.selection.stringIdx + 1}, Col {editor.selection.colIdx + 1}
-                          </span>
-                        </div>
-                      </div>
-                      <Fretboard 
-                        selectedString={editor.selection.stringIdx}
-                        selectedCol={editor.selection.colIdx}
-                        onNoteClick={(stringIdx, fret) => {
-                          const { sectionId, measureIdx, colIdx } = editor.selection!;
-                          handleCellInput(sectionId, measureIdx, stringIdx, colIdx, fret.toString());
-                        }} 
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Chord tools sidebar */}
-            <aside className="w-80 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-l border-slate-200 dark:border-zinc-800/80 flex flex-col overflow-hidden transition-colors duration-250">
-              <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80">
-                <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Chord Tools</h3>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6 space-y-8">
-                {activeChord ? (
-                  <div className="space-y-4">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">Selected / Detected</span>
-                    <div className="h-64">
-                      <ChordDiagram chord={activeChord} theme={theme} />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-64 bg-slate-100/50 dark:bg-zinc-950/40 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center justify-center p-8 text-center shadow-inner">
-                    <p className="text-xs font-semibold text-slate-400 dark:text-zinc-600">Select a column or enter notes to see a chord preview</p>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <span className="text-[10px] font-bold text-slate-450 dark:text-zinc-550 uppercase">Chord Library</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {editor.chordLibrary.map((chord, i) => (
-                      <button
-                        key={`${chord.name}-${i}`}
-                        draggable="true"
-                        onDragStart={e => { e.dataTransfer.setData('chordName', chord.name); }}
-                        onClick={() => editor.handleChordInput(chord, editor.selection)}
-                        className="cursor-grab active:cursor-grabbing px-4 py-3 bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-855 rounded-xl text-sm font-bold text-slate-605 dark:text-zinc-355 hover:border-indigo-500 dark:hover:border-violet-500 hover:bg-indigo-50 dark:hover:bg-violet-955/20 hover:text-indigo-650 dark:hover:text-violet-400 transition-all flex items-center justify-center shadow-sm"
-                      >
-                        {chord.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </aside>
-          </>
+          <EditView
+            sections={editor.sections}
+            activeSectionId={editor.activeSectionId}
+            selection={editor.selection}
+            playState={playback.playState}
+            theme={theme}
+            techniqueHint={techniqueHint}
+            activeChord={activeChord}
+            chordLibrary={editor.chordLibrary}
+            canUndo={editor.historyIndex > 0}
+            canRedo={editor.historyIndex < editor.history.length - 1}
+            onSetActiveSection={editor.setActiveSectionId}
+            onAddSection={editor.addSection}
+            onMoveSection={editor.moveSection}
+            onDeleteSection={editor.deleteSection}
+            onUpdateSectionTitle={title => editor.updateSectionTitle(editor.activeSectionId, title)}
+            onSetTimeSignature={ts => editor.setTimeSignature(editor.activeSectionId, ts)}
+            onSetCapo={capo => editor.setCapo(editor.activeSectionId, capo)}
+            onAddMeasure={() => editor.addMeasure(editor.activeSectionId)}
+            onSetSelection={editor.setSelection}
+            onChordNameChange={(mIdx, cIdx, name) =>
+              editor.handleChordNameChange(editor.activeSectionId, mIdx, cIdx, name)
+            }
+            onLyricChange={(mIdx, cIdx, text) =>
+              editor.updateLyric(editor.activeSectionId, mIdx, cIdx, text)
+            }
+            onDeleteMeasure={mIdx => editor.deleteMeasure(editor.activeSectionId, mIdx)}
+            onCopyMeasure={mIdx => editor.copyMeasure(editor.activeSectionId, mIdx)}
+            onClearColumn={(mIdx, cIdx) => editor.clearColumn(editor.activeSectionId, mIdx, cIdx)}
+            onDropChord={(mIdx, cIdx, chordName) =>
+              editor.handleDropChord(editor.activeSectionId, mIdx, cIdx, chordName)
+            }
+            onCellInput={handleCellInput}
+            onCellClear={handleCellClear}
+            onChordInput={chord => editor.handleChordInput(chord, editor.selection)}
+            onUndo={editor.undo}
+            onRedo={editor.redo}
+            onOpenHelp={() => setShortcutsOpen(true)}
+          />
         )}
 
         {/* ── Preview view ─────────────────────────────────────────────────── */}

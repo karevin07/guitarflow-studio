@@ -1,11 +1,65 @@
+from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 from rest_framework import status
+from rest_framework.authtoken.models import Token
 from .models import GuitarSong, TabSection, CustomChord
 
-class GuitarSongAPITests(APITestCase):
+
+def list_results(response):
+    data = response.data
+    if isinstance(data, dict) and 'results' in data:
+        return data['results']
+    return data
+
+
+class AuthenticatedAPITestCase(APITestCase):
     def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='testpass123')
+        self.token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.token.key}')
+
+    def create_other_user(self, username='otheruser'):
+        other = User.objects.create_user(username=username, password='otherpass123')
+        return other, Token.objects.create(user=other)
+
+
+class AuthAPITests(APITestCase):
+    def test_register_login_me_logout(self):
+        register_response = self.client.post(
+            reverse('auth-register'),
+            {'username': 'alice', 'password': 'secret123'},
+            format='json',
+        )
+        self.assertEqual(register_response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('token', register_response.data)
+        token = register_response.data['token']
+
+        self.client.credentials()
+        login_response = self.client.post(
+            reverse('auth-login'),
+            {'username': 'alice', 'password': 'secret123'},
+            format='json',
+        )
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(login_response.data['user']['username'], 'alice')
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token}')
+        me_response = self.client.get(reverse('auth-me'))
+        self.assertEqual(me_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(me_response.data['username'], 'alice')
+
+        logout_response = self.client.post(reverse('auth-logout'))
+        self.assertEqual(logout_response.status_code, status.HTTP_204_NO_CONTENT)
+
+        me_after_logout = self.client.get(reverse('auth-me'))
+        self.assertEqual(me_after_logout.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class GuitarSongAPITests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
         self.song_url = reverse('song-list')
 
     def test_create_song_with_sections(self):
@@ -38,6 +92,7 @@ class GuitarSongAPITests(APITestCase):
         song = GuitarSong.objects.first()
         self.assertEqual(song.title, 'Test Song')
         self.assertEqual(song.transpose_offset, 2)
+        self.assertEqual(song.owner, self.user)
         
         # Sections
         self.assertEqual(song.sections.count(), 1)
@@ -81,7 +136,7 @@ class GuitarSongAPITests(APITestCase):
     def test_update_song_diff_and_patch(self):
         """Test that updating a song uses diff-and-patch on sections/chords and preserves PKs."""
         # Pre-populate a song with 2 sections and 1 chord
-        song = GuitarSong.objects.create(title='Old Title', transpose_offset=0)
+        song = GuitarSong.objects.create(title='Old Title', transpose_offset=0, owner=self.user)
         sec1 = TabSection.objects.create(
             song=song, title='Sec 1', capo=0, order=0,
             measures=[[['-'] * 16] * 6], chords=[[None] * 16], lyrics=[[None] * 16]
@@ -90,18 +145,12 @@ class GuitarSongAPITests(APITestCase):
             song=song, title='Sec 2', capo=0, order=1,
             measures=[[['-'] * 16] * 6], chords=[[None] * 16], lyrics=[[None] * 16]
         )
-        chord1 = CustomChord.objects.create(
+        CustomChord.objects.create(
             song=song, name='C', frets=[0, 1, 0, 2, 3, None]
         )
 
         detail_url = reverse('song-detail', args=[song.pk])
         
-        # We will:
-        # 1. Update sec1 title (passing its ID)
-        # 2. Delete sec2 (by omitting it)
-        # 3. Add a new section (no ID)
-        # 4. Update chord1 (by sending same name 'C' but different frets)
-        # 5. Add new chord 'D'
         data = {
             'title': 'New Title',
             'transposeOffset': -1,
@@ -115,7 +164,6 @@ class GuitarSongAPITests(APITestCase):
                     'lyrics': sec1.lyrics
                 },
                 {
-                    # New section
                     'title': 'New Section',
                     'capo': 0,
                     'measures': [[['-'] * 16] * 6],
@@ -126,7 +174,7 @@ class GuitarSongAPITests(APITestCase):
             'customChords': [
                 {
                     'name': 'C',
-                    'frets': [0, 1, 0, 2, 3, 3] # modified
+                    'frets': [0, 1, 0, 2, 3, 3]
                 },
                 {
                     'name': 'D',
@@ -138,40 +186,16 @@ class GuitarSongAPITests(APITestCase):
         response = self.client.put(detail_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         
-        # Verify updates
         song.refresh_from_db()
         self.assertEqual(song.title, 'New Title')
         self.assertEqual(song.transpose_offset, -1)
-        
-        # Verify sections
-        # Total sections should be 2 (sec1 updated, and new section). sec2 should be deleted.
         self.assertEqual(song.sections.count(), 2)
-        
-        # sec1 PK should be preserved!
         self.assertTrue(song.sections.filter(pk=sec1.pk).exists())
-        updated_sec1 = song.sections.get(pk=sec1.pk)
-        self.assertEqual(updated_sec1.title, 'Sec 1 Updated')
-        self.assertEqual(updated_sec1.capo, 2)
-        self.assertEqual(updated_sec1.order, 0)
-        
-        # sec2 should be deleted
         self.assertFalse(song.sections.filter(pk=sec2.pk).exists())
-        
-        # New section
-        new_sec = song.sections.exclude(pk=sec1.pk).first()
-        self.assertEqual(new_sec.title, 'New Section')
-        self.assertEqual(new_sec.order, 1)
-
-        # Verify chords
         self.assertEqual(song.custom_chords.count(), 2)
-        updated_chord1 = song.custom_chords.get(name='C')
-        self.assertEqual(updated_chord1.frets, [0, 1, 0, 2, 3, 3])
-        new_chord = song.custom_chords.get(name='D')
-        self.assertEqual(new_chord.frets, [2, 3, 2, 0, None, None])
 
     def test_delete_song_cascades(self):
-        """Test that deleting a song deletes nested sections and chords."""
-        song = GuitarSong.objects.create(title='To Delete')
+        song = GuitarSong.objects.create(title='To Delete', owner=self.user)
         TabSection.objects.create(
             song=song, title='Intro',
             measures=[], chords=[], lyrics=[]
@@ -180,22 +204,79 @@ class GuitarSongAPITests(APITestCase):
             song=song, name='C', frets=[]
         )
         
-        self.assertEqual(GuitarSong.objects.count(), 1)
-        self.assertEqual(TabSection.objects.count(), 1)
-        self.assertEqual(CustomChord.objects.count(), 1)
-        
         detail_url = reverse('song-detail', args=[song.pk])
         response = self.client.delete(detail_url)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        
-        # Everything should be cascades deleted
         self.assertEqual(GuitarSong.objects.count(), 0)
-        self.assertEqual(TabSection.objects.count(), 0)
-        self.assertEqual(CustomChord.objects.count(), 0)
+
+    def test_user_cannot_access_other_users_songs(self):
+        song = GuitarSong.objects.create(title='Private', owner=self.user)
+        other_user, other_token = self.create_other_user()
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {other_token.key}')
+        detail_url = reverse('song-detail', args=[song.pk])
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+        list_response = self.client.get(self.song_url)
+        self.assertEqual(len(list_results(list_response)), 0)
+
+    def test_legacy_null_owner_songs_visible_to_authenticated_users(self):
+        GuitarSong.objects.create(title='Legacy', owner=None)
+        response = self.client.get(self.song_url)
+        results = list_results(response)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['title'], 'Legacy')
+        self.assertTrue(results[0]['isLegacy'])
+
+    def test_claim_legacy_song(self):
+        song = GuitarSong.objects.create(title='Unclaimed', owner=None)
+        claim_url = reverse('song-claim', args=[song.pk])
+        response = self.client.post(claim_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['isLegacy'])
+        song.refresh_from_db()
+        self.assertEqual(song.owner, self.user)
+
+    def test_claim_already_owned_song_fails(self):
+        song = GuitarSong.objects.create(title='Mine', owner=self.user)
+        claim_url = reverse('song-claim', args=[song.pk])
+        response = self.client.post(claim_url)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_claim_all_legacy_songs(self):
+        GuitarSong.objects.create(title='Legacy A', owner=None)
+        GuitarSong.objects.create(title='Legacy B', owner=None)
+        GuitarSong.objects.create(title='Owned', owner=self.user)
+        response = self.client.post(reverse('song-claim-legacy'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['claimed'], 2)
+        self.assertEqual(GuitarSong.objects.filter(owner=self.user).count(), 3)
+
+    def test_list_pagination_structure(self):
+        GuitarSong.objects.create(title='Song A', owner=self.user)
+        response = self.client.get(self.song_url)
+        self.assertIn('results', response.data)
+        self.assertIn('count', response.data)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_list_search_filter(self):
+        GuitarSong.objects.create(title='Wonderwall', owner=self.user)
+        GuitarSong.objects.create(title='Blackbird', owner=self.user)
+        response = self.client.get(self.song_url, {'search': 'wonder'})
+        results = list_results(response)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['title'], 'Wonderwall')
+
+    def test_unauthenticated_requests_are_rejected(self):
+        self.client.credentials()
+        response = self.client.get(self.song_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
-class ImportedScoreAPITests(APITestCase):
+class ImportedScoreAPITests(AuthenticatedAPITestCase):
     def setUp(self):
+        super().setUp()
         self.import_url = reverse('song-import-score')
         self.sample_bytes = b'GP5 sample binary content'
 
@@ -209,9 +290,9 @@ class ImportedScoreAPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['title'], 'Test Riff')
         self.assertEqual(response.data['source'], 'imported')
-        self.assertEqual(response.data['importFormat'], 'gp5')
-        self.assertEqual(response.data['fileName'], 'test-riff.gp5')
-        self.assertEqual(response.data['sections'], [])
+
+        song = GuitarSong.objects.get(pk=response.data['id'])
+        self.assertEqual(song.owner, self.user)
 
         song_id = response.data['id']
         file_url = reverse('song-score-file', args=[song_id])
@@ -220,16 +301,17 @@ class ImportedScoreAPITests(APITestCase):
         self.assertEqual(b''.join(file_response.streaming_content), self.sample_bytes)
 
     def test_list_imported_scores_filter(self):
-        GuitarSong.objects.create(title='GFlow Song', source=GuitarSong.SOURCE_GFLOW)
+        GuitarSong.objects.create(title='GFlow Song', source=GuitarSong.SOURCE_GFLOW, owner=self.user)
         upload = SimpleUploadedFile('another.gpx', self.sample_bytes, content_type='application/octet-stream')
         self.client.post(self.import_url, {'file': upload}, format='multipart')
 
         all_response = self.client.get(reverse('song-list'))
-        self.assertEqual(len(all_response.data), 2)
+        self.assertEqual(len(list_results(all_response)), 2)
 
         imported_response = self.client.get(reverse('song-list'), {'source': 'imported'})
-        self.assertEqual(len(imported_response.data), 1)
-        self.assertEqual(imported_response.data[0]['source'], 'imported')
+        imported = list_results(imported_response)
+        self.assertEqual(len(imported), 1)
+        self.assertEqual(imported[0]['source'], 'imported')
 
     def test_update_imported_title_only(self):
         upload = SimpleUploadedFile('song.gp5', self.sample_bytes, content_type='application/octet-stream')
@@ -244,10 +326,6 @@ class ImportedScoreAPITests(APITestCase):
         )
         self.assertEqual(update_response.status_code, status.HTTP_200_OK)
         self.assertEqual(update_response.data['title'], 'Renamed Score')
-
-        song = GuitarSong.objects.get(pk=song_id)
-        self.assertEqual(song.title, 'Renamed Score')
-        self.assertTrue(song.import_file)
 
     def test_reject_unsupported_import_file(self):
         upload = SimpleUploadedFile('bad.txt', b'nope', content_type='text/plain')

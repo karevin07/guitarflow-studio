@@ -21,6 +21,9 @@ interface TabMeasureProps {
   canDelete?: boolean;
   theme?: 'light' | 'dark';
   playCol?: number | null;
+  variant?: 'card' | 'flow';
+  measureIndex?: number;
+  showMeasureFooter?: boolean;
 }
 
 const TabMeasure: React.FC<TabMeasureProps> = ({ 
@@ -39,7 +42,10 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
   onDropChord,
   canDelete = true,
   theme = 'dark',
-  playCol = null
+  playCol = null,
+  variant = 'card',
+  measureIndex,
+  showMeasureFooter = true,
 }) => {
   const [dragOverCol, setDragOverCol] = useState<number | null>(null);
 
@@ -66,8 +72,19 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
 
   const renderNote = (note: string) => renderTabNote(note);
 
+  const isFlow = variant === 'flow';
+  const colHighlight = isFlow
+    ? 'bg-indigo-500/12 dark:bg-violet-500/15'
+    : 'bg-indigo-500/5 dark:bg-violet-500/5';
+
   return (
-    <div className="flex-shrink-0 bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 p-4 rounded-2xl group relative transition-all duration-300 hover:border-slate-300 dark:hover:border-zinc-700/60 shadow-md dark:shadow-xl">
+    <div
+      className={`flex-shrink-0 group relative transition-all duration-300 ${
+        isFlow
+          ? 'px-3 py-3'
+          : 'bg-white dark:bg-zinc-900/60 border border-slate-200 dark:border-zinc-800/80 p-4 rounded-2xl hover:border-slate-300 dark:hover:border-zinc-700/60 shadow-md dark:shadow-xl'
+      }`}
+    >
       {/* Chord names row */}
       <div className="flex items-center h-8 mb-2 font-sans text-[10px] font-bold text-indigo-600 dark:text-violet-400">
         <span className="w-4 mr-2"></span>
@@ -122,9 +139,9 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                   onDrop={(e) => handleDrop(e, cIdx)}
                   className={`w-6 h-6 flex items-center justify-center transition-all overflow-visible
                     ${activeString === sIdx && activeCol === cIdx ? 'bg-gradient-to-tr from-indigo-600 to-violet-650 dark:from-violet-600 dark:to-indigo-650 text-white font-bold ring-2 ring-indigo-500 dark:ring-violet-500 z-10 shadow-lg shadow-indigo-500/20 dark:shadow-violet-500/35 scale-110 rounded' : 'hover:bg-slate-100 dark:hover:bg-zinc-800/80 rounded'}
-                    ${activeCol === cIdx && !(activeString === sIdx) ? 'bg-indigo-500/5 dark:bg-violet-500/5' : ''}
+                    ${activeCol === cIdx && activeString !== sIdx ? colHighlight : ''}
                     ${dragOverCol === cIdx ? 'bg-indigo-500/10 dark:bg-violet-900/20' : ''}
-                    ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx && playCol !== cIdx ? 'bg-slate-100/40 dark:bg-zinc-800/25' : ''}
+                    ${isPrimaryBeat(cIdx) && activeCol !== cIdx && dragOverCol !== cIdx && playCol !== cIdx ? (isFlow ? 'bg-slate-50/50 dark:bg-zinc-800/20' : 'bg-slate-100/40 dark:bg-zinc-800/25') : ''}
                     ${playCol === cIdx && !(activeString === sIdx && activeCol === cIdx) ? 'bg-emerald-500/20 dark:bg-emerald-500/30 border-x border-emerald-500/30' : ''}
                   `}
                 >
@@ -162,34 +179,69 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
         </div>
       </div>
       
-      <div className="mt-4 flex items-center justify-between px-1">
-        <div className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
-          Measure
-          <div className="flex gap-0.5">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className="w-1 h-1 rounded-full bg-slate-200 dark:bg-zinc-800" />
-            ))}
+      {showMeasureFooter && (
+        <div className="mt-4 flex items-center justify-between px-1">
+          <div className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2">
+            Measure {measureIndex != null ? measureIndex + 1 : ''}
+            <div className="flex gap-0.5">
+              {[0, 1, 2, 3].map(i => (
+                <div key={i} className="w-1 h-1 rounded-full bg-slate-200 dark:bg-zinc-800" />
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                onCopy?.();
+              }}
+              title="Copy Measure"
+              className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
+            >
+              <Copy size={12} />
+            </button>
+            {canDelete && (
+              <button
+                onClick={e => {
+                  e.stopPropagation();
+                  onDelete?.();
+                }}
+                title="Delete Measure"
+                className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onCopy?.(); }}
+      )}
+
+      {isFlow && (
+        <div className="absolute top-2 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-20">
+          <button
+            onClick={e => {
+              e.stopPropagation();
+              onCopy?.();
+            }}
             title="Copy Measure"
-            className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
+            className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md transition-all"
           >
-            <Copy size={12} />
+            <Copy size={11} />
           </button>
           {canDelete && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
+            <button
+              onClick={e => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
               title="Delete Measure"
-              className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
+              className="p-1 text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-all"
             >
-              <Trash2 size={12} />
+              <Trash2 size={11} />
             </button>
           )}
         </div>
-      </div>
+      )}
     </div>
   );
 };

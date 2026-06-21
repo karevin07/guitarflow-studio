@@ -1,5 +1,12 @@
 from rest_framework import serializers
+from django.contrib.auth.models import User
 from .models import GuitarSong, TabSection, CustomChord, GlobalChord
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username')
 
 
 def normalize_time_signature(value):
@@ -48,6 +55,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     )
     importFormat = serializers.CharField(source='import_format', read_only=True)
     fileName = serializers.CharField(source='import_file_name', read_only=True)
+    isLegacy = serializers.SerializerMethodField()
 
     class Meta:
         model = GuitarSong
@@ -61,7 +69,11 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'source',
             'importFormat',
             'fileName',
+            'isLegacy',
         )
+
+    def get_isLegacy(self, obj):
+        return obj.owner_id is None
 
     def get_id(self, obj):
         return str(obj.pk)

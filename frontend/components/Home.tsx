@@ -1,16 +1,23 @@
 
 import React, { useState, useRef } from 'react';
-import { Music, Plus, Search, Clock, FileText, Trash2, Upload, Sun, Moon } from 'lucide-react';
+import { Music, Plus, Search, Clock, FileText, Trash2, Upload, Sun, Moon, LogIn, LogOut, User, ShieldCheck } from 'lucide-react';
 import { LibrarySong, isImportedSong } from '../types';
 import { GP_ACCEPT } from '../services/gpImport';
+import { AuthUser } from '../services/apiClient';
 
 interface HomeProps {
   songs: LibrarySong[];
+  user: AuthUser | null;
+  authLoading: boolean;
+  onOpenAuth: () => void;
+  onLogout: () => void;
   onCreateNew: () => void;
   onOpen: (song: LibrarySong) => void;
   onDelete: (song: LibrarySong) => void;
   onImportGflow: (file: File) => void;
   onImportGp: (file: File) => void;
+  onClaimSong: (song: LibrarySong) => void;
+  onClaimAllLegacy: () => void;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
 }
@@ -31,11 +38,17 @@ const sourceBadge = (song: LibrarySong): { label: string; className: string } =>
 
 const Home: React.FC<HomeProps> = ({
   songs,
+  user,
+  authLoading,
+  onOpenAuth,
+  onLogout,
   onCreateNew,
   onOpen,
   onDelete,
   onImportGflow,
   onImportGp,
+  onClaimSong,
+  onClaimAllLegacy,
   theme,
   onToggleTheme,
 }) => {
@@ -46,6 +59,7 @@ const Home: React.FC<HomeProps> = ({
   const filteredSongs = songs.filter(s =>
     s.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const legacyCount = songs.filter(s => s.isLegacy).length;
 
   const formatDate = (timestamp: number) => {
     return new Intl.DateTimeFormat('en-US', {
@@ -90,8 +104,32 @@ const Home: React.FC<HomeProps> = ({
               {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
             </button>
 
+            {user ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 rounded-2xl">
+                <User size={16} className="text-indigo-600 dark:text-violet-400" />
+                <span className="text-sm font-bold text-slate-700 dark:text-zinc-200">{user.username}</span>
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
+                  title="登出"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenAuth}
+                disabled={authLoading}
+                className="flex items-center gap-2 px-4 py-3 bg-indigo-50 dark:bg-violet-950/40 border border-indigo-200 dark:border-violet-900/40 text-indigo-700 dark:text-violet-300 rounded-2xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-violet-950/60 transition-all"
+              >
+                <LogIn size={18} /> {authLoading ? '載入中…' : '登入'}
+              </button>
+            )}
+
             <button
-              onClick={() => gflowInputRef.current?.click()}
+              onClick={() => (user ? gflowInputRef.current?.click() : onOpenAuth())}
               className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 rounded-2xl font-bold shadow-sm hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 transition-all whitespace-nowrap text-sm"
             >
               <Upload size={18} /> .gflow
@@ -109,7 +147,7 @@ const Home: React.FC<HomeProps> = ({
             />
 
             <button
-              onClick={() => gpInputRef.current?.click()}
+              onClick={() => (user ? gpInputRef.current?.click() : onOpenAuth())}
               className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900/85 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 rounded-2xl font-bold shadow-sm hover:border-amber-500 dark:hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-all whitespace-nowrap text-sm"
             >
               <Upload size={18} /> Guitar Pro
@@ -127,7 +165,7 @@ const Home: React.FC<HomeProps> = ({
             />
 
             <button
-              onClick={onCreateNew}
+              onClick={user ? onCreateNew : onOpenAuth}
               className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/25 hover:opacity-95 transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap"
             >
               <Plus size={20} /> Create New
@@ -137,7 +175,46 @@ const Home: React.FC<HomeProps> = ({
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto w-full p-8 lg:p-12">
-        {filteredSongs.length > 0 ? (
+        {user && legacyCount > 0 && (
+          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl">
+            <div>
+              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
+                有 {legacyCount} 首未認領的舊版樂譜
+              </p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-1">
+                這些樂譜在帳號系統上線前建立，認領後將歸屬於你的帳號。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClaimAllLegacy}
+              className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-colors shrink-0"
+            >
+              <ShieldCheck size={18} /> 全部認領
+            </button>
+          </div>
+        )}
+
+        {!user && !authLoading ? (
+          <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-6">
+            <div className="w-24 h-24 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[32px] flex items-center justify-center text-slate-400 dark:text-zinc-600 shadow-inner">
+              <LogIn size={48} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-zinc-100 mb-2">請先登入</h2>
+              <p className="text-slate-400 dark:text-zinc-500 max-w-sm mx-auto text-sm">
+                登入後即可建立、匯入與管理你的樂譜。每位使用者只能看到自己的歌曲。
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenAuth}
+              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-2xl font-bold shadow-lg hover:opacity-95 transition-all"
+            >
+              <LogIn size={20} /> 登入 / 註冊
+            </button>
+          </div>
+        ) : filteredSongs.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {filteredSongs.map(song => {
               const badge = sourceBadge(song);
@@ -169,6 +246,11 @@ const Home: React.FC<HomeProps> = ({
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase ${badge.className}`}>
                         {badge.label}
                       </span>
+                      {song.isLegacy && (
+                        <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-900/40 uppercase">
+                          Legacy
+                        </span>
+                      )}
                       {!isImportedSong(song) && (
                         <span className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 px-2.5 py-1 rounded-full border border-slate-200 dark:border-zinc-800 uppercase">
                           {song.sections?.length || 0} Sections
@@ -180,7 +262,20 @@ const Home: React.FC<HomeProps> = ({
                         </span>
                       )}
                     </div>
-                    <button
+                    <div className="flex items-center gap-1">
+                      {song.isLegacy && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onClaimSong(song);
+                          }}
+                          className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl transition-all"
+                          title="認領此樂譜"
+                        >
+                          <ShieldCheck size={18} />
+                        </button>
+                      )}
+                      <button
                       onClick={(e) => {
                         e.stopPropagation();
                         const msg = isImportedSong(song)
@@ -193,6 +288,7 @@ const Home: React.FC<HomeProps> = ({
                     >
                       <Trash2 size={18} />
                     </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -211,7 +307,7 @@ const Home: React.FC<HomeProps> = ({
                 {searchTerm ? `We couldn't find any songs matching "${searchTerm}"` : 'Create a new score or import .gflow / Guitar Pro files to get started.'}
               </p>
             </div>
-            {!searchTerm && (
+            {!searchTerm && user && (
               <button
                 onClick={onCreateNew}
                 className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/25 hover:opacity-95 transition-all hover:scale-[1.02]"

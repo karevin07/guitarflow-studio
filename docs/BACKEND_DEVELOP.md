@@ -81,11 +81,20 @@ All routes are prefixed with `/api/`.
 
 | Method | Path | ViewSet | Description |
 | :--- | :--- | :--- | :--- |
-| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create gflow songs (`?source=gflow` or `imported`) |
+| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create gflow songs (`?source=`, `?search=`, paginated) |
 | `GET/PUT/DELETE` | `/songs/{id}/` | `GuitarSongViewSet` | Retrieve / update / delete |
+| `POST` | `/songs/{id}/claim/` | `GuitarSongViewSet` | Claim legacy song (`owner=null`) for current user |
+| `POST` | `/songs/claim-legacy/` | `GuitarSongViewSet` | Bulk-claim all legacy songs for current user |
 | `POST` | `/songs/import-score/` | `GuitarSongViewSet` | Multipart upload of GP / MusicXML file |
 | `GET` | `/songs/{id}/score-file/` | `GuitarSongViewSet` | Download imported score binary |
-| `GET` | `/global-chords/` | `GlobalChordViewSet` | List standard chords (read-only) |
+| `GET` | `/global-chords/` | `GlobalChordViewSet` | List standard chords（公開） |
+| `POST` | `/auth/register/` | `RegisterView` | 註冊 + 回傳 Token |
+| `POST` | `/auth/login/` | `LoginView` | 登入 + 回傳 Token |
+| `POST` | `/auth/logout/` | `LogoutView` | 撤銷 Token（需認證） |
+| `GET` | `/auth/me/` | `MeView` | 目前使用者（需認證） |
+
+**認證**：DRF `TokenAuthentication`；前端以 `Authorization: Token <key>` 呼叫 song API。  
+**隔離**：`GuitarSong.owner` FK；使用者僅能 CRUD 自己的歌曲；`owner=null` 為 legacy 共用資料（登入後可見）。
 
 ### Update strategy
 

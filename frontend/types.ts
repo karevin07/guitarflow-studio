@@ -21,6 +21,7 @@ export interface GuitarSong {
   customChords: ChordDefinition[];
   transposeOffset: number;
   source?: 'gflow';
+  isLegacy?: boolean;
 }
 
 export interface ImportedSong {
@@ -30,6 +31,7 @@ export interface ImportedSong {
   source: 'imported';
   importFormat: string;
   fileName: string;
+  isLegacy?: boolean;
 }
 
 export type LibrarySong = GuitarSong | ImportedSong;
