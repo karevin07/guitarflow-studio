@@ -38,7 +38,7 @@ const EditInspectorPanel: React.FC<EditInspectorPanelProps> = ({
   const [chordOpen, setChordOpen] = useState(true);
 
   return (
-    <aside className="w-80 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-l border-slate-200 dark:border-zinc-800/80 flex flex-col overflow-hidden transition-colors duration-250">
+    <aside className="hidden w-80 flex-col overflow-hidden border-l border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 transition-colors duration-250 xl:flex">
       <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80">
         <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
           Inspector

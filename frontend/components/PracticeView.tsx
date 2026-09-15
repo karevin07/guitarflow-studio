@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ZoomIn, ZoomOut } from 'lucide-react';
+import { Focus, ZoomIn, ZoomOut } from 'lucide-react';
 import ScoreLine from './ScoreLine';
 import { TabSection } from '../types';
 import {
@@ -77,25 +77,43 @@ const PracticeView: React.FC<PracticeViewProps> = ({
     if (idx < PRACTICE_ZOOM_LEVELS.length - 1) setZoom(PRACTICE_ZOOM_LEVELS[idx + 1]);
   };
 
+  const jumpToSection = (sectionId: string) => {
+    onSelectSection?.(sectionId);
+    containerRef.current
+      ?.querySelector<HTMLElement>(`[data-section-id="${sectionId}"]`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto bg-slate-100 dark:bg-zinc-950 transition-colors duration-250"
+      className="flex-1 overflow-y-auto bg-[#f4f4f1] dark:bg-zinc-950 transition-colors duration-250"
     >
-      <div className="sticky top-0 z-10 flex items-center justify-end gap-2 px-8 py-3 bg-slate-100/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-slate-200/60 dark:border-zinc-800/60">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mr-1">
-          Zoom
-        </span>
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-slate-200 bg-white/90 px-3 py-3 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90 sm:px-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+          <span className="mr-1 hidden items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-400 sm:flex"><Focus size={13} /> Jump to</span>
+          {sections.map(section => (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => jumpToSection(section.id)}
+              className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${section.id === activeSectionId ? 'bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950' : 'text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-900'}`}
+            >
+              {section.title}
+            </button>
+          ))}
+        </div>
+        <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={zoomOut}
           disabled={zoom === PRACTICE_ZOOM_LEVELS[0]}
-          className="p-2 rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-indigo-300 dark:hover:border-violet-700 disabled:opacity-30 transition-all"
+          className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-900"
           title="Zoom out"
         >
           <ZoomOut size={16} />
         </button>
-        <div className="flex items-center gap-1">
+        <div className="hidden items-center gap-1 md:flex">
           {PRACTICE_ZOOM_LEVELS.map(level => (
             <button
               key={level}
@@ -115,14 +133,15 @@ const PracticeView: React.FC<PracticeViewProps> = ({
           type="button"
           onClick={zoomIn}
           disabled={zoom === PRACTICE_ZOOM_LEVELS[PRACTICE_ZOOM_LEVELS.length - 1]}
-          className="p-2 rounded-xl border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-indigo-300 dark:hover:border-violet-700 disabled:opacity-30 transition-all"
+          className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-900"
           title="Zoom in"
         >
           <ZoomIn size={16} />
         </button>
+        </div>
       </div>
 
-      <div className="p-8 pb-28">
+      <div className="p-4 pb-28 sm:p-8 sm:pb-28">
         <div
           className="max-w-6xl mx-auto space-y-10 origin-top transition-transform duration-200"
           style={{ transform: `scale(${zoom / 100})`, width: `${10000 / zoom}%` }}
@@ -131,13 +150,13 @@ const PracticeView: React.FC<PracticeViewProps> = ({
             const isActive = section.id === activeSectionId;
             const ts = section.timeSignature ?? [4, 4];
             return (
-              <div key={section.id} className="space-y-4">
+              <div key={section.id} data-section-id={section.id} className="scroll-mt-20 space-y-4">
                 <button
                   onClick={() => onSelectSection?.(section.id)}
-                  className={`w-full text-left px-4 py-3 rounded-2xl border backdrop-blur-md transition-all ${
+                  className={`w-full border-l-2 bg-transparent px-4 py-2 text-left transition-all ${
                     isActive
-                      ? 'bg-white/80 dark:bg-zinc-900/30 border-indigo-500/50 dark:border-violet-500/40 text-indigo-700 dark:text-violet-300'
-                      : 'bg-white/60 dark:bg-zinc-900/15 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-200 hover:border-indigo-500/30 dark:hover:border-violet-500/30'
+                      ? 'border-indigo-500 text-indigo-700 dark:border-violet-400 dark:text-violet-300'
+                      : 'border-slate-300 text-slate-700 hover:border-slate-500 dark:border-zinc-700 dark:text-zinc-200'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-4">

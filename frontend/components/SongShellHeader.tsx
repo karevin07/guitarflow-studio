@@ -1,7 +1,24 @@
 import React from 'react';
 import {
-  Music, Save, Download, Eye, Edit3, Book, Undo2, Redo2,
-  ArrowLeft, FileText, Sun, Moon, Keyboard, CheckCircle2, ChevronDown, LogOut, User,
+  ArrowLeft,
+  BookOpen,
+  Check,
+  ChevronDown,
+  Download,
+  Edit3,
+  Eye,
+  FileMusic,
+  FileText,
+  Guitar,
+  Keyboard,
+  LogOut,
+  Moon,
+  Music2,
+  Redo2,
+  Save,
+  Sun,
+  Undo2,
+  User,
 } from 'lucide-react';
 import { ImportedSong } from '../types';
 import { AuthUser } from '../services/apiClient';
@@ -40,6 +57,55 @@ interface SongShellHeaderProps {
   onLogout?: () => void;
 }
 
+interface ExportMenuProps {
+  open: boolean;
+  onToggle: () => void;
+  onGflow: () => void;
+  onMidi: () => void;
+  onPdf: () => void;
+  onMusicXml: () => void;
+  compact?: boolean;
+}
+
+const ExportMenu: React.FC<ExportMenuProps> = ({
+  open,
+  onToggle,
+  onGflow,
+  onMidi,
+  onPdf,
+  onMusicXml,
+  compact = false,
+}) => (
+  <div className="relative">
+    <button
+      type="button"
+      onClick={onToggle}
+      className="flex h-10 items-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-semibold text-white transition-colors hover:bg-indigo-600 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-violet-400"
+      aria-expanded={open}
+    >
+      <Download size={16} />
+      {!compact && <span>Export</span>}
+      <ChevronDown size={13} />
+    </button>
+    {open && (
+      <div className="absolute right-0 top-12 z-[80] w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+        {[
+          { label: 'GuitarFlow project', detail: '.gflow', icon: FileText, action: onGflow },
+          { label: 'MIDI performance', detail: '.mid', icon: Music2, action: onMidi },
+          { label: 'Printable score', detail: '.pdf', icon: Eye, action: onPdf },
+          { label: 'MusicXML', detail: '.xml', icon: FileMusic, action: onMusicXml },
+        ].map(item => (
+          <button key={item.label} type="button" onClick={item.action} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-zinc-800">
+            <item.icon size={16} className="text-slate-400 dark:text-zinc-500" />
+            <span className="text-xs font-semibold text-slate-700 dark:text-zinc-200">{item.label}</span>
+            <span className="ml-auto font-mono text-[9px] text-slate-400 dark:text-zinc-500">{item.detail}</span>
+          </button>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   isImported,
   viewMode,
@@ -71,206 +137,105 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   user,
   onLogout,
 }) => {
-  const navModes: { mode: ShellViewMode; icon: React.ReactNode; label: string }[] = isImported
+  const modes = isImported
     ? [
-        { mode: 'preview', icon: <Eye size={16} />, label: 'Preview' },
-        { mode: 'practice', icon: <Music size={16} />, label: 'Practice' },
+        { mode: 'preview' as const, label: 'Read', icon: Eye },
+        { mode: 'practice' as const, label: 'Practice', icon: Music2 },
       ]
     : [
-        { mode: 'edit', icon: <Edit3 size={16} />, label: 'Edit' },
-        { mode: 'preview', icon: <Eye size={16} />, label: 'Preview' },
-        { mode: 'practice', icon: <Music size={16} />, label: 'Practice' },
-        { mode: 'library', icon: <Book size={16} />, label: 'Chords' },
+        { mode: 'edit' as const, label: 'Create', icon: Edit3 },
+        { mode: 'preview' as const, label: 'Read', icon: Eye },
+        { mode: 'practice' as const, label: 'Practice', icon: Music2 },
+        { mode: 'library' as const, label: 'Learn', icon: BookOpen },
       ];
 
   return (
-    <header className="sticky top-0 z-50 flex flex-wrap items-center gap-3 border-b border-slate-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur-xl transition-colors duration-200 dark:border-zinc-800 dark:bg-zinc-950/95 sm:px-6 lg:flex-nowrap lg:gap-5">
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 lg:max-w-[340px]">
-        <button
-          onClick={onBack}
-          className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all shrink-0"
-          title="Back to Home"
-        >
-          <ArrowLeft size={20} />
+    <>
+      <aside className="fixed inset-y-0 left-0 z-[60] hidden w-[84px] flex-col items-center border-r border-slate-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-950 lg:flex print:hidden">
+        <button type="button" onClick={onBack} className="group mb-7 grid h-11 w-11 place-items-center rounded-2xl bg-slate-950 text-white transition-all hover:rounded-xl hover:bg-indigo-600 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-violet-400" title="Back to library">
+          <Guitar size={20} />
         </button>
-        <div
-          className={`hidden p-2 rounded-xl text-white shadow-sm shrink-0 sm:block ${
-            isImported
-              ? 'bg-gradient-to-tr from-amber-500 to-orange-600'
-              : 'bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-600 dark:to-fuchsia-600'
-          }`}
-        >
-          <Music size={20} />
-        </div>
-        <div className="min-w-0">
-          <input
-            value={title}
-            onChange={e => onTitleChange(e.target.value)}
-            onBlur={() => onTitleBlur?.()}
-            className="w-full truncate border-none bg-transparent text-base font-bold text-slate-800 outline-none focus:border-b focus:border-indigo-500/50 focus:ring-0 dark:text-zinc-100 dark:focus:border-violet-500/50 sm:text-lg"
-          />
-          {isImported && importedSong && (
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900/40">
-                {importedSong.importFormat.toUpperCase()}
-              </span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500">
-                Backend · Read-only tab
-              </span>
-              {onConvertToGflow && (
-                <button
-                  type="button"
-                  onClick={onConvertToGflow}
-                  disabled={convertToGflowDisabled}
-                  className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-indigo-100 dark:bg-violet-950/40 text-indigo-700 dark:text-violet-300 border border-indigo-200/60 dark:border-violet-900/40 hover:bg-indigo-200/60 dark:hover:bg-violet-950/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  Convert to GFlow
-                </button>
-              )}
-            </div>
+
+        <nav className="flex w-full flex-col items-center gap-2 px-2">
+          {modes.map(item => (
+            <button
+              key={item.mode}
+              type="button"
+              onClick={() => onViewModeChange(item.mode)}
+              className={`group flex w-full flex-col items-center gap-1 rounded-2xl px-2 py-3 text-[9px] font-semibold transition-colors ${viewMode === item.mode ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100'}`}
+            >
+              <item.icon size={18} strokeWidth={viewMode === item.mode ? 2.4 : 1.8} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="mt-auto flex flex-col items-center gap-2">
+          {!isImported && (
+            <button type="button" onClick={onOpenShortcuts} className="grid h-10 w-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100" title="Keyboard shortcuts">
+              <Keyboard size={17} />
+            </button>
+          )}
+          <button type="button" onClick={onToggleTheme} className="grid h-10 w-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-800 dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100" title="Toggle theme">
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+          {user && onLogout && (
+            <button type="button" onClick={onLogout} className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-500 hover:text-red-500 dark:bg-zinc-900 dark:text-zinc-400" title={`Sign out ${user.username}`}>
+              <LogOut size={16} />
+            </button>
           )}
         </div>
-      </div>
+      </aside>
 
-      <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 dark:bg-zinc-900 lg:order-none lg:mx-auto lg:w-auto lg:shrink-0">
-        {navModes.map(({ mode, icon, label }) => (
-          <button
-            key={mode}
-            onClick={() => onViewModeChange(mode)}
-            className={`flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-all sm:text-sm lg:flex-none lg:px-4 ${
-              viewMode === mode
-                ? 'bg-white dark:bg-zinc-900 text-indigo-600 dark:text-violet-400 border border-slate-200/30 dark:border-zinc-800 shadow-sm'
-                : 'text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-300'
-            }`}
-          >
-            {icon}
-            {label}
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-16 items-center gap-3 border-b border-slate-200 bg-white/90 px-3 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/90 sm:px-5 lg:left-[84px] lg:h-[72px] print:hidden">
+        <button type="button" onClick={onBack} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-900 lg:hidden" aria-label="Back to library">
+          <ArrowLeft size={19} />
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <input value={title} onChange={event => onTitleChange(event.target.value)} onBlur={onTitleBlur} className="w-full truncate border-0 bg-transparent p-0 text-base font-bold tracking-tight text-slate-900 outline-none dark:text-zinc-50 sm:text-lg" aria-label="Song title" />
+          <div className="mt-0.5 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-zinc-500">
+            <span>{modes.find(item => item.mode === viewMode)?.label} mode</span>
+            {isImported && importedSong && <><span>·</span><span>{importedSong.importFormat}</span></>}
+            {!isImported && <><span>·</span><button type="button" onClick={onToggleAutosave} className={autosaveEnabled ? 'text-emerald-600 dark:text-emerald-400' : ''}>Autosave {autosaveEnabled ? 'on' : 'off'}</button></>}
+          </div>
+        </div>
+
+        {isImported && onConvertToGflow && (
+          <button type="button" onClick={onConvertToGflow} disabled={convertToGflowDisabled} className="hidden rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-40 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 sm:block">
+            Make editable
+          </button>
+        )}
+
+        {!isImported && (
+          <div className="hidden items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-zinc-900 sm:flex">
+            <button type="button" onClick={onUndo} disabled={!canUndo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="Undo"><Undo2 size={15} /></button>
+            <button type="button" onClick={onRedo} disabled={!canRedo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="Redo"><Redo2 size={15} /></button>
+          </div>
+        )}
+
+        {!isImported && (
+          <button type="button" onClick={onSave} className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:border-indigo-300 hover:text-indigo-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-violet-700 dark:hover:text-violet-400">
+            {saveStatus === 'saved' ? <Check size={16} className="text-emerald-500" /> : <Save size={16} />}
+            <span className="hidden md:inline">{saveStatus === 'saving' ? 'Saving' : saveStatus === 'saved' ? 'Saved' : 'Save'}</span>
+          </button>
+        )}
+
+        {!isImported && <ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} />}
+        {user && <div className="hidden h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600 dark:bg-zinc-900 dark:text-zinc-300 xl:flex"><User size={14} />{user.username}</div>}
+      </header>
+
+      <nav className="fixed bottom-0 left-0 right-0 z-[65] grid border-t border-slate-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden print:hidden" style={{ gridTemplateColumns: `repeat(${modes.length}, minmax(0, 1fr))` }}>
+        {modes.map(item => (
+          <button key={item.mode} type="button" onClick={() => onViewModeChange(item.mode)} className={`flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold ${viewMode === item.mode ? 'text-indigo-600 dark:text-violet-400' : 'text-slate-400 dark:text-zinc-500'}`}>
+            <item.icon size={18} strokeWidth={viewMode === item.mode ? 2.5 : 1.8} />
+            {item.label}
           </button>
         ))}
       </nav>
 
-      <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-        {!isImported && (
-          <div className="hidden items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-zinc-800 dark:bg-zinc-900/50 md:flex">
-            <button
-              onClick={onUndo}
-              disabled={!canUndo}
-              className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg"
-              title="Undo (Ctrl+Z)"
-            >
-              <Undo2 size={18} />
-            </button>
-            <button
-              onClick={onRedo}
-              disabled={!canRedo}
-              className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 transition-all rounded-lg"
-              title="Redo (Ctrl+Y)"
-            >
-              <Undo2 size={18} className="scale-x-[-1]" />
-            </button>
-          </div>
-        )}
-
-        <button
-          onClick={onToggleTheme}
-          className="p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm"
-          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-        >
-          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-
-        {user && onLogout && (
-          <div className="flex items-center gap-1.5 px-2 py-1.5 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-xl">
-            <User size={14} className="text-indigo-600 dark:text-violet-400" />
-            <span className="hidden max-w-[80px] truncate text-xs font-bold text-slate-600 dark:text-zinc-300 xl:block">{user.username}</span>
-            <button
-              type="button"
-              onClick={onLogout}
-              className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
-              title="登出"
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
-        )}
-
-        {!isImported && (
-          <>
-            <button
-              onClick={onOpenShortcuts}
-              className="hidden p-2 text-slate-500 dark:text-zinc-500 hover:text-slate-800 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-xl transition-all shadow-sm xl:block"
-              title="Keyboard shortcuts (?)"
-            >
-              <Keyboard size={18} />
-            </button>
-            <button
-              onClick={onToggleAutosave}
-              className={`hidden px-3 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest border transition-all md:block ${
-                autosaveEnabled
-                  ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400'
-                  : 'bg-slate-100 dark:bg-zinc-900/50 border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-500'
-              }`}
-              title="Toggle autosave (30s)"
-            >
-              Auto {autosaveEnabled ? 'On' : 'Off'}
-            </button>
-            <button
-              onClick={onSave}
-              className={`flex items-center gap-2 rounded-xl border p-2.5 text-sm font-bold transition-all sm:px-4 ${
-                saveStatus === 'saved'
-                  ? 'bg-emerald-50 dark:bg-emerald-900/40 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 shadow-sm'
-              }`}
-            >
-              {saveStatus === 'saving' ? (
-                <div className="w-4 h-4 border-2 border-slate-300 dark:border-zinc-600 border-t-slate-600 dark:border-t-zinc-300 rounded-full animate-spin" />
-              ) : saveStatus === 'saved' ? (
-                <CheckCircle2 size={18} />
-              ) : (
-                <Save size={18} />
-              )}
-              <span className="hidden sm:inline">{saveStatus === 'saving' ? 'Saving…' : saveStatus === 'saved' ? 'Saved' : 'Save'}</span>
-            </button>
-            <div className="relative print:hidden">
-              <button
-                onClick={onToggleExport}
-                className="flex items-center gap-2 rounded-xl bg-indigo-600 p-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 dark:bg-violet-600 dark:hover:bg-violet-500 sm:px-4"
-              >
-                <Download size={18} /> <span className="hidden sm:inline">Export</span> <ChevronDown size={14} />
-              </button>
-              {isExportOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <button
-                    onClick={onExportGflow}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                  >
-                    <FileText size={16} className="text-slate-400 dark:text-zinc-500" /> Export Project (.gflow)
-                  </button>
-                  <button
-                    onClick={onExportMidi}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                  >
-                    <Music size={16} className="text-indigo-600 dark:text-violet-400" /> Export MIDI (.mid)
-                  </button>
-                  <button
-                    onClick={onExportPdf}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                  >
-                    <Eye size={16} className="text-emerald-600 dark:text-emerald-400" /> Export PDF Sheet
-                  </button>
-                  <button
-                    onClick={onExportMusicXml}
-                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors flex items-center gap-2.5"
-                  >
-                    <FileText size={16} className="text-sky-600 dark:text-sky-400" /> Export MusicXML
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-      </div>
-    </header>
+      <div className="h-16 shrink-0 lg:h-[72px]" aria-hidden="true" />
+    </>
   );
 };
 

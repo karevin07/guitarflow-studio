@@ -106,7 +106,7 @@ const EditView: React.FC<EditViewProps> = ({
 
   return (
     <>
-      <aside className="w-64 bg-white/60 dark:bg-zinc-900/40 backdrop-blur-md border-r border-slate-200 dark:border-zinc-800/80 flex flex-col transition-colors duration-250">
+      <aside className="hidden w-60 flex-col border-r border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 transition-colors duration-250 xl:flex">
         <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80 flex items-center justify-between">
           <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
             Sections
@@ -187,6 +187,30 @@ const EditView: React.FC<EditViewProps> = ({
       <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {currentSection && (
           <>
+            <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-2 dark:border-zinc-800 dark:bg-zinc-950 xl:hidden">
+              {sections.map(section => (
+                <button
+                  key={section.id}
+                  type="button"
+                  onClick={() => onSetActiveSection(section.id)}
+                  className={`shrink-0 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
+                    activeSectionId === section.id
+                      ? 'bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950'
+                      : 'text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-900'
+                  }`}
+                >
+                  {section.title}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={onAddSection}
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
+                aria-label="Add section"
+              >
+                <Plus size={15} />
+              </button>
+            </div>
             <EditScoreView
               section={currentSection}
               sections={sections}

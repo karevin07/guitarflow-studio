@@ -1,6 +1,26 @@
-
-import React, { useState, useRef } from 'react';
-import { Music, Plus, Search, Clock, FileText, Trash2, Upload, Sun, Moon, LogIn, LogOut, User, ShieldCheck } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import {
+  ArrowRight,
+  BookOpen,
+  Clock3,
+  FileMusic,
+  FileText,
+  FolderOpen,
+  Guitar,
+  Import,
+  LogIn,
+  LogOut,
+  Moon,
+  MoreHorizontal,
+  Plus,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Sun,
+  Trash2,
+  Upload,
+  User,
+} from 'lucide-react';
 import { LibrarySong, isImportedSong } from '../types';
 import { GP_ACCEPT } from '../services/gpImport';
 import { AuthUser } from '../services/apiClient';
@@ -22,20 +42,6 @@ interface HomeProps {
   onToggleTheme: () => void;
 }
 
-const sourceBadge = (song: LibrarySong): { label: string; className: string } => {
-  if (isImportedSong(song)) {
-    const isXml = song.importFormat === 'xml' || song.importFormat === 'musicxml';
-    return {
-      label: isXml ? 'MusicXML' : 'Guitar Pro',
-      className: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200/60 dark:border-amber-900/40',
-    };
-  }
-  return {
-    label: 'GFlow',
-    className: 'bg-indigo-100 dark:bg-violet-950/40 text-indigo-700 dark:text-violet-400 border-indigo-200/60 dark:border-violet-900/40',
-  };
-};
-
 const Home: React.FC<HomeProps> = ({
   songs,
   user,
@@ -52,287 +58,103 @@ const Home: React.FC<HomeProps> = ({
   theme,
   onToggleTheme,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const gflowInputRef = useRef<HTMLInputElement>(null);
-  const gpInputRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState('');
+  const gflowInput = useRef<HTMLInputElement>(null);
+  const gpInput = useRef<HTMLInputElement>(null);
+  const filteredSongs = songs.filter(song => song.title.toLowerCase().includes(search.toLowerCase()));
+  const legacyCount = songs.filter(song => song.isLegacy).length;
 
-  const filteredSongs = songs.filter(s =>
-    s.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const legacyCount = songs.filter(s => s.isLegacy).length;
-
-  const formatDate = (timestamp: number) => {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(new Date(timestamp));
+  const openPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
+    if (!user) return onOpenAuth();
+    ref.current?.click();
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f6f3] dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 flex flex-col selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-250">
-      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-4 backdrop-blur-xl transition-colors duration-250 dark:border-zinc-800 dark:bg-zinc-950/90 sm:px-6">
-        <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-indigo-600 p-2.5 text-white shadow-sm dark:bg-violet-600">
-              <Music size={24} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">GuitarFlow</h1>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-zinc-500">Practice workspace</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#f4f4f1] text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-slate-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 lg:flex">
+        <div className="flex items-center gap-3 px-2 py-1">
+          <div className="grid h-10 w-10 place-items-center rounded-2xl bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950"><Guitar size={20} /></div>
+          <div><div className="font-bold tracking-tight">GuitarFlow</div><div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-400">Studio</div></div>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative order-last w-full lg:order-none lg:w-72">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" size={18} />
-              <input
-                placeholder="Search songs..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-100 py-2.5 pl-11 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-500 dark:focus:ring-violet-500/30"
-              />
+        <nav className="mt-10 space-y-1">
+          <button type="button" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300"><FolderOpen size={17} /> Library</button>
+          <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><Clock3 size={17} /> Recently played</button>
+          <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><BookOpen size={17} /> Chord lab</button>
+        </nav>
+
+        <div className="mt-8 border-t border-slate-200 pt-6 dark:border-zinc-800">
+          <div className="px-3 text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Import</div>
+          <button type="button" onClick={() => openPicker(gflowInput)} className="mt-3 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><Upload size={17} /> GuitarFlow file</button>
+          <button type="button" onClick={() => openPicker(gpInput)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><FileMusic size={17} /> Guitar Pro / XML</button>
+        </div>
+
+        <div className="mt-auto space-y-2">
+          <button type="button" onClick={onToggleTheme} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-900">{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />} {theme === 'dark' ? 'Light appearance' : 'Dark appearance'}</button>
+          {user && <div className="flex items-center gap-3 rounded-2xl bg-slate-100 p-3 dark:bg-zinc-900"><div className="grid h-8 w-8 place-items-center rounded-full bg-white text-slate-500 dark:bg-zinc-800 dark:text-zinc-300"><User size={15} /></div><span className="min-w-0 flex-1 truncate text-xs font-semibold">{user.username}</span><button type="button" onClick={onLogout} className="text-slate-400 hover:text-red-500" aria-label="Sign out"><LogOut size={16} /></button></div>}
+        </div>
+      </aside>
+
+      <main className="min-h-screen lg:ml-64">
+        <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 lg:hidden">
+          <div className="flex items-center gap-2.5"><div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950"><Guitar size={18} /></div><span className="font-bold">GuitarFlow</span></div>
+          <div className="flex items-center gap-2"><button type="button" onClick={onToggleTheme} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400">{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>{user ? <button type="button" onClick={onLogout} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400"><LogOut size={16} /></button> : <button type="button" onClick={onOpenAuth} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-950">Sign in</button>}</div>
+        </header>
+
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-7 lg:px-10 lg:py-12">
+          <section className="relative overflow-hidden rounded-[32px] bg-slate-950 px-6 py-9 text-white shadow-2xl shadow-slate-300/40 dark:bg-zinc-900 dark:shadow-black/30 sm:px-10 sm:py-11">
+            <div className="absolute -right-12 -top-20 h-64 w-64 rounded-full bg-indigo-500/20 blur-3xl" />
+            <div className="absolute -bottom-32 right-48 h-64 w-64 rounded-full bg-violet-500/15 blur-3xl" />
+            <div className="relative max-w-2xl">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300"><Sparkles size={13} className="text-violet-300" /> Adaptive guitar workspace</div>
+              <h1 className="text-3xl font-bold leading-tight tracking-[-0.04em] sm:text-5xl">Turn an idea into something you can play.</h1>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">Write tabs, import scores, transpose instantly, and practice with fingerings that adapt to the song.</p>
+              <div className="mt-7 flex flex-wrap gap-3">
+                <button type="button" onClick={user ? onCreateNew : onOpenAuth} className="flex items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition-transform hover:-translate-y-0.5"><Plus size={17} /> New score</button>
+                <button type="button" onClick={() => openPicker(gpInput)} className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10"><Import size={17} /> Import music</button>
+              </div>
+            </div>
+          </section>
+
+          <input ref={gflowInput} type="file" accept=".gflow,.json,application/json" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) onImportGflow(file); event.target.value = ''; }} />
+          <input ref={gpInput} type="file" accept={GP_ACCEPT} className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) onImportGp(file); event.target.value = ''; }} />
+
+          {user && legacyCount > 0 && (
+            <div className="mt-6 flex flex-col justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30 sm:flex-row sm:items-center">
+              <div><div className="text-sm font-semibold text-amber-900 dark:text-amber-200">{legacyCount} legacy scores are ready to claim</div><div className="mt-1 text-xs text-amber-700 dark:text-amber-400">Move scores created before accounts into your library.</div></div>
+              <button type="button" onClick={onClaimAllLegacy} className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-semibold text-white"><ShieldCheck size={15} /> Claim all</button>
+            </div>
+          )}
+
+          <section className="mt-12">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div><div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Your collection</div><h2 className="mt-1 text-2xl font-bold tracking-tight">Pick up where you left off</h2></div>
+              <label className="relative block w-full sm:w-72"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search your scores" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-400 dark:border-zinc-800 dark:bg-zinc-900 dark:focus:border-violet-700" /></label>
             </div>
 
-            <button
-              onClick={onToggleTheme}
-              className="p-3 text-slate-500 dark:text-zinc-500 hover:text-slate-855 dark:hover:text-zinc-200 bg-slate-100 dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 hover:bg-slate-200/50 dark:hover:bg-zinc-800 rounded-2xl transition-all shadow-sm flex items-center justify-center"
-              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
-            {user ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-slate-100 dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 rounded-2xl">
-                <User size={16} className="text-indigo-600 dark:text-violet-400" />
-                <span className="text-sm font-bold text-slate-700 dark:text-zinc-200">{user.username}</span>
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg transition-colors"
-                  title="登出"
-                >
-                  <LogOut size={16} />
-                </button>
+            {!user && !authLoading ? (
+              <div className="mt-6 flex min-h-64 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white/50 p-8 text-center dark:border-zinc-800 dark:bg-zinc-900/30"><LogIn size={24} className="text-slate-400" /><h3 className="mt-4 font-semibold">Sign in to open your library</h3><p className="mt-2 max-w-sm text-sm leading-6 text-slate-500 dark:text-zinc-400">Your tabs, imported scores, and practice history stay connected to your account.</p><button type="button" onClick={onOpenAuth} className="mt-5 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white dark:bg-violet-600">Sign in or create account</button></div>
+            ) : filteredSongs.length > 0 ? (
+              <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/45">
+                {filteredSongs.map((song, index) => {
+                  const imported = isImportedSong(song);
+                  return (
+                    <article key={song.id} onClick={() => onOpen(song)} className={`group flex cursor-pointer items-center gap-4 p-4 transition-colors hover:bg-slate-50 dark:hover:bg-zinc-900 sm:p-5 ${index > 0 ? 'border-t border-slate-100 dark:border-zinc-800' : ''}`}>
+                      <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${imported ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400' : 'bg-indigo-50 text-indigo-600 dark:bg-violet-950/50 dark:text-violet-400'}`}>{imported ? <FileMusic size={20} /> : <FileText size={20} />}</div>
+                      <div className="min-w-0 flex-1"><h3 className="truncate text-sm font-semibold text-slate-900 group-hover:text-indigo-600 dark:text-zinc-100 dark:group-hover:text-violet-400 sm:text-base">{song.title}</h3><div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-medium uppercase tracking-wider text-slate-400 dark:text-zinc-500"><span>{imported ? song.importFormat : 'GFlow'}</span><span>·</span><span>{new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(song.lastModified))}</span>{!imported && <><span>·</span><span>{song.sections.length} sections</span></>}{song.isLegacy && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700 dark:bg-amber-950 dark:text-amber-300">Legacy</span>}</div></div>
+                      {song.isLegacy && <button type="button" onClick={event => { event.stopPropagation(); onClaimSong(song); }} className="hidden rounded-xl p-2 text-amber-500 hover:bg-amber-50 sm:block" title="Claim score"><ShieldCheck size={17} /></button>}
+                      <button type="button" onClick={event => { event.stopPropagation(); if (confirm(`Delete “${song.title}”?`)) onDelete(song); }} className="rounded-xl p-2 text-slate-300 opacity-100 hover:bg-red-50 hover:text-red-500 sm:opacity-0 sm:group-hover:opacity-100 dark:text-zinc-700 dark:hover:bg-red-950/30" title="Delete"><Trash2 size={17} /></button>
+                      <ArrowRight size={17} className="hidden text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-indigo-500 sm:block dark:text-zinc-700" />
+                    </article>
+                  );
+                })}
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={onOpenAuth}
-                disabled={authLoading}
-                className="flex items-center gap-2 px-4 py-3 bg-indigo-50 dark:bg-violet-950/40 border border-indigo-200 dark:border-violet-900/40 text-indigo-700 dark:text-violet-300 rounded-2xl font-bold text-sm hover:bg-indigo-100 dark:hover:bg-violet-950/60 transition-all"
-              >
-                <LogIn size={18} /> {authLoading ? '載入中…' : '登入'}
-              </button>
+              <div className="mt-6 flex min-h-56 flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 p-8 text-center dark:border-zinc-800"><MoreHorizontal size={24} className="text-slate-400" /><h3 className="mt-3 font-semibold">{search ? 'No matching scores' : 'Your library is ready'}</h3><p className="mt-1 text-sm text-slate-500 dark:text-zinc-400">{search ? 'Try another title.' : 'Create or import your first piece.'}</p></div>
             )}
-
-            <button
-              onClick={() => (user ? gflowInputRef.current?.click() : onOpenAuth())}
-              className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 text-slate-700 dark:text-zinc-300 rounded-2xl font-bold shadow-sm hover:border-indigo-500 dark:hover:border-violet-500 hover:text-indigo-600 dark:hover:text-violet-400 transition-all whitespace-nowrap text-sm"
-            >
-              <Upload size={18} /> .gflow
-            </button>
-            <input
-              ref={gflowInputRef}
-              type="file"
-              accept=".gflow,.json,application/json"
-              className="hidden"
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) onImportGflow(file);
-                e.target.value = '';
-              }}
-            />
-
-            <button
-              onClick={() => (user ? gpInputRef.current?.click() : onOpenAuth())}
-              className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900/85 border border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300 rounded-2xl font-bold shadow-sm hover:border-amber-500 dark:hover:border-amber-500 hover:text-amber-600 dark:hover:text-amber-400 transition-all whitespace-nowrap text-sm"
-            >
-              <Upload size={18} /> Guitar Pro
-            </button>
-            <input
-              ref={gpInputRef}
-              type="file"
-              accept={GP_ACCEPT}
-              className="hidden"
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) onImportGp(file);
-                e.target.value = '';
-              }}
-            />
-
-            <button
-              onClick={user ? onCreateNew : onOpenAuth}
-              className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 active:scale-95 dark:bg-violet-600 dark:hover:bg-violet-500"
-            >
-              <Plus size={20} /> Create New
-            </button>
-          </div>
+          </section>
         </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:py-12">
-        {user && legacyCount > 0 && (
-          <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl">
-            <div>
-              <p className="text-sm font-bold text-amber-800 dark:text-amber-300">
-                有 {legacyCount} 首未認領的舊版樂譜
-              </p>
-              <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-1">
-                這些樂譜在帳號系統上線前建立，認領後將歸屬於你的帳號。
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClaimAllLegacy}
-              className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-bold transition-colors shrink-0"
-            >
-              <ShieldCheck size={18} /> 全部認領
-            </button>
-          </div>
-        )}
-
-        {!user && !authLoading ? (
-          <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-6">
-            <div className="w-24 h-24 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[32px] flex items-center justify-center text-slate-400 dark:text-zinc-600 shadow-inner">
-              <LogIn size={48} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-zinc-100 mb-2">請先登入</h2>
-              <p className="text-slate-400 dark:text-zinc-500 max-w-sm mx-auto text-sm">
-                登入後即可建立、匯入與管理你的樂譜。每位使用者只能看到自己的歌曲。
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onOpenAuth}
-              className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white rounded-2xl font-bold shadow-lg hover:opacity-95 transition-all"
-            >
-              <LogIn size={20} /> 登入 / 註冊
-            </button>
-          </div>
-        ) : filteredSongs.length > 0 ? (
-          <>
-          <div className="mb-6 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Your collection</p>
-              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">Recently edited</h2>
-            </div>
-            <span className="text-xs font-medium text-slate-400 dark:text-zinc-500">{filteredSongs.length} scores</span>
-          </div>
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            {filteredSongs.map(song => {
-              const badge = sourceBadge(song);
-              return (
-                <div
-                  key={song.id}
-                  onClick={() => onOpen(song)}
-                  className="group grid cursor-pointer grid-cols-[64px_minmax(0,1fr)] gap-x-4 rounded-2xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg hover:shadow-slate-200/40 dark:border-zinc-800 dark:bg-zinc-900/55 dark:hover:border-violet-800 dark:hover:shadow-black/20"
-                >
-                  <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 transition-colors group-hover:bg-indigo-50 dark:border-zinc-800 dark:bg-zinc-950/80 dark:group-hover:bg-violet-950/30">
-                    <FileText size={26} className="text-slate-300 transition-colors group-hover:text-indigo-500 dark:text-zinc-700 dark:group-hover:text-violet-400" />
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 dark:bg-black/20">
-                      <div className="translate-y-2 rounded-full bg-indigo-600 p-2 text-white shadow-lg transition-all duration-300 group-hover:translate-y-0 dark:bg-violet-600">
-                        <Music size={16} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex-1">
-                    <h3 className="mb-1 truncate text-base font-bold text-slate-800 transition-colors group-hover:text-indigo-600 dark:text-zinc-100 group-hover:dark:text-violet-400">{song.title}</h3>
-                    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
-                      <Clock size={14} />
-                      {formatDate(song.lastModified)}
-                    </div>
-                  </div>
-
-                  <div className="col-span-2 mt-4 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-zinc-800/50">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase ${badge.className}`}>
-                        {badge.label}
-                      </span>
-                      {song.isLegacy && (
-                        <span className="text-[10px] font-bold bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-900/40 uppercase">
-                          Legacy
-                        </span>
-                      )}
-                      {!isImportedSong(song) && (
-                        <span className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 px-2.5 py-1 rounded-full border border-slate-200 dark:border-zinc-800 uppercase">
-                          {song.sections?.length || 0} Sections
-                        </span>
-                      )}
-                      {isImportedSong(song) && (
-                        <span className="text-[10px] font-bold bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 px-2.5 py-1 rounded-full border border-slate-200 dark:border-zinc-800 uppercase">
-                          {song.importFormat}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {song.isLegacy && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onClaimSong(song);
-                          }}
-                          className="p-2 text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-xl transition-all"
-                          title="認領此樂譜"
-                        >
-                          <ShieldCheck size={18} />
-                        </button>
-                      )}
-                      <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const msg = isImportedSong(song)
-                          ? 'Remove this imported score from this browser?'
-                          : 'Delete this song forever?';
-                        if (confirm(msg)) onDelete(song);
-                      }}
-                      className="p-2 text-slate-400 dark:text-zinc-650 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all"
-                      title="Delete Song"
-                    >
-                      <Trash2 size={18} />
-                    </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          </>
-        ) : (
-          <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-6">
-            <div className="w-24 h-24 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[32px] flex items-center justify-center text-slate-400 dark:text-zinc-600 shadow-inner">
-              <Music size={48} className="text-slate-400 dark:text-zinc-600" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-zinc-100 mb-2">
-                {searchTerm ? 'No matches found' : 'Your library is empty'}
-              </h2>
-              <p className="text-slate-400 dark:text-zinc-500 max-w-xs mx-auto text-sm">
-                {searchTerm ? `We couldn't find any songs matching "${searchTerm}"` : 'Create a new score or import .gflow / Guitar Pro files to get started.'}
-              </p>
-            </div>
-            {!searchTerm && user && (
-              <button
-                onClick={onCreateNew}
-                className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/25 hover:opacity-95 transition-all hover:scale-[1.02]"
-              >
-                <Plus size={20} /> New Score
-              </button>
-            )}
-          </div>
-        )}
       </main>
-
-      <footer className="border-t border-slate-200 py-8 text-center dark:border-zinc-900">
-        <p className="text-xs font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-widest">
-          GuitarFlow Studio &bull; Crafting the future of guitar notation
-        </p>
-      </footer>
     </div>
   );
 };

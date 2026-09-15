@@ -124,16 +124,16 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
   };
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-slate-100 dark:bg-zinc-950 transition-colors duration-250">
-      <div className="p-6 pb-4 border-b border-slate-200/60 dark:border-zinc-800/60 bg-slate-100/90 dark:bg-zinc-950/90 backdrop-blur-md sticky top-0 z-10">
+    <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-[#f4f4f1] dark:bg-zinc-950 transition-colors duration-250">
+      <div className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 p-4 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/90 sm:p-6 sm:pb-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-6 flex-wrap">
             <input
               value={section.title}
               onChange={e => onUpdateTitle(e.target.value)}
-              className="text-2xl font-bold text-slate-800 dark:text-zinc-100 border-b-2 border-transparent focus:border-indigo-500 dark:focus:border-violet-500 outline-none bg-transparent transition-all"
+              className="min-w-0 max-w-full flex-1 bg-transparent text-xl font-bold tracking-tight text-slate-900 outline-none border-b-2 border-transparent focus:border-indigo-500 dark:text-zinc-100 dark:focus:border-violet-500 sm:text-2xl"
             />
-            <div className="h-8 w-px bg-slate-200 dark:bg-zinc-800" />
+            <div className="hidden h-8 w-px bg-slate-200 dark:bg-zinc-800 sm:block" />
             <div className="flex items-center gap-2 bg-white/70 dark:bg-zinc-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
               <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
                 Time
@@ -197,7 +197,7 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
         onOpenHelp={onOpenHelp}
       />
 
-      <div className="flex-1 overflow-y-auto p-6 pb-4 min-h-0">
+      <div className="flex-1 overflow-y-auto p-3 pb-4 min-h-0 sm:p-6 sm:pb-4">
         <div
           ref={scrollRef}
           onWheel={handleWheel}

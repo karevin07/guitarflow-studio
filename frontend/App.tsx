@@ -442,7 +442,7 @@ const App: React.FC = () => {
 
   // ─── Song shell (gflow + imported) ─────────────────────────────────────────
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200">
+    <div className="h-screen overflow-hidden flex flex-col bg-[#f4f4f1] dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200 lg:pl-[84px] print:h-auto print:overflow-visible print:pl-0">
       <SongShellHeader
         isImported={isImported}
         viewMode={viewMode}
@@ -481,7 +481,7 @@ const App: React.FC = () => {
       />
 
       {/* ─ Main ───────────────────────────────────────────────────────────── */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex-1 flex overflow-hidden pb-16 lg:pb-0">
         {isImported && activeImportedSong && (viewMode === 'preview' || viewMode === 'practice') && (
           <ImportedScorePanel
             songId={activeImportedSong.id}
