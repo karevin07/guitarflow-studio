@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d guitarflow"]
@@ -22,7 +22,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "8000:8000"
+      - "${APP_BIND_HOST:-127.0.0.1}:8000:8000"
     volumes:
       - ./backend:/app
       - /app/.venv
@@ -36,12 +36,14 @@ services:
       - DB_PASSWORD=postgres
       - DB_HOST=db
       - DB_PORT=5432
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      - DJANGO_CORS_ORIGINS=${DJANGO_CORS_ORIGINS:-http://localhost:3003,http://localhost:5173,http://127.0.0.1:3003,http://127.0.0.1:5173}
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/songs/')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/global-chords/')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -52,7 +54,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3003:3000"
+      - "${APP_BIND_HOST:-127.0.0.1}:3003:3000"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api}
+      - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost}
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -64,4 +69,3 @@ services:
 volumes:
   postgres_data:
   media_data:
-

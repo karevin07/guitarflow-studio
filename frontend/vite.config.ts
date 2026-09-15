@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: (env.VITE_ALLOWED_HOSTS || 'localhost,127.0.0.1')
+          .split(',')
+          .map(host => host.trim())
+          .filter(Boolean),
       },
       plugins: [react(), alphaTab()],
       define: {
