@@ -41,5 +41,7 @@ export const isImportedSong = (song: LibrarySong): song is ImportedSong =>
 
 export interface ChordDefinition {
   name: string;
-  frets: (number | null)[]; // e, B, G, D, A, E order or standard
+  frets: (number | null)[]; // high e, B, G, D, A, low E; null = muted
+  fingers?: number[];
+  barres?: Array<{ fret: number; fromString: number; toString: number }>;
 }

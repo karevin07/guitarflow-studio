@@ -6,9 +6,10 @@ interface ChordDiagramProps {
   chord: ChordDefinition;
   size?: number;
   theme?: 'light' | 'dark';
+  variant?: 'card' | 'bare';
 }
 
-const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme }) => {
+const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme, variant = 'card' }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,7 +66,7 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme })
 
     chart.chord({
       fingers,
-      barres: [],
+      barres: chord.barres ?? [],
     });
 
     try {
@@ -78,20 +79,24 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme })
   const isDark = theme === 'dark' || document.documentElement.classList.contains('dark');
 
   return (
-    <div className="flex flex-col items-center bg-white dark:bg-zinc-900/40 backdrop-blur-sm p-5 rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 h-full overflow-hidden shadow-md dark:shadow-2xl w-full transition-all">
-      <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+    <div className={`flex flex-col items-center h-full overflow-hidden w-full transition-all ${
+      variant === 'card'
+        ? 'bg-white dark:bg-zinc-900/40 backdrop-blur-sm p-5 rounded-3xl border border-slate-200/80 dark:border-zinc-800/80 shadow-md dark:shadow-2xl'
+        : 'bg-transparent'
+    }`}>
+      {variant === 'card' && <div className="flex items-center gap-2 mb-2 flex-shrink-0">
         <h4 className="text-xl font-bold text-slate-800 dark:text-zinc-100 tracking-tight leading-none truncate max-w-[120px]">{chord.name}</h4>
         {chord.name === 'Custom' && <span className="text-[9px] bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-250/50 dark:border-zinc-700/50 px-1.5 py-0.5 rounded-full font-bold">DETECTED</span>}
-      </div>
+      </div>}
       
       <div className="flex-1 flex items-center justify-center min-h-0 w-full relative pb-1">
         <div ref={containerRef} style={{ width: `${size}px`, height: `${size}px` }} className="overflow-hidden flex items-center justify-center svguitar-container" />
       </div>
       
-      <div className="mt-3 pt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2 flex-shrink-0 border-t border-slate-100 dark:border-zinc-800/80 w-full justify-center">
+      {variant === 'card' && <div className="mt-3 pt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2 flex-shrink-0 border-t border-slate-100 dark:border-zinc-800/80 w-full justify-center">
         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 dark:bg-violet-500/50 animate-pulse" />
         Standard Tuning
-      </div>
+      </div>}
     </div>
   );
 };

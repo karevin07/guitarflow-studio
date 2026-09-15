@@ -547,7 +547,7 @@ const App: React.FC = () => {
 
         {/* ── Preview view ─────────────────────────────────────────────────── */}
         {!isImported && viewMode === 'preview' && (
-          <div className="flex-1 p-8 overflow-y-auto bg-slate-100 dark:bg-zinc-950 transition-colors duration-250">
+          <div className="flex-1 overflow-y-auto bg-[#f6f6f3] dark:bg-zinc-950 transition-colors duration-250">
             <SongPreview
               sections={editor.sections}
               customChords={editor.customChords}

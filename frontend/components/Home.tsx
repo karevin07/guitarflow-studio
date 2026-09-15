@@ -72,27 +72,27 @@ const Home: React.FC<HomeProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 flex flex-col selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-250">
-      <header className="bg-white/80 dark:bg-zinc-900/50 backdrop-blur-xl border-b border-slate-200 dark:border-zinc-800/80 px-8 py-6 sticky top-0 z-40 transition-colors duration-250">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="min-h-screen bg-[#f6f6f3] dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 flex flex-col selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-250">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/90 px-4 py-4 backdrop-blur-xl transition-colors duration-250 dark:border-zinc-800 dark:bg-zinc-950/90 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="bg-gradient-to-tr from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 p-3 rounded-2xl text-white shadow-xl shadow-indigo-500/10 dark:shadow-violet-500/20">
-              <Music size={32} />
+            <div className="rounded-xl bg-indigo-600 p-2.5 text-white shadow-sm dark:bg-violet-600">
+              <Music size={24} />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-violet-400 dark:via-fuchsia-400 dark:to-indigo-400 bg-clip-text text-transparent">GuitarFlow</h1>
-              <p className="text-xs font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">My Song Library</p>
+              <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">GuitarFlow</h1>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-zinc-500">Practice workspace</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 md:w-80 min-w-[200px]">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative order-last w-full lg:order-none lg:w-72">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500" size={18} />
               <input
-                placeholder="Search my scores..."
+                placeholder="Search songs..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-6 py-3 bg-slate-100 dark:bg-zinc-900/85 border border-slate-200 dark:border-zinc-800 rounded-2xl text-slate-800 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-violet-500/30 focus:border-indigo-500 dark:focus:border-violet-500 transition-all font-medium"
+                className="w-full rounded-xl border border-slate-200 bg-slate-100 py-2.5 pl-11 pr-4 text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-violet-500 dark:focus:ring-violet-500/30"
               />
             </div>
 
@@ -166,7 +166,7 @@ const Home: React.FC<HomeProps> = ({
 
             <button
               onClick={user ? onCreateNew : onOpenAuth}
-              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 dark:from-violet-600 dark:via-fuchsia-600 dark:to-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-indigo-500/15 dark:shadow-violet-500/25 hover:opacity-95 transition-all hover:scale-[1.02] active:scale-95 whitespace-nowrap"
+              className="flex items-center gap-2 whitespace-nowrap rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-indigo-700 active:scale-95 dark:bg-violet-600 dark:hover:bg-violet-500"
             >
               <Plus size={20} /> Create New
             </button>
@@ -174,7 +174,7 @@ const Home: React.FC<HomeProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 max-w-7xl mx-auto w-full p-8 lg:p-12">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:py-12">
         {user && legacyCount > 0 && (
           <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl">
             <div>
@@ -215,33 +215,41 @@ const Home: React.FC<HomeProps> = ({
             </button>
           </div>
         ) : filteredSongs.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <>
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Your collection</p>
+              <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">Recently edited</h2>
+            </div>
+            <span className="text-xs font-medium text-slate-400 dark:text-zinc-500">{filteredSongs.length} scores</span>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {filteredSongs.map(song => {
               const badge = sourceBadge(song);
               return (
                 <div
                   key={song.id}
                   onClick={() => onOpen(song)}
-                  className="group bg-white dark:bg-zinc-900/40 backdrop-blur-sm border border-slate-200 dark:border-zinc-800/80 rounded-[28px] p-6 hover:border-indigo-500/55 dark:hover:border-violet-500/60 hover:shadow-xl hover:shadow-indigo-500/5 dark:hover:shadow-violet-500/10 hover:bg-slate-50/50 dark:hover:bg-zinc-900/80 transition-all duration-300 cursor-pointer flex flex-col animate-in zoom-in-95 duration-300"
+                  className="group grid cursor-pointer grid-cols-[64px_minmax(0,1fr)] gap-x-4 rounded-2xl border border-slate-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-lg hover:shadow-slate-200/40 dark:border-zinc-800 dark:bg-zinc-900/55 dark:hover:border-violet-800 dark:hover:shadow-black/20"
                 >
-                  <div className="w-full h-40 bg-slate-50 dark:bg-zinc-950/80 rounded-2xl mb-6 flex items-center justify-center group-hover:bg-slate-100/60 group-hover:dark:bg-zinc-900 transition-colors border border-slate-200/60 dark:border-zinc-800 relative overflow-hidden">
-                    <FileText size={48} className="text-slate-300 dark:text-zinc-800 group-hover:text-indigo-600/40 group-hover:dark:text-violet-400/40 transition-colors" />
+                  <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl border border-slate-200/60 bg-slate-50 transition-colors group-hover:bg-indigo-50 dark:border-zinc-800 dark:bg-zinc-950/80 dark:group-hover:bg-violet-950/30">
+                    <FileText size={26} className="text-slate-300 transition-colors group-hover:text-indigo-500 dark:text-zinc-700 dark:group-hover:text-violet-400" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 dark:bg-black/20">
-                      <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-600 dark:to-fuchsia-600 text-white p-3.5 rounded-full shadow-lg transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-                        <Music size={22} />
+                      <div className="translate-y-2 rounded-full bg-indigo-600 p-2 text-white shadow-lg transition-all duration-300 group-hover:translate-y-0 dark:bg-violet-600">
+                        <Music size={16} />
                       </div>
                     </div>
                   </div>
 
                   <div className="flex-1">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-zinc-100 mb-2 truncate group-hover:text-indigo-600 group-hover:dark:text-violet-400 transition-colors">{song.title}</h3>
-                    <div className="flex items-center gap-2 text-slate-400 dark:text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-4">
+                    <h3 className="mb-1 truncate text-base font-bold text-slate-800 transition-colors group-hover:text-indigo-600 dark:text-zinc-100 group-hover:dark:text-violet-400">{song.title}</h3>
+                    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500">
                       <Clock size={14} />
                       {formatDate(song.lastModified)}
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100 dark:border-zinc-800/50 flex items-center justify-between">
+                  <div className="col-span-2 mt-4 flex items-center justify-between border-t border-slate-100 pt-3 dark:border-zinc-800/50">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border uppercase ${badge.className}`}>
                         {badge.label}
@@ -294,6 +302,7 @@ const Home: React.FC<HomeProps> = ({
               );
             })}
           </div>
+          </>
         ) : (
           <div className="h-[60vh] flex flex-col items-center justify-center text-center space-y-6">
             <div className="w-24 h-24 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[32px] flex items-center justify-center text-slate-400 dark:text-zinc-600 shadow-inner">
@@ -319,7 +328,7 @@ const Home: React.FC<HomeProps> = ({
         )}
       </main>
 
-      <footer className="py-12 border-t border-slate-200 dark:border-zinc-900 text-center">
+      <footer className="border-t border-slate-200 py-8 text-center dark:border-zinc-900">
         <p className="text-xs font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-widest">
           GuitarFlow Studio &bull; Crafting the future of guitar notation
         </p>

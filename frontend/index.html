@@ -11,20 +11,35 @@
       darkMode: 'class'
     }
   </script>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      color-scheme: light;
+    }
+    html.dark {
+      color-scheme: dark;
+    }
     body {
-      font-family: 'Outfit', sans-serif;
-      background-color: #f8fafc;
-      color: #1f2937;
+      margin: 0;
+      font-family: 'Inter', 'Noto Sans TC', sans-serif;
+      background-color: #f6f6f3;
+      color: #202124;
+      -webkit-font-smoothing: antialiased;
       transition: background-color 0.2s ease, color 0.2s ease;
     }
     html.dark body {
-      background-color: #09090b;
+      background-color: #0c0c0d;
       color: #f4f4f5;
     }
     .font-mono {
       font-family: 'JetBrains Mono', monospace;
+    }
+    button, input, select {
+      font: inherit;
+    }
+    button:focus-visible, input:focus-visible, select:focus-visible {
+      outline: 2px solid #6366f1;
+      outline-offset: 2px;
     }
     /* Custom scrollbar */
     ::-webkit-scrollbar {
@@ -32,7 +47,7 @@
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: #18181b;
+      background: transparent;
     }
     ::-webkit-scrollbar-thumb {
       background: #3f3f46;
