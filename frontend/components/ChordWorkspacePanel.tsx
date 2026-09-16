@@ -35,6 +35,25 @@ const ChordWorkspacePanel: React.FC<ChordWorkspacePanelProps> = ({
     : [];
   const difficulty = !shape || shape.score >= 125 ? 'Easy' : shape.score >= 105 ? 'Medium' : 'Advanced';
   const fretText = shape?.frets.map(fret => fret ?? 'X').reverse().join(' ') ?? '';
+  const voicingLabel = (index: number) => {
+    const candidate = result?.shapes[index];
+    if (!candidate) return `Shape ${index + 1}`;
+    const kind = candidate.tags.includes('open')
+      ? 'Open'
+      : candidate.tags.includes('barre')
+        ? 'Barre'
+        : candidate.tags.includes('triad')
+          ? 'Triad'
+          : null;
+    if (kind) {
+      const occurrence = result?.shapes
+        .slice(0, index)
+        .filter(item => item.tags.includes(kind.toLowerCase() as 'open' | 'barre' | 'triad')).length ?? 0;
+      return occurrence === 0 ? kind : `${kind} ${occurrence + 1}`;
+    }
+    const pressed = candidate.frets.filter((fret): fret is number => fret !== null && fret > 0);
+    return pressed.length > 0 ? `Fret ${Math.min(...pressed)}` : `Shape ${index + 1}`;
+  };
 
   return (
     <div className={`flex h-full flex-col ${compact ? 'px-5 pb-6' : 'p-6'}`}>
@@ -79,9 +98,28 @@ const ChordWorkspacePanel: React.FC<ChordWorkspacePanelProps> = ({
                 <span>{shape.source === 'curated' ? 'Library' : 'Generated'}</span>
                 <span aria-hidden="true">·</span>
                 <span>{difficulty}</span>
-                {shape.tags.map(tag => <span key={tag}>· {tag}</span>)}
+                {shape.tags.filter(tag => tag !== difficulty.toLowerCase()).map(tag => <span key={tag}>· {tag}</span>)}
               </div>
             </div>
+
+            {result.shapes.length > 1 && (
+              <div>
+                <div className="mb-2 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-zinc-500">Alternative shapes</div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {result.shapes.map((candidate, index) => (
+                    <button
+                      key={`${candidate.frets.join('-')}-${index}`}
+                      type="button"
+                      onClick={() => setVoicingIndex(index)}
+                      className={`shrink-0 rounded-lg px-3 py-2 text-left transition-colors ${voicingIndex === index ? 'bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950' : 'bg-slate-100 text-slate-600 hover:text-indigo-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:text-violet-400'}`}
+                    >
+                      <div className="text-[10px] font-semibold">{voicingLabel(index)}</div>
+                      <div className={`mt-0.5 font-mono text-[8px] ${voicingIndex === index ? 'text-slate-300 dark:text-zinc-500' : 'text-slate-400 dark:text-zinc-500'}`}>{candidate.frets.map(fret => fret ?? 'X').reverse().join(' ')}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between">
               <button

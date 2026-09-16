@@ -4,6 +4,7 @@ import EditView from './components/EditView';
 import SongPreview from './components/SongPreview';
 import ChordManager from './components/ChordManager';
 import Home from './components/Home';
+import HomeChordLab from './components/HomeChordLab';
 import PlayerBar from './components/PlayerBar';
 import PracticeView from './components/PracticeView';
 import ImportedScorePanel from './components/ImportedScorePanel';
@@ -34,6 +35,7 @@ import { DEFAULT_TIME_SIGNATURE } from './constants/practice';
 
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library'>('home');
+  const [homeSurface, setHomeSurface] = useState<'library' | 'chords'>('library');
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [importedTitle, setImportedTitle] = useState('');
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
@@ -374,6 +376,7 @@ const App: React.FC = () => {
     playback.stop();
     alphaPlayback.onStop();
     setActiveImportedSong(null);
+    setHomeSurface('library');
     setViewMode('home');
   }, [playback, alphaPlayback]);
 
@@ -396,6 +399,16 @@ const App: React.FC = () => {
 
   // ─── Home view ─────────────────────────────────────────────────────────────
   if (viewMode === 'home') {
+    if (homeSurface === 'chords') {
+      return (
+        <HomeChordLab
+          globalChords={editor.globalChords}
+          theme={theme}
+          onBack={() => setHomeSurface('library')}
+          onToggleTheme={toggleTheme}
+        />
+      );
+    }
     return (
       <>
         <Home
@@ -405,6 +418,7 @@ const App: React.FC = () => {
           onOpenAuth={() => setAuthOpen(true)}
           onLogout={handleLogout}
           onCreateNew={createNewSong}
+          onOpenChordLab={() => setHomeSurface('chords')}
           onOpen={handleOpenLibrarySong}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}

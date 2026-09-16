@@ -32,6 +32,7 @@ interface HomeProps {
   onOpenAuth: () => void;
   onLogout: () => void;
   onCreateNew: () => void;
+  onOpenChordLab: () => void;
   onOpen: (song: LibrarySong) => void;
   onDelete: (song: LibrarySong) => void;
   onImportGflow: (file: File) => void;
@@ -49,6 +50,7 @@ const Home: React.FC<HomeProps> = ({
   onOpenAuth,
   onLogout,
   onCreateNew,
+  onOpenChordLab,
   onOpen,
   onDelete,
   onImportGflow,
@@ -78,9 +80,9 @@ const Home: React.FC<HomeProps> = ({
         </div>
 
         <nav className="mt-10 space-y-1">
-          <button type="button" className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300"><FolderOpen size={17} /> Library</button>
-          <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><Clock3 size={17} /> Recently played</button>
-          <button type="button" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><BookOpen size={17} /> Chord lab</button>
+          <button type="button" onClick={() => document.getElementById('song-library')?.scrollIntoView({ behavior: 'smooth' })} className="flex w-full items-center gap-3 rounded-xl bg-indigo-50 px-3 py-2.5 text-sm font-semibold text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300"><FolderOpen size={17} /> Library</button>
+          <button type="button" onClick={() => document.getElementById('song-library')?.scrollIntoView({ behavior: 'smooth' })} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><Clock3 size={17} /> Recently played</button>
+          <button type="button" onClick={onOpenChordLab} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><BookOpen size={17} /> Chord lab</button>
         </nav>
 
         <div className="mt-8 border-t border-slate-200 pt-6 dark:border-zinc-800">
@@ -98,7 +100,7 @@ const Home: React.FC<HomeProps> = ({
       <main className="min-h-screen lg:ml-64">
         <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80 sm:px-6 lg:hidden">
           <div className="flex items-center gap-2.5"><div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950"><Guitar size={18} /></div><span className="font-bold">GuitarFlow</span></div>
-          <div className="flex items-center gap-2"><button type="button" onClick={onToggleTheme} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400">{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>{user ? <button type="button" onClick={onLogout} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400"><LogOut size={16} /></button> : <button type="button" onClick={onOpenAuth} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-950">Sign in</button>}</div>
+          <div className="flex items-center gap-2"><button type="button" onClick={onOpenChordLab} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400" aria-label="Open chord lab"><BookOpen size={16} /></button><button type="button" onClick={onToggleTheme} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400">{theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}</button>{user ? <button type="button" onClick={onLogout} className="grid h-9 w-9 place-items-center rounded-xl bg-slate-100 text-slate-500 dark:bg-zinc-900 dark:text-zinc-400"><LogOut size={16} /></button> : <button type="button" onClick={onOpenAuth} className="rounded-xl bg-slate-950 px-3 py-2 text-xs font-semibold text-white dark:bg-zinc-100 dark:text-zinc-950">Sign in</button>}</div>
         </header>
 
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-7 lg:px-10 lg:py-12">
@@ -126,7 +128,7 @@ const Home: React.FC<HomeProps> = ({
             </div>
           )}
 
-          <section className="mt-12">
+          <section id="song-library" className="mt-12 scroll-mt-6">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
               <div><div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Your collection</div><h2 className="mt-1 text-2xl font-bold tracking-tight">Pick up where you left off</h2></div>
               <label className="relative block w-full sm:w-72"><Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search your scores" className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-indigo-400 dark:border-zinc-800 dark:bg-zinc-900 dark:focus:border-violet-700" /></label>
