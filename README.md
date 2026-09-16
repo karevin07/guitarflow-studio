@@ -119,7 +119,7 @@ Run `make help` to see all available targets.
 | `make build` | Build frontend production bundle |
 | `make docker` | Start full stack with Docker Compose |
 
-See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details and [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes.
+See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details, [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes, and [docs/TAILSCALE_DOCKER_TESTING.md](docs/TAILSCALE_DOCKER_TESTING.md) for private-network device testing with Tailscale.
 
 ---
 
