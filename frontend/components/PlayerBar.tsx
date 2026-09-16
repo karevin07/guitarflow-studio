@@ -1,5 +1,19 @@
-import React from 'react';
-import { Play, Pause, Square, Repeat, Volume2, Activity, Flag, FlagOff } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  Activity,
+  ChevronDown,
+  Flag,
+  FlagOff,
+  Gauge,
+  Minus,
+  Pause,
+  Play,
+  Plus,
+  Repeat,
+  SlidersHorizontal,
+  Square,
+  Volume2,
+} from 'lucide-react';
 
 import { PlayerBarBindings } from '../types/playback';
 import { colIndexToMs, formatPlaybackMs } from '../services/playbackTime';
@@ -29,168 +43,79 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   playbackVolume,
   onVolumeChange,
 }) => {
+  const [controlsOpen, setControlsOpen] = useState(false);
   const isAlphaTab = mode === 'alphatab';
   const showStop = isPlaying || isPaused;
-  const canSeek = totalCols > 1;
   const safeMax = Math.max(1, totalCols - 1);
   const canAb = abLoop.start !== null && abLoop.end !== null;
+  const minimumTempo = isAlphaTab ? 50 : 40;
+  const maximumTempo = isAlphaTab ? 150 : 240;
   const seekLabel = isAlphaTab
     ? `${formatPlaybackMs(playIndex)} / ${formatPlaybackMs(totalCols)}`
     : `${formatPlaybackMs(colIndexToMs(playIndex, playBpm))} / ${formatPlaybackMs(colIndexToMs(totalCols, playBpm))}`;
 
+  const nudgeTempo = (delta: number) => {
+    onBpmChange(Math.max(minimumTempo, Math.min(maximumTempo, playBpm + delta)));
+  };
+
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-slate-200/80 dark:border-zinc-800/80 px-4 sm:px-6 py-4 rounded-2xl shadow-2xl flex flex-nowrap items-center gap-3 sm:gap-4 z-50 animate-in slide-in-from-bottom-6 duration-300 w-[calc(100%-1.5rem)] max-w-6xl overflow-x-auto overflow-y-hidden">
-      <div className="flex items-center gap-2 flex-shrink-0">
-        <button
-          onClick={onTogglePlayPause}
-          className="w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 dark:from-violet-600 dark:to-fuchsia-600 text-white shadow-md shadow-indigo-500/20 hover:opacity-95 active:scale-95 transition-all"
-          title={isPlaying ? 'Pause' : isPaused ? 'Resume' : 'Play'}
-        >
-          {isPlaying ? (
-            <Pause size={18} fill="currentColor" />
-          ) : (
-            <Play size={18} fill="currentColor" className="ml-0.5" />
-          )}
+    <div className="fixed bottom-[76px] left-3 right-3 z-50 overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-[0_16px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/95 lg:bottom-5 lg:left-[104px] lg:right-5 print:hidden">
+      <div className="flex h-16 items-center gap-2 px-3 sm:gap-3 sm:px-4">
+        <button type="button" onClick={onTogglePlayPause} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-950 text-white transition-colors hover:bg-indigo-600 active:scale-95 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-violet-400" aria-label={isPlaying ? 'Pause' : isPaused ? 'Resume' : 'Play'}>
+          {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
         </button>
+
         {showStop && (
-          <button
-            onClick={onStop}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
-            title="Stop"
-          >
-            <Square size={16} fill="currentColor" />
+          <button type="button" onClick={onStop} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-500 dark:hover:bg-zinc-800" aria-label="Stop">
+            <Square size={14} fill="currentColor" />
           </button>
         )}
-      </div>
 
-      <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 basis-0">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none whitespace-nowrap shrink-0">
-          {seekLabel}
-        </span>
-        <input
-          type="range"
-          min={0}
-          max={safeMax}
-          value={Math.min(playIndex, safeMax)}
-          disabled={!canSeek}
-          onChange={e => onSeek(parseInt(e.target.value, 10))}
-          className="w-full min-w-0 max-w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800 disabled:opacity-30"
-        />
-      </div>
-
-      <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <button
-          onClick={onSetLoopA}
-          className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
-            abLoop.start !== null
-              ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400'
-              : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'
-          }`}
-          title="Set loop A (current position)"
-        >
-          <Flag size={14} />
-          <span className="text-[9px] uppercase tracking-wider hidden sm:inline">A</span>
-        </button>
-        <button
-          onClick={onSetLoopB}
-          className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${
-            abLoop.end !== null
-              ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400'
-              : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'
-          }`}
-          title="Set loop B (current position)"
-        >
-          <Flag size={14} />
-          <span className="text-[9px] uppercase tracking-wider hidden sm:inline">B</span>
-        </button>
-        <button
-          onClick={onToggleAbLoop}
-          disabled={!canAb}
-          className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 disabled:opacity-30 ${
-            abLoop.enabled
-              ? 'bg-emerald-50 dark:bg-emerald-900/40 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'
-              : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'
-          }`}
-          title="Toggle A-B loop"
-        >
-          <Repeat size={14} />
-          <span className="text-[9px] uppercase tracking-wider hidden sm:inline">A-B</span>
-        </button>
-        <button
-          onClick={onClearAbLoop}
-          className="p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700"
-          title="Clear A-B loop"
-        >
-          <FlagOff size={14} />
-        </button>
-      </div>
-
-      <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
-
-      <div className="flex items-center gap-3 flex-shrink-0">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest leading-none">
-          {isAlphaTab ? 'Speed' : 'Tempo'}
-        </span>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={isAlphaTab ? '50' : '40'}
-            max={isAlphaTab ? '150' : '240'}
-            value={playBpm}
-            onChange={e => onBpmChange(Math.max(isAlphaTab ? 50 : 40, Math.min(isAlphaTab ? 150 : 240, parseInt(e.target.value, 10) || (isAlphaTab ? 100 : 120))))}
-            className="w-14 px-2 py-1 bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-lg text-center text-xs font-bold text-slate-700 dark:text-zinc-300 outline-none"
-          />
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500">{isAlphaTab ? '%' : 'BPM'}</span>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500">
+            <span>{isPlaying ? 'Playing' : isPaused ? 'Paused' : 'Ready'}</span>
+            <span className="font-mono tracking-normal">{seekLabel}</span>
+          </div>
+          <input type="range" min={0} max={safeMax} value={Math.min(playIndex, safeMax)} disabled={totalCols <= 1} onChange={event => onSeek(Number(event.target.value))} className="block h-1 w-full cursor-pointer accent-indigo-600 disabled:opacity-30 dark:accent-violet-500" aria-label="Playback position" />
         </div>
-        <input
-          type="range"
-          min={isAlphaTab ? '50' : '40'}
-          max={isAlphaTab ? '150' : '240'}
-          value={playBpm}
-          onChange={e => onBpmChange(parseInt(e.target.value, 10))}
-          className="w-16 sm:w-20 min-w-0 max-w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
-        />
-      </div>
 
-      <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+        <div className="hidden shrink-0 items-center rounded-xl bg-slate-100 p-1 dark:bg-zinc-800 sm:flex">
+          <button type="button" onClick={() => nudgeTempo(-5)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-700" aria-label="Decrease tempo"><Minus size={13} /></button>
+          <div className="min-w-16 px-2 text-center">
+            <div className="font-mono text-xs font-bold text-slate-800 dark:text-zinc-100">{playBpm}</div>
+            <div className="text-[7px] font-semibold uppercase tracking-wider text-slate-400">{isAlphaTab ? 'speed %' : 'bpm'}</div>
+          </div>
+          <button type="button" onClick={() => nudgeTempo(5)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-700" aria-label="Increase tempo"><Plus size={13} /></button>
+        </div>
 
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <button
-          onClick={onToggleLoop}
-          className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isLooping ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
-          title="Loop Score"
-        >
-          <Repeat size={14} />
-          <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Loop</span>
-        </button>
-        <button
-          onClick={onToggleMetronome}
-          className={`p-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 ${isMetronomeOn ? 'bg-indigo-50 dark:bg-violet-900/40 border-indigo-200 dark:border-violet-800 text-indigo-600 dark:text-violet-400' : 'bg-transparent border-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700'}`}
-          title="Metronome"
-        >
-          <Activity size={14} />
-          <span className="text-[9px] uppercase tracking-wider hidden sm:inline">Metronome</span>
+        <button type="button" onClick={() => setControlsOpen(value => !value)} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${controlsOpen ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`} aria-label="Playback controls" aria-expanded={controlsOpen}>
+          {controlsOpen ? <ChevronDown size={17} /> : <SlidersHorizontal size={17} />}
         </button>
       </div>
 
-      <div className="h-6 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden sm:block flex-shrink-0" />
+      {controlsOpen && (
+        <div className="grid gap-4 border-t border-slate-200 px-4 py-4 dark:border-zinc-800 md:grid-cols-[1fr_auto_auto] md:items-center">
+          <div className="flex items-center gap-3">
+            <Gauge size={14} className="shrink-0 text-slate-400" />
+            <input type="range" min={minimumTempo} max={maximumTempo} value={playBpm} onChange={event => onBpmChange(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-indigo-600 dark:accent-violet-500" aria-label={isAlphaTab ? 'Playback speed' : 'Tempo'} />
+            <span className="w-16 text-right font-mono text-xs font-semibold text-slate-600 dark:text-zinc-300">{playBpm} {isAlphaTab ? '%' : 'BPM'}</span>
+          </div>
 
-      <div className="flex items-center gap-1.5 flex-shrink-0 w-[72px] sm:w-[88px]">
-        <Volume2 size={14} className="text-slate-400 dark:text-zinc-500 flex-shrink-0" />
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={playbackVolume}
-          onChange={e => onVolumeChange(parseFloat(e.target.value))}
-          className="w-full min-w-0 max-w-full accent-indigo-600 dark:accent-violet-500 cursor-pointer h-1 rounded bg-slate-200 dark:bg-zinc-800"
-        />
-      </div>
+          <div className="flex items-center gap-1 overflow-x-auto">
+            <button type="button" onClick={onSetLoopA} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${abLoop.start !== null ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Flag size={13} /> A</button>
+            <button type="button" onClick={onSetLoopB} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${abLoop.end !== null ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Flag size={13} /> B</button>
+            <button type="button" onClick={onToggleAbLoop} disabled={!canAb} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider disabled:opacity-30 ${abLoop.enabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Repeat size={13} /> A–B</button>
+            <button type="button" onClick={onClearAbLoop} className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-500 dark:hover:bg-zinc-800" aria-label="Clear A-B loop"><FlagOff size={13} /></button>
+            <button type="button" onClick={onToggleLoop} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${isLooping ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Repeat size={13} /> Loop</button>
+            <button type="button" onClick={onToggleMetronome} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${isMetronomeOn ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Activity size={13} /> Click</button>
+          </div>
+
+          <label className="flex min-w-32 items-center gap-2">
+            <Volume2 size={14} className="shrink-0 text-slate-400" />
+            <input type="range" min="0" max="1" step="0.05" value={playbackVolume} onChange={event => onVolumeChange(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-indigo-600 dark:accent-violet-500" aria-label="Playback volume" />
+          </label>
+        </div>
+      )}
     </div>
   );
 };
