@@ -5,7 +5,7 @@ import {
 } from '../../music-theory';
 import { fretsForPitchClasses, noteAt } from '../fretboard';
 import { GuitarTuning, STANDARD_TUNING } from '../tuning';
-import { scoreChordShape, fretSpan } from './scorer';
+import { scoreChordShape, fretSpan, inferVoicingTags } from './scorer';
 import { ChordShape, VoicingSearchOptions } from './types';
 
 const DEFAULT_OPTIONS: Required<VoicingSearchOptions> = {
@@ -13,13 +13,6 @@ const DEFAULT_OPTIONS: Required<VoicingSearchOptions> = {
   maxSpan: 4,
   minStrings: 3,
   limit: 24,
-};
-
-const tagsFor = (frets: Array<number | null>): ChordShape['tags'] => {
-  const tags: ChordShape['tags'] = [];
-  if (frets.includes(0)) tags.push('open');
-  if (fretSpan(frets) <= 3) tags.push('easy');
-  return tags;
 };
 
 export const generateChordShapes = (
@@ -62,7 +55,7 @@ export const generateChordShapes = (
         frets: [...current],
         score: scoreChordShape(chord, current, tuning),
         source: 'generated',
-        tags: tagsFor(current),
+        tags: inferVoicingTags(current),
       });
       return;
     }

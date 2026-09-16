@@ -11,6 +11,24 @@ export const fretSpan = (frets: Array<number | null>): number => {
   return pressed.length < 2 ? 0 : Math.max(...pressed) - Math.min(...pressed);
 };
 
+export const inferVoicingTags = (
+  frets: Array<number | null>,
+  barres: ChordShape['barres'] = []
+): ChordShape['tags'] => {
+  const tags: ChordShape['tags'] = [];
+  const pressed = playedFrets(frets).filter(fret => fret > 0);
+  const playedStringCount = frets.filter(fret => fret !== null).length;
+  const hasBarre = barres.length > 0 || pressed.some(
+    fret => pressed.filter(candidate => candidate === fret).length >= 3
+  );
+
+  if (frets.includes(0)) tags.push('open');
+  if (hasBarre) tags.push('barre');
+  if (!hasBarre && fretSpan(frets) <= 3 && (pressed.length === 0 || Math.max(...pressed) <= 5)) tags.push('easy');
+  if (playedStringCount === 3) tags.push('triad');
+  return tags;
+};
+
 export const lowestPlayedPitch = (
   frets: Array<number | null>,
   tuning: GuitarTuning = STANDARD_TUNING

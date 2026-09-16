@@ -1,7 +1,7 @@
 import { formatChord, parseChord } from '../../music-theory';
 import { GuitarTuning, STANDARD_TUNING } from '../tuning';
 import { generateChordShapes } from './generator';
-import { scoreChordShape } from './scorer';
+import { inferVoicingTags, scoreChordShape } from './scorer';
 import {
   ChordShape,
   ChordVoicingResult,
@@ -35,7 +35,7 @@ export const findChordVoicings = (
       barres: voicing.barres,
       score: scoreChordShape(chord, voicing.frets, tuning) + 30 - (voicing.difficulty ?? 0) * 2,
       source: 'curated' as const,
-      tags: voicing.tags ?? (voicing.frets.includes(0) ? ['open'] : []),
+      tags: Array.from(new Set([...(voicing.tags ?? []), ...inferVoicingTags(voicing.frets, voicing.barres)])),
     }));
 
   const seen = new Set(curated.map(shape => shapeKey(shape.frets)));
