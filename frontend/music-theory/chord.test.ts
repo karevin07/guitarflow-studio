@@ -13,6 +13,12 @@ describe('chord parser and formatter', () => {
     ['C7', '7', undefined],
     ['Cmaj7', 'maj7', undefined],
     ['C#m7', 'min7', undefined],
+    ['Bm7b5', 'min7b5', undefined],
+    ['Cdim7', 'dim7', undefined],
+    ['Am6', 'min6', undefined],
+    ['D9', '9', undefined],
+    ['Ebmaj9', 'maj9', undefined],
+    ['Fm9', 'min9', undefined],
     ['F/G', 'major', 7],
     ['Bbadd9', 'add9', undefined],
   ])('parses %s', (symbol, quality, bass) => {
@@ -31,6 +37,13 @@ describe('chord parser and formatter', () => {
   it('builds pitch classes from interval formulae', () => {
     const chord = parseChord('Cmaj7');
     expect(chord && getChordPitchClasses(chord)).toEqual([0, 4, 7, 11]);
+  });
+
+  it('builds extended and altered chord tones', () => {
+    const halfDiminished = parseChord('Bm7b5');
+    const dominantNine = parseChord('C9');
+    expect(halfDiminished && getChordPitchClasses(halfDiminished)).toEqual([11, 2, 5, 9]);
+    expect(dominantNine && getChordPitchClasses(dominantNine)).toEqual([0, 4, 7, 10, 2]);
   });
 
   it('transposes roots and slash bass notes while retaining flat spelling', () => {

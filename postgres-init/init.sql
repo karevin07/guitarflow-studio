@@ -1,4 +1,5 @@
--- Initialize GlobalChord table and seed standard chords
+-- Initialize GlobalChord table and seed the baseline open-chord collection.
+-- Django migration 0006 expands this into the complete categorized library.
 CREATE TABLE IF NOT EXISTS guitarflow_globalchord (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL UNIQUE,

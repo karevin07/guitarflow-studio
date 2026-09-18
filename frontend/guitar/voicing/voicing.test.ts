@@ -32,6 +32,17 @@ describe('voicing generator', () => {
       return false;
     })).toBe(true);
   });
+
+  it.each(['Cm6', 'Cdim7', 'Cm7b5', 'C9', 'Cmaj9', 'Cm9'])(
+    'generates playable voicings for the expanded %s family',
+    symbol => {
+      const chord = parseChord(symbol);
+      if (!chord) throw new Error(`test chord ${symbol} did not parse`);
+
+      const shapes = generateChordShapes(chord, undefined, { maxFret: 12, limit: 3 });
+      expect(shapes.length).toBeGreaterThan(0);
+    }
+  );
 });
 
 describe('voicing metadata', () => {

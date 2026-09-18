@@ -9,12 +9,20 @@ import ChordDiagram from './ChordDiagram';
 import { previewChordVoicing } from '../services/chordPreview';
 
 type ShapeFilter = 'all' | 'open' | 'easy' | 'barre' | 'custom';
+type ChordFamily = 'all' | 'basic' | 'seventh' | 'color' | 'tension';
 type LibraryChord = ChordDefinition & { isStandard: boolean };
 
 const ROOTS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
 const QUALITIES = [
-  { value: '', label: 'Major' }, { value: 'm', label: 'minor' }, { value: '7', label: '7' },
-  { value: 'maj7', label: 'maj7' }, { value: 'm7', label: 'm7' }, { value: 'sus', label: 'sus' }, { value: 'add9', label: 'add9' },
+  { value: '', label: 'Major', family: 'basic' }, { value: 'm', label: 'minor', family: 'basic' },
+  { value: '7', label: '7', family: 'seventh' }, { value: 'maj7', label: 'maj7', family: 'seventh' }, { value: 'm7', label: 'm7', family: 'seventh' },
+  { value: '6', label: '6', family: 'color' }, { value: 'm6', label: 'm6', family: 'color' }, { value: 'sus2', label: 'sus2', family: 'color' }, { value: 'sus4', label: 'sus4', family: 'color' }, { value: 'add9', label: 'add9', family: 'color' },
+  { value: 'dim', label: 'dim', family: 'tension' }, { value: 'aug', label: 'aug', family: 'tension' }, { value: 'm7b5', label: 'm7♭5', family: 'tension' }, { value: 'dim7', label: 'dim7', family: 'tension' },
+  { value: '9', label: '9', family: 'tension' }, { value: 'maj9', label: 'maj9', family: 'tension' }, { value: 'm9', label: 'm9', family: 'tension' },
+] as const;
+const FAMILIES: Array<{ value: ChordFamily; label: string }> = [
+  { value: 'all', label: '全部' }, { value: 'basic', label: '基礎' }, { value: 'seventh', label: '七和弦' },
+  { value: 'color', label: '色彩' }, { value: 'tension', label: '延伸 / 張力' },
 ];
 const SHAPES: Array<{ value: ShapeFilter; label: string }> = [
   { value: 'all', label: '全部' }, { value: 'easy', label: '好上手' }, { value: 'open', label: '開放和弦' },
@@ -29,8 +37,15 @@ const matchesQuality = (name: string, quality: string | null) => {
   const value = chordQuality(name);
   if (quality === '') return value === '';
   if (quality === 'm') return value === 'm';
-  if (quality === 'sus') return value.startsWith('sus');
   return value === quality;
+};
+const qualityFamily = (name: string): ChordFamily | 'other' => QUALITIES.find(quality => quality.value === chordQuality(name))?.family ?? 'other';
+const chordSort = (left: LibraryChord, right: LibraryChord) => {
+  const rootDifference = ROOTS.indexOf(chordRoot(left.name)) - ROOTS.indexOf(chordRoot(right.name));
+  if (rootDifference !== 0) return rootDifference;
+  const leftQuality = QUALITIES.findIndex(quality => quality.value === chordQuality(left.name));
+  const rightQuality = QUALITIES.findIndex(quality => quality.value === chordQuality(right.name));
+  return leftQuality - rightQuality || left.name.localeCompare(right.name);
 };
 
 interface ChordManagerProps {
@@ -48,6 +63,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
   const [searchTerm, setSearchTerm] = useState('');
   const [rootFilter, setRootFilter] = useState<string | null>(null);
   const [qualityFilter, setQualityFilter] = useState<string | null>(null);
+  const [familyFilter, setFamilyFilter] = useState<ChordFamily>('all');
   const [shapeFilter, setShapeFilter] = useState<ShapeFilter>('all');
   const [voicingIndex, setVoicingIndex] = useState(0);
   const [comparisonIndices, setComparisonIndices] = useState<number[]>([0]);
@@ -64,12 +80,22 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
     const matches = fullLibrary.filter(chord => {
       if (!chord.name.toLowerCase().includes(searchTerm.trim().toLowerCase())) return false;
       if (rootFilter && chordRoot(chord.name) !== rootFilter) return false;
+      if (familyFilter !== 'all' && qualityFamily(chord.name) !== familyFilter) return false;
       if (!matchesQuality(chord.name, qualityFilter)) return false;
       if (shapeFilter === 'custom') return !chord.isStandard;
       return shapeFilter === 'all' || inferVoicingTags(chord.frets, chord.barres).includes(shapeFilter);
     });
-    return Array.from(new Map(matches.map(chord => [chord.name, chord])).values());
-  }, [fullLibrary, qualityFilter, rootFilter, searchTerm, shapeFilter]);
+    return Array.from(new Map(matches.map(chord => [chord.name, chord])).values()).sort(chordSort);
+  }, [familyFilter, fullLibrary, qualityFilter, rootFilter, searchTerm, shapeFilter]);
+  const groupedResultChords = useMemo(() => {
+    const groups = new Map<string, LibraryChord[]>();
+    resultChords.forEach(chord => {
+      const root = chordRoot(chord.name) || '其他';
+      groups.set(root, [...(groups.get(root) ?? []), chord]);
+    });
+    return Array.from(groups.entries());
+  }, [resultChords]);
+  const visibleQualities = familyFilter === 'all' ? QUALITIES : QUALITIES.filter(quality => quality.family === familyFilter);
 
   useEffect(() => {
     if (selectedChordName && fullLibrary.some(chord => chord.name === selectedChordName)) return;
@@ -96,7 +122,11 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
     setComparisonIndices(indices => indices.filter(index => index <= last).slice(0, 3));
   }, [voicingResult?.shapes.length]);
 
-  const clearFilters = () => { setSearchTerm(''); setRootFilter(null); setQualityFilter(null); setShapeFilter('all'); };
+  const clearFilters = () => { setSearchTerm(''); setRootFilter(null); setQualityFilter(null); setFamilyFilter('all'); setShapeFilter('all'); };
+  const selectFamily = (family: ChordFamily) => {
+    setFamilyFilter(family);
+    if (qualityFilter !== null && family !== 'all' && QUALITIES.find(quality => quality.value === qualityFilter)?.family !== family) setQualityFilter(null);
+  };
   const toggleComparison = (index: number) => setComparisonIndices(indices => indices.includes(index) ? indices.filter(value => value !== index) : [...indices, index].slice(-3));
   const toggleFret = (stringIndex: number, fret: number | null) => setNewFrets(current => current.map((value, index) => index === stringIndex ? (value === fret ? null : fret) : value));
   const saveCustomChord = () => {
@@ -142,15 +172,16 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
         </div>
         {activeTab === 'browse' && <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr]">
           <div className="flex items-center gap-1 overflow-x-auto"><span className="mr-2 shrink-0 text-[9px] font-bold uppercase tracking-[0.16em] text-[#92918b]">Root</span>{ROOTS.map(root => <button key={root} type="button" onClick={() => setRootFilter(rootFilter === root ? null : root)} className={`grid h-8 min-w-8 shrink-0 place-items-center rounded-lg px-2 font-mono text-xs font-bold transition-colors ${rootFilter === root ? 'bg-[#3154d7] text-white' : 'bg-[#ecebe5] text-[#5f5e59] hover:bg-[#dfded7] dark:bg-zinc-900 dark:text-zinc-400'}`}>{root}</button>)}</div>
-          <div className="flex items-center gap-1 overflow-x-auto xl:justify-end"><span className="mr-2 shrink-0 text-[9px] font-bold uppercase tracking-[0.16em] text-[#92918b]">Quality</span>{QUALITIES.map(quality => <button key={quality.label} type="button" onClick={() => setQualityFilter(qualityFilter === quality.value ? null : quality.value)} className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-colors ${qualityFilter === quality.value ? 'bg-[#dfe5ff] text-[#2343ba] dark:bg-violet-950 dark:text-violet-300' : 'text-[#676660] hover:bg-[#ecebe5] dark:text-zinc-400 dark:hover:bg-zinc-900'}`}>{quality.label}</button>)}</div>
+          <div className="flex items-center gap-1 overflow-x-auto xl:justify-end"><span className="mr-2 shrink-0 text-[9px] font-bold uppercase tracking-[0.16em] text-[#92918b]">Family</span>{FAMILIES.map(family => <button key={family.value} type="button" onClick={() => selectFamily(family.value)} className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-colors ${familyFilter === family.value ? 'bg-[#1b1c1e] text-white dark:bg-zinc-100 dark:text-zinc-950' : 'text-[#676660] hover:bg-[#ecebe5] dark:text-zinc-400 dark:hover:bg-zinc-900'}`}>{family.label}</button>)}</div>
+          <div className="flex items-center gap-1 overflow-x-auto xl:col-span-2"><span className="mr-2 shrink-0 text-[9px] font-bold uppercase tracking-[0.16em] text-[#92918b]">Quality</span>{visibleQualities.map(quality => <button key={quality.label} type="button" onClick={() => setQualityFilter(qualityFilter === quality.value ? null : quality.value)} className={`shrink-0 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-colors ${qualityFilter === quality.value ? 'bg-[#dfe5ff] text-[#2343ba] dark:bg-violet-950 dark:text-violet-300' : 'text-[#676660] hover:bg-[#ecebe5] dark:text-zinc-400 dark:hover:bg-zinc-900'}`}>{quality.label}</button>)}</div>
         </div>}
       </section>
 
       {activeTab === 'browse' ? <div className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[300px_minmax(390px,1fr)_300px] lg:overflow-hidden 2xl:grid-cols-[340px_minmax(460px,1fr)_340px]">
         <aside className="border-b border-[#deddd7] bg-[#f2f1ec] dark:border-zinc-800 dark:bg-zinc-950 lg:min-h-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
-          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#deddd7] bg-[#f2f1ec]/95 px-5 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95"><div className="flex items-center gap-2 text-xs font-semibold"><ListFilter size={14} /> {resultChords.length} 個和弦</div>{(searchTerm || rootFilter || qualityFilter !== null || shapeFilter !== 'all') && <button type="button" onClick={clearFilters} className="text-[10px] font-semibold text-[#3154d7]">清除篩選</button>}</div>
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#deddd7] bg-[#f2f1ec]/95 px-5 py-4 backdrop-blur dark:border-zinc-800 dark:bg-zinc-950/95"><div className="flex items-center gap-2 text-xs font-semibold"><ListFilter size={14} /> {resultChords.length} 個和弦</div>{(searchTerm || rootFilter || qualityFilter !== null || familyFilter !== 'all' || shapeFilter !== 'all') && <button type="button" onClick={clearFilters} className="text-[10px] font-semibold text-[#3154d7]">清除篩選</button>}</div>
           <div className="flex gap-2 overflow-x-auto p-3 lg:flex-col lg:overflow-visible">
-            {resultChords.map(chord => { const tags = inferVoicingTags(chord.frets, chord.barres); return <button key={chord.name} type="button" onClick={() => setSelectedChordName(chord.name)} className={`group flex min-w-[230px] items-center gap-3 rounded-2xl border p-3 text-left transition-all lg:min-w-0 ${selectedChordName === chord.name ? 'border-[#3154d7] bg-white shadow-[0_8px_28px_rgba(49,84,215,0.10)] dark:bg-zinc-900' : 'border-transparent hover:border-[#d6d5ce] hover:bg-white/70 dark:hover:border-zinc-700 dark:hover:bg-zinc-900/60'}`}><div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white dark:bg-zinc-900"><div className="scale-[0.44]"><ChordDiagram chord={chord} size={100} theme={theme} variant="bare" /></div></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate font-mono text-base font-bold">{chord.name}</span>{!chord.isStandard && <span className="rounded-full bg-[#f3dfbb] px-1.5 py-0.5 text-[8px] font-bold uppercase text-[#855a12]">Mine</span>}</div><div className="mt-1 flex flex-wrap gap-1 text-[9px] font-semibold uppercase tracking-wide text-[#8a8983]">{(tags.length ? tags : ['shape']).slice(0, 2).map(tag => <span key={tag}>{tag}</span>)}</div></div><ChevronRight size={15} className={selectedChordName === chord.name ? 'text-[#3154d7]' : 'text-[#aaa9a2]'} /></button>; })}
+            {groupedResultChords.map(([root, chords]) => <div key={root} className="contents lg:block"><div className="mb-1 mt-3 hidden items-center gap-2 px-3 first:mt-0 lg:flex"><span className="font-mono text-[10px] font-bold text-[#3154d7]">{root}</span><span className="h-px flex-1 bg-[#deddd7] dark:bg-zinc-800" /><span className="text-[9px] text-[#92918b]">{chords.length}</span></div>{chords.map(chord => { const tags = inferVoicingTags(chord.frets, chord.barres); return <button key={chord.name} type="button" onClick={() => setSelectedChordName(chord.name)} className={`group mb-1 flex min-w-[230px] items-center gap-3 rounded-2xl border p-3 text-left transition-all lg:min-w-0 lg:w-full ${selectedChordName === chord.name ? 'border-[#3154d7] bg-white shadow-[0_8px_28px_rgba(49,84,215,0.10)] dark:bg-zinc-900' : 'border-transparent hover:border-[#d6d5ce] hover:bg-white/70 dark:hover:border-zinc-700 dark:hover:bg-zinc-900/60'}`}><div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-white dark:bg-zinc-900"><div className="scale-[0.44]"><ChordDiagram chord={chord} size={100} theme={theme} variant="bare" /></div></div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="truncate font-mono text-base font-bold">{chord.name}</span>{!chord.isStandard && <span className="rounded-full bg-[#f3dfbb] px-1.5 py-0.5 text-[8px] font-bold uppercase text-[#855a12]">Mine</span>}</div><div className="mt-1 flex flex-wrap gap-1 text-[9px] font-semibold uppercase tracking-wide text-[#8a8983]">{(tags.length ? tags : ['shape']).slice(0, 2).map(tag => <span key={tag}>{tag}</span>)}</div></div><ChevronRight size={15} className={selectedChordName === chord.name ? 'text-[#3154d7]' : 'text-[#aaa9a2]'} /></button>; })}</div>)}
             {resultChords.length === 0 && <div className="min-w-[260px] rounded-2xl border border-dashed border-[#c9c8c1] p-8 text-center lg:min-w-0"><Search className="mx-auto text-[#aaa9a2]" size={20} /><p className="mt-3 text-sm font-semibold">找不到符合的和弦</p><button type="button" onClick={clearFilters} className="mt-2 text-xs font-semibold text-[#3154d7]">重設條件</button></div>}
           </div>
         </aside>

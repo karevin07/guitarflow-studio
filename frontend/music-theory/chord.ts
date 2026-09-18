@@ -15,9 +15,15 @@ export type ChordQuality =
   | 'maj7'
   | '7'
   | 'min7'
+  | 'min7b5'
+  | 'dim7'
   | 'sus2'
   | 'sus4'
   | '6'
+  | 'min6'
+  | '9'
+  | 'maj9'
+  | 'min9'
   | 'add9';
 
 export interface ChordFormula {
@@ -41,9 +47,15 @@ export const CHORD_FORMULAS: Record<ChordQuality, ChordFormula> = {
   maj7: { quality: 'maj7', intervals: [0, 4, 7, 11], essentialIntervals: [0, 4, 11] },
   '7': { quality: '7', intervals: [0, 4, 7, 10], essentialIntervals: [0, 4, 10] },
   min7: { quality: 'min7', intervals: [0, 3, 7, 10], essentialIntervals: [0, 3, 10] },
+  min7b5: { quality: 'min7b5', intervals: [0, 3, 6, 10], essentialIntervals: [0, 3, 6, 10] },
+  dim7: { quality: 'dim7', intervals: [0, 3, 6, 9], essentialIntervals: [0, 3, 6, 9] },
   sus2: { quality: 'sus2', intervals: [0, 2, 7], essentialIntervals: [0, 2] },
   sus4: { quality: 'sus4', intervals: [0, 5, 7], essentialIntervals: [0, 5] },
   '6': { quality: '6', intervals: [0, 4, 7, 9], essentialIntervals: [0, 4, 9] },
+  min6: { quality: 'min6', intervals: [0, 3, 7, 9], essentialIntervals: [0, 3, 9] },
+  '9': { quality: '9', intervals: [0, 4, 7, 10, 14], essentialIntervals: [0, 4, 10, 2] },
+  maj9: { quality: 'maj9', intervals: [0, 4, 7, 11, 14], essentialIntervals: [0, 4, 11, 2] },
+  min9: { quality: 'min9', intervals: [0, 3, 7, 10, 14], essentialIntervals: [0, 3, 10, 2] },
   add9: { quality: 'add9', intervals: [0, 4, 7, 14], essentialIntervals: [0, 4, 2] },
 };
 
@@ -64,10 +76,22 @@ const QUALITY_ALIASES: Record<string, ChordQuality> = {
   m7: 'min7',
   min7: 'min7',
   '-7': 'min7',
+  m7b5: 'min7b5',
+  'm7♭5': 'min7b5',
+  'ø': 'min7b5',
+  dim7: 'dim7',
+  '°7': 'dim7',
   sus2: 'sus2',
   sus4: 'sus4',
   sus: 'sus4',
   '6': '6',
+  m6: 'min6',
+  min6: 'min6',
+  '9': '9',
+  maj9: 'maj9',
+  M9: 'maj9',
+  m9: 'min9',
+  min9: 'min9',
   add9: 'add9',
 };
 
@@ -79,9 +103,15 @@ const QUALITY_SUFFIX: Record<ChordQuality, string> = {
   maj7: 'maj7',
   '7': '7',
   min7: 'm7',
+  min7b5: 'm7b5',
+  dim7: 'dim7',
   sus2: 'sus2',
   sus4: 'sus4',
   '6': '6',
+  min6: 'm6',
+  '9': '9',
+  maj9: 'maj9',
+  min9: 'm9',
   add9: 'add9',
 };
 
