@@ -8,6 +8,8 @@ interface LeadSheetMeasureProps {
   selectedChord: string | null;
   fontScale: number;
   onSelectChord: (name: string) => void;
+  activeColumn?: number | null;
+  playbackActive?: boolean;
 }
 
 const LeadSheetMeasure: React.FC<LeadSheetMeasureProps> = ({
@@ -18,6 +20,8 @@ const LeadSheetMeasure: React.FC<LeadSheetMeasureProps> = ({
   selectedChord,
   fontScale,
   onSelectChord,
+  activeColumn = null,
+  playbackActive = false,
 }) => {
   const positions = useMemo(() => {
     const columns = Array.from({ length: Math.max(16, chords.length, lyrics.length) }, (_, index) => index);
@@ -30,7 +34,8 @@ const LeadSheetMeasure: React.FC<LeadSheetMeasureProps> = ({
   }, [chords, lyrics]);
 
   return (
-    <div className="border-b border-slate-100 px-5 py-6 last:border-b-0 dark:border-zinc-800 sm:px-7 sm:py-7">
+    <div className={`relative border-b border-slate-100 px-5 py-6 transition-colors last:border-b-0 dark:border-zinc-800 sm:px-7 sm:py-7 ${playbackActive ? 'bg-[#edf4ef] dark:bg-emerald-950/20' : ''}`}>
+      {playbackActive && <span className="absolute inset-y-0 left-0 w-1 bg-[#2b6c59]" />}
       <div className="mb-4 text-[8px] font-semibold uppercase tracking-[0.2em] text-slate-300 dark:text-zinc-600">
         {String(measureNumber).padStart(2, '0')}
       </div>
@@ -42,8 +47,9 @@ const LeadSheetMeasure: React.FC<LeadSheetMeasureProps> = ({
             const displayChord = displayChords[column] ?? originalChord;
             const lyric = lyrics[column];
             const active = Boolean(originalChord && originalChord === selectedChord);
+            const playheadActive = playbackActive && activeColumn !== null && activeColumn >= column && activeColumn < column + span;
             return (
-              <div key={column} className="min-w-0 pr-2 sm:pr-4" style={{ gridColumn: `${column + 1} / span ${span}` }}>
+              <div key={column} className={`min-w-0 rounded-lg pr-2 transition-colors sm:pr-4 ${playheadActive ? 'bg-white/75 ring-1 ring-[#9bb6a8]/50 dark:bg-zinc-900/70' : ''}`} style={{ gridColumn: `${column + 1} / span ${span}` }}>
                 <div className="h-7">
                   {originalChord && displayChord && (
                     <button

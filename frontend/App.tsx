@@ -73,6 +73,7 @@ const App: React.FC = () => {
   const playback = usePlayback({
     sections: editor.sections,
     transposeOffset: editor.transposeOffset,
+    chordLibrary: editor.chordLibrary,
   });
 
   // ─── Song library ──────────────────────────────────────────────────────────
@@ -577,6 +578,10 @@ const App: React.FC = () => {
               externalTranspose={editor.transposeOffset}
               onTransposeChange={editor.setTransposeOffset}
               theme={theme}
+              playState={playback.playState}
+              isPlaying={playback.isPlaying}
+              isPaused={playback.isPaused}
+              onTogglePlayPause={playback.togglePlayPause}
             />
           </div>
         )}

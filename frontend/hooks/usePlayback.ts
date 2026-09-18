@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { TabSection } from '../types';
+import { ChordDefinition, TabSection } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import Soundfont from 'soundfont-player';
 import { isMutedCell, parseTabCellPitches } from '../services/tabNotation';
+import { findChordVoicings } from '../guitar';
 
 export type { PlaybackPosition };
 
@@ -11,9 +12,10 @@ const TUNING_PITCHES = [64, 59, 55, 50, 45, 40];
 interface UsePlaybackOptions {
   sections: TabSection[];
   transposeOffset: number;
+  chordLibrary?: ChordDefinition[];
 }
 
-export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) => {
+export const usePlayback = ({ sections, transposeOffset, chordLibrary = [] }: UsePlaybackOptions) => {
   const [status, setStatus] = useState<'stopped' | 'playing' | 'paused'>('stopped');
   const [playState, setPlayState] = useState<PlaybackPosition | null>(null);
   const [playBpm, setPlayBpm] = useState(120);
@@ -116,6 +118,13 @@ export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) =
   }, [clearIntervalRef]);
 
   const play = useCallback((from?: PlaybackPosition) => {
+    try {
+      const context = ensureAudioContext();
+      if (context.state === 'suspended') void context.resume();
+    } catch (error) {
+      console.error('Web Audio API not supported', error);
+      return;
+    }
     if (from) {
       positionRef.current = { ...from };
       setPlayState({ ...from });
@@ -126,7 +135,7 @@ export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) =
       setPlayState({ sectionIdx: 0, measureIdx: 0, colIdx: 0 });
     }
     setStatus('playing');
-  }, [status]);
+  }, [ensureAudioContext, status]);
 
   const seek = useCallback(
     (index: number) => {
@@ -240,6 +249,7 @@ export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) =
         src.start(when);
       };
 
+      let hasTabEvent = false;
       for (let sIdx = 0; sIdx < 6; sIdx++) {
         const noteStr = measure[sIdx][cIdx];
         if (!noteStr || noteStr === '-' || noteStr === '·') continue;
@@ -247,12 +257,14 @@ export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) =
         const t0 = audioCtx.currentTime;
 
         if (isMutedCell(noteStr)) {
+          hasTabEvent = true;
           playMuted(t0);
           continue;
         }
 
         const frets = parseTabCellPitches(noteStr);
         if (frets.length === 0) continue;
+        hasTabEvent = true;
 
         const isBend = /^\d+b\d+$/i.test(noteStr);
         if (frets.length === 2 && isBend) {
@@ -264,6 +276,16 @@ export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) =
         } else {
           playPitchAt(sIdx, frets[0], t0);
         }
+      }
+
+      // Read mode is chord/lyric-first and may not contain tablature notes.
+      // In that case, voice the chord at this column so Play remains audible.
+      const chordSymbol = section.chords[measIdx]?.[cIdx];
+      if (!hasTabEvent && chordSymbol) {
+        const voicing = findChordVoicings(chordSymbol, chordLibrary, undefined, { limit: 1 })?.shapes[0];
+        voicing?.frets.forEach((fret, stringIndex) => {
+          if (fret !== null) playPitchAt(stringIndex, fret, audioCtx.currentTime, 0.72);
+        });
       }
     };
 
@@ -301,7 +323,7 @@ export const usePlayback = ({ sections, transposeOffset }: UsePlaybackOptions) =
     return () => {
       clearIntervalRef();
     };
-  }, [status, playBpm, isLooping, abLoop, totalCols, isMetronomeOn, playbackVolume, sections, transposeOffset, revision, clearIntervalRef, stop, ensureAudioContext, ensureInstrument, indexToPosition, positionToIndex]);
+  }, [status, playBpm, isLooping, abLoop, totalCols, isMetronomeOn, playbackVolume, sections, transposeOffset, chordLibrary, revision, clearIntervalRef, stop, ensureAudioContext, ensureInstrument, indexToPosition, positionToIndex]);
 
   return {
     status,

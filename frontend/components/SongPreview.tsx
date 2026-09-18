@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Anchor, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Type } from 'lucide-react';
 import { TabSection, ChordDefinition } from '../types';
+import { PlaybackPosition } from '../types/playback';
 import { formatPitch, parseChord, transposeChordSymbol, transposePitch } from '../music-theory';
 import ChordWorkspacePanel from './ChordWorkspacePanel';
 import LeadSheetMeasure from './LeadSheetMeasure';
@@ -12,6 +13,10 @@ interface SongPreviewProps {
   externalTranspose?: number;
   onTransposeChange?: (newVal: number) => void;
   theme?: 'light' | 'dark';
+  playState?: PlaybackPosition | null;
+  isPlaying?: boolean;
+  isPaused?: boolean;
+  onTogglePlayPause?: () => void;
 }
 
 const sectionAnchor = (id: string): string => `preview-section-${id}`;
@@ -25,6 +30,10 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   externalTranspose = 0,
   onTransposeChange,
   theme = 'dark',
+  playState = null,
+  isPlaying = false,
+  isPaused = false,
+  onTogglePlayPause,
 }) => {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [selectedChord, setSelectedChord] = useState<string | null>(null);
@@ -61,6 +70,14 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   useEffect(() => {
     localStorage.setItem(SCORE_FONT_SCALE_KEY, String(fontScale));
   }, [fontScale]);
+
+  useEffect(() => {
+    if (!playState) return;
+    document.getElementById(`preview-measure-${playState.sectionIdx}-${playState.measureIdx}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'center',
+    });
+  }, [playState?.measureIdx, playState?.sectionIdx]);
 
   useEffect(() => {
     if (!autoScroll) return;
@@ -110,6 +127,12 @@ const SongPreview: React.FC<SongPreviewProps> = ({
       <div className="sticky top-0 z-30 border-b border-slate-200/90 bg-[#f6f6f3]/95 px-4 py-3 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/95 sm:px-6 lg:px-10 print:hidden">
         <div className="mx-auto flex max-w-[1500px] flex-col gap-3">
           <div className="flex items-center gap-3 overflow-x-auto pb-1">
+            {onTogglePlayPause && (
+              <button type="button" onClick={onTogglePlayPause} className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-semibold text-white transition-colors ${isPlaying ? 'bg-[#2b6c59] hover:bg-[#245c4c]' : 'bg-[#1b1c1e] hover:bg-[#3154d7] dark:bg-zinc-100 dark:text-zinc-950'}`} aria-label={isPlaying ? '暫停播放' : isPaused ? '繼續播放' : '開始播放'}>
+                {isPlaying ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}
+                {isPlaying ? '暫停' : isPaused ? '繼續' : '播放'}
+              </button>
+            )}
             <div className="flex shrink-0 items-center rounded-xl border border-slate-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
               <button type="button" onClick={() => onTransposeChange?.(Math.max(-12, transpose - 1))} className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-zinc-800 dark:hover:text-violet-400" aria-label="Transpose down">
                 <Minus size={16} />
@@ -192,9 +215,10 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                 </header>
 
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-zinc-800 dark:bg-zinc-900/45">
-                  {section.measures.map((_, measureIndex) => (
+                  {section.measures.map((_, measureIndex) => {
+                    const playbackActive = playState?.sectionIdx === sectionIndex && playState.measureIdx === measureIndex;
+                    return <div key={measureIndex} id={`preview-measure-${sectionIndex}-${measureIndex}`} className="scroll-mt-40">
                     <LeadSheetMeasure
-                      key={measureIndex}
                       measureNumber={measureIndex + 1}
                       chords={section.chords[measureIndex] ?? []}
                       displayChords={section.displayChords[measureIndex] ?? []}
@@ -202,8 +226,11 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                       selectedChord={selectedChord}
                       fontScale={fontScale}
                       onSelectChord={chooseChord}
+                      activeColumn={playbackActive ? playState?.colIdx : null}
+                      playbackActive={playbackActive}
                     />
-                  ))}
+                    </div>;
+                  })}
                 </div>
               </section>
             ))}
