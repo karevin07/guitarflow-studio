@@ -15,7 +15,7 @@ interface HomeProps {
   onOpenAuth: () => void;
   onLogout: () => void;
   onCreateNew: () => void;
-  onOpenChordLab: () => void;
+  onOpenChordLab: (chord?: string) => void;
   onOpen: (song: LibrarySong) => void;
   onOpenRead: (song: LibrarySong) => void;
   onOpenPractice: (song: LibrarySong) => void;
@@ -149,8 +149,8 @@ const Home: React.FC<HomeProps> = ({
 
         <section className="mt-10 flex flex-col gap-4 rounded-2xl border border-[#dedcd4] bg-[#fffefa] px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3"><Shapes size={18} className="text-[#4d5bd2]" /><div><div className="text-sm font-semibold">本週練習的和弦</div><div className="text-[10px] text-[#85877f]">點擊和弦，查看推薦與替代按法</div></div></div>
-          <div className="flex flex-1 flex-wrap gap-5 sm:justify-center">{['Cmaj7', 'Am7', 'Fmaj7', 'Em7'].map(chord => <button key={chord} type="button" onClick={onOpenChordLab} className="font-mono text-sm font-semibold text-[#4d5bd2] underline-offset-4 hover:underline">{chord}</button>)}</div>
-          <button type="button" onClick={onOpenChordLab} className="flex items-center gap-2 text-xs font-semibold text-[#4d5bd2]">開啟和弦庫 <ArrowRight size={14} /></button>
+          <div className="flex flex-1 flex-wrap gap-5 sm:justify-center">{['Cmaj7', 'Am7', 'Fmaj7', 'Em7'].map(chord => <button key={chord} type="button" onClick={() => onOpenChordLab(chord)} className="font-mono text-sm font-semibold text-[#4d5bd2] underline-offset-4 hover:underline">{chord}</button>)}</div>
+          <button type="button" onClick={() => onOpenChordLab()} className="flex items-center gap-2 text-xs font-semibold text-[#4d5bd2]">開啟和弦庫 <ArrowRight size={14} /></button>
         </section>
 
         <section id="song-library" className="mt-12 scroll-mt-8">

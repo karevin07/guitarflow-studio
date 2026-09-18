@@ -36,6 +36,7 @@ import { DEFAULT_TIME_SIGNATURE } from './constants/practice';
 const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library'>('home');
   const [homeSurface, setHomeSurface] = useState<'library' | 'chords'>('library');
+  const [homeChordSelection, setHomeChordSelection] = useState<string | null>(null);
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [importedTitle, setImportedTitle] = useState('');
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
@@ -413,6 +414,7 @@ const App: React.FC = () => {
           theme={theme}
           onBack={() => setHomeSurface('library')}
           onToggleTheme={toggleTheme}
+          initialChord={homeChordSelection}
         />
       );
     }
@@ -425,7 +427,10 @@ const App: React.FC = () => {
           onOpenAuth={() => setAuthOpen(true)}
           onLogout={handleLogout}
           onCreateNew={createNewSong}
-          onOpenChordLab={() => setHomeSurface('chords')}
+          onOpenChordLab={chord => {
+            setHomeChordSelection(chord ?? null);
+            setHomeSurface('chords');
+          }}
           onOpen={handleOpenLibrarySong}
           onOpenRead={song => handleOpenLibrarySongInMode(song, 'preview')}
           onOpenPractice={song => handleOpenLibrarySongInMode(song, 'practice')}

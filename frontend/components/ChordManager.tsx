@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookmarkPlus, Check, ChevronLeft, ChevronRight, Clipboard, Grid2X2, ListFilter, Plus, Search, Sparkles, Trash2 } from 'lucide-react';
+import { BookmarkPlus, Check, ChevronLeft, ChevronRight, Clipboard, Grid2X2, ListFilter, Plus, Search, Sparkles, Trash2, Volume2 } from 'lucide-react';
 import { TUNING_STANDARD } from '../constants';
 import { findChordVoicings, inferVoicingTags } from '../guitar';
 import { formatPitch, getChordPitchClasses, parseChord } from '../music-theory';
 import { detectChordName } from '../services/chordDetector';
 import { ChordDefinition } from '../types';
 import ChordDiagram from './ChordDiagram';
+import { previewChordVoicing } from '../services/chordPreview';
 
 type ShapeFilter = 'all' | 'open' | 'easy' | 'barre' | 'custom';
 type LibraryChord = ChordDefinition & { isStandard: boolean };
@@ -38,9 +39,10 @@ interface ChordManagerProps {
   onAddChord: (chord: ChordDefinition) => void;
   onDeleteChord: (name: string) => void;
   theme?: 'light' | 'dark';
+  initialChord?: string | null;
 }
 
-const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords = [], onAddChord, onDeleteChord, theme = 'light' }) => {
+const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords = [], onAddChord, onDeleteChord, theme = 'light', initialChord = null }) => {
   const [activeTab, setActiveTab] = useState<'browse' | 'create'>('browse');
   const [selectedChordName, setSelectedChordName] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,6 +52,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
   const [voicingIndex, setVoicingIndex] = useState(0);
   const [comparisonIndices, setComparisonIndices] = useState<number[]>([0]);
   const [copied, setCopied] = useState(false);
+  const [auditioning, setAuditioning] = useState(false);
   const [newChordName, setNewChordName] = useState('');
   const [newFrets, setNewFrets] = useState<Array<number | null>>([null, null, null, null, null, null]);
 
@@ -70,8 +73,8 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
 
   useEffect(() => {
     if (selectedChordName && fullLibrary.some(chord => chord.name === selectedChordName)) return;
-    setSelectedChordName((fullLibrary.find(chord => chord.name === 'Cmaj7') ?? fullLibrary[0])?.name ?? null);
-  }, [fullLibrary, selectedChordName]);
+    setSelectedChordName((fullLibrary.find(chord => chord.name === initialChord) ?? fullLibrary.find(chord => chord.name === 'Cmaj7') ?? fullLibrary[0])?.name ?? null);
+  }, [fullLibrary, initialChord, selectedChordName]);
 
   const selectedChord = useMemo(() => fullLibrary.find(chord => chord.name === selectedChordName) ?? null, [fullLibrary, selectedChordName]);
   const voicingResult = useMemo(() => selectedChord ? findChordVoicings(selectedChord.name, fullLibrary, undefined, { limit: 12 }) : null, [fullLibrary, selectedChord]);
@@ -111,6 +114,16 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
     await navigator.clipboard?.writeText(`${selectedChord.name}: ${frets.map(fret => fret ?? 'X').reverse().join(' ')}`);
     setCopied(true); window.setTimeout(() => setCopied(false), 1400);
   };
+  const auditionShape = async () => {
+    if (!selectedShape || auditioning) return;
+    setAuditioning(true);
+    try {
+      await previewChordVoicing(selectedShape.frets);
+      window.setTimeout(() => setAuditioning(false), 900);
+    } catch {
+      setAuditioning(false);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#f7f6f2] text-[#1b1c1e] transition-colors dark:bg-zinc-950 dark:text-zinc-100">
@@ -144,7 +157,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
 
         <main className="flex min-h-[600px] flex-col bg-[#fbfaf7] px-5 py-7 dark:bg-zinc-950 sm:px-8 lg:min-h-0 lg:overflow-y-auto lg:px-10">
           {selectedChord && selectedShape ? <>
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a8983]">Selected chord</p><h3 className="mt-1 font-mono text-4xl font-bold tracking-tight sm:text-5xl">{selectedChord.name}</h3><div className="mt-2 flex flex-wrap gap-2"><span className="rounded-full bg-[#dfe5ff] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#2343ba] dark:bg-violet-950 dark:text-violet-300">{selectedShape.source}</span>{selectedShape.tags.map(tag => <span key={tag} className="rounded-full bg-[#ecebe5] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#6d6c66] dark:bg-zinc-900 dark:text-zinc-400">{tag}</span>)}</div></div><div className="flex gap-2"><button type="button" onClick={copyShape} className="grid h-10 w-10 place-items-center rounded-full border border-[#d8d7d0] bg-white text-[#62615c] transition hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900" aria-label="複製指法"><Clipboard size={16} /></button><button type="button" onClick={saveSelectedShape} disabled={selectedShapeSaved} className={`grid h-10 w-10 place-items-center rounded-full border transition ${selectedShapeSaved ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="儲存指法">{selectedShapeSaved ? <Check size={17} /> : <BookmarkPlus size={17} />}</button></div></div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a8983]">Selected chord</p><h3 className="mt-1 font-mono text-4xl font-bold tracking-tight sm:text-5xl">{selectedChord.name}</h3><div className="mt-2 flex flex-wrap gap-2"><span className="rounded-full bg-[#dfe5ff] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#2343ba] dark:bg-violet-950 dark:text-violet-300">{selectedShape.source}</span>{selectedShape.tags.map(tag => <span key={tag} className="rounded-full bg-[#ecebe5] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#6d6c66] dark:bg-zinc-900 dark:text-zinc-400">{tag}</span>)}</div></div><div className="flex gap-2"><button type="button" onClick={auditionShape} disabled={auditioning} className={`grid h-10 w-10 place-items-center rounded-full border transition ${auditioning ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="試聽和弦"><Volume2 size={16} /></button><button type="button" onClick={copyShape} className="grid h-10 w-10 place-items-center rounded-full border border-[#d8d7d0] bg-white text-[#62615c] transition hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900" aria-label="複製指法"><Clipboard size={16} /></button><button type="button" onClick={saveSelectedShape} disabled={selectedShapeSaved} className={`grid h-10 w-10 place-items-center rounded-full border transition ${selectedShapeSaved ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="儲存指法">{selectedShapeSaved ? <Check size={17} /> : <BookmarkPlus size={17} />}</button></div></div>
             <div className="flex flex-1 flex-col items-center justify-center py-8"><div className="relative grid min-h-[320px] w-full max-w-xl place-items-center rounded-[32px] border border-[#e0dfd9] bg-white p-6 shadow-[0_22px_70px_rgba(43,43,38,0.06)] dark:border-zinc-800 dark:bg-zinc-900"><ChordDiagram chord={{ name: selectedChord.name, frets: selectedShape.frets, fingers: selectedShape.fingers, barres: selectedShape.barres }} size={270} theme={theme} variant="bare" /><div className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#f1f0ea] px-4 py-2 font-mono text-xs font-semibold tracking-[0.18em] text-[#55544f] dark:bg-zinc-800 dark:text-zinc-300">{selectedShape.frets.map(fret => fret ?? 'X').reverse().join(' ')}</div></div></div>
             <div className="mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border border-[#deddd7] bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"><button type="button" onClick={() => setVoicingIndex(index => Math.max(0, index - 1))} disabled={voicingIndex === 0} className="rounded-full p-2 text-[#66655f] hover:bg-[#ecebe5] disabled:opacity-25 dark:hover:bg-zinc-800" aria-label="上一個指法"><ChevronLeft size={20} /></button><div className="text-center"><p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#92918b]">Voicing</p><p className="mt-0.5 text-sm font-bold">{voicingIndex + 1} / {voicingResult.shapes.length}</p></div><button type="button" onClick={() => setVoicingIndex(index => Math.min(voicingResult.shapes.length - 1, index + 1))} disabled={voicingIndex >= voicingResult.shapes.length - 1} className="rounded-full p-2 text-[#66655f] hover:bg-[#ecebe5] disabled:opacity-25 dark:hover:bg-zinc-800" aria-label="下一個指法"><ChevronRight size={20} /></button></div>
             {copied && <div className="mt-3 text-center text-xs font-semibold text-[#277447]">已複製和弦與指法</div>}
