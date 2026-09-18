@@ -11,7 +11,7 @@ type Selection = {
 } | null;
 
 interface UseKeyboardShortcutsOptions {
-  viewMode: 'home' | 'edit' | 'preview' | 'practice' | 'library';
+  viewMode: 'home' | 'edit' | 'preview';
   selection: Selection;
   setSelection: (sel: Selection) => void;
   sections: TabSection[];

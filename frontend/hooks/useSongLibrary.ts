@@ -34,8 +34,10 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
         setSongs(prev => [newSong, ...prev]);
         setCurrentSongId(newSong.id);
         onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0);
+        return newSong;
       } catch {
         onError('Failed to create song. Please try again.');
+        return null;
       }
     },
     [onSongOpened, onError]
@@ -88,8 +90,10 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
         setCurrentSongId(newSong.id);
         onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0);
         onSuccess(`Imported "${newSong.title}" successfully.`);
+        return newSong;
       } catch {
         onError('Failed to import song. Please try again.');
+        return null;
       }
     },
     [onSongOpened, onError, onSuccess]

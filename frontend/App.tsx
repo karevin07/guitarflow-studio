@@ -1,12 +1,11 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import EditView from './components/EditView';
 import SongPreview from './components/SongPreview';
-import ChordManager from './components/ChordManager';
 import Home from './components/Home';
 import HomeChordLab from './components/HomeChordLab';
 import PlayerBar from './components/PlayerBar';
-import PracticeView from './components/PracticeView';
 import ImportedScorePanel from './components/ImportedScorePanel';
 import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
@@ -32,11 +31,13 @@ import { useAlphaTabPlayback } from './hooks/useAlphaTabPlayback';
 import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
 import { useAuth } from './hooks/useAuth';
 import { DEFAULT_TIME_SIGNATURE } from './constants/practice';
+import { appPaths, parseAppRoute } from './services/routes';
 
 const App: React.FC = () => {
-  const [viewMode, setViewMode] = useState<'home' | 'edit' | 'preview' | 'practice' | 'library'>('home');
-  const [homeSurface, setHomeSurface] = useState<'library' | 'chords'>('library');
-  const [homeChordSelection, setHomeChordSelection] = useState<string | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const route = useMemo(() => parseAppRoute(location.pathname), [location.pathname]);
+  const viewMode: 'home' | 'edit' | 'preview' = route.name === 'create' ? 'edit' : route.name === 'practice' ? 'preview' : 'home';
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [importedTitle, setImportedTitle] = useState('');
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
@@ -48,6 +49,7 @@ const App: React.FC = () => {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [libraryReady, setLibraryReady] = useState(false);
   const [autosaveEnabled, setAutosaveEnabled] = useState(
     () => localStorage.getItem('guitarflow-autosave') !== 'false'
   );
@@ -84,7 +86,6 @@ const App: React.FC = () => {
       skipDirtyRef.current = true;
       setIsDirty(false);
       setActiveImportedSong(null);
-      setViewMode('edit');
     },
     onError: toast.error,
     onSuccess: toast.success,
@@ -95,7 +96,6 @@ const App: React.FC = () => {
       setActiveImportedSong(song);
       setImportedTitle(song.title);
       playback.stop();
-      setViewMode('practice');
     },
     onError: toast.error,
     onSuccess: toast.success,
@@ -113,10 +113,46 @@ const App: React.FC = () => {
     if (activeImportedSong) setImportedTitle(activeImportedSong.title);
   }, [activeImportedSong]);
 
-  const librarySongs: LibrarySong[] = [
+  const librarySongs: LibrarySong[] = useMemo(() => [
     ...imported.songs,
     ...library.songs.map(s => ({ ...s, source: 'gflow' as const })),
-  ].sort((a, b) => b.lastModified - a.lastModified);
+  ].sort((a, b) => b.lastModified - a.lastModified), [imported.songs, library.songs]);
+
+  useEffect(() => {
+    if (location.pathname === '/') {
+      navigate(appPaths.songs, { replace: true });
+    } else if (route.name === 'not-found') {
+      navigate(appPaths.songs, { replace: true });
+    }
+  }, [location.pathname, navigate, route.name]);
+
+  useEffect(() => {
+    if (route.name !== 'create' && route.name !== 'practice') return;
+    if (auth.loading) return;
+    if (!auth.user) {
+      setAuthOpen(true);
+      return;
+    }
+    if (!libraryReady) return;
+
+    const song = librarySongs.find(candidate => candidate.id === route.songId);
+    if (!song) {
+      toast.error('找不到這首歌曲，已返回歌曲庫。');
+      navigate(appPaths.songs, { replace: true });
+      return;
+    }
+
+    if (isImportedSong(song)) {
+      if (route.name === 'create') {
+        navigate(appPaths.practice(song.id), { replace: true });
+        return;
+      }
+      if (activeImportedSong?.id !== song.id) imported.openSong(song);
+      return;
+    }
+
+    if (library.currentSongId !== song.id || activeImportedSong) library.openSong(song);
+  }, [activeImportedSong, auth.loading, auth.user, imported, library, libraryReady, librarySongs, navigate, route, toast]);
 
   const performSave = useCallback(() => {
     library.saveCurrentSong({
@@ -172,9 +208,12 @@ const App: React.FC = () => {
 
   // Load library when authenticated
   useEffect(() => {
-    if (!auth.user) return;
-    library.fetchSongs();
-    imported.refresh();
+    if (!auth.user) {
+      setLibraryReady(false);
+      return;
+    }
+    setLibraryReady(false);
+    Promise.all([library.fetchSongs(), imported.refresh()]).finally(() => setLibraryReady(true));
   }, [auth.user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const requireAuth = useCallback(() => {
@@ -188,8 +227,8 @@ const App: React.FC = () => {
     alphaPlayback.onStop();
     await auth.logout();
     setActiveImportedSong(null);
-    setViewMode('home');
-  }, [auth, playback, alphaPlayback]);
+    navigate(appPaths.songs, { replace: true });
+  }, [auth, playback, alphaPlayback, navigate]);
 
   // ─── Cell input handlers (for keyboard shortcut hook) ─────────────────────
   const handleCellInput = useCallback(
@@ -232,7 +271,7 @@ const App: React.FC = () => {
   });
 
   // ─── Create new song ───────────────────────────────────────────────────────
-  const createNewSong = () => {
+  const createNewSong = async () => {
     if (!requireAuth()) return;
     const initialSection = {
       id: Math.random().toString(36).slice(2, 11),
@@ -243,12 +282,13 @@ const App: React.FC = () => {
       chords: [Array(16).fill(null)],
       lyrics: [Array(16).fill(null)],
     };
-    library.createNewSong({
+    const song = await library.createNewSong({
       title: 'New Song',
       sections: [initialSection],
       customChords: [],
       transposeOffset: 0,
     });
+    if (song) navigate(appPaths.create(song.id));
   };
 
   // ─── Save ──────────────────────────────────────────────────────────────────
@@ -281,10 +321,10 @@ const App: React.FC = () => {
 
   const triggerPdfExport = () => {
     // Use afterprint event instead of a setTimeout chain to avoid race conditions
-    if (viewMode !== 'preview') {
-      const prevView = viewMode;
-      window.addEventListener('afterprint', () => setViewMode(prevView), { once: true });
-      setViewMode('preview');
+    if (route.name === 'create' && library.currentSongId) {
+      const returnPath = appPaths.create(library.currentSongId);
+      window.addEventListener('afterprint', () => navigate(returnPath), { once: true });
+      navigate(appPaths.practice(library.currentSongId));
       setTimeout(() => window.print(), 300);
     } else {
       window.print();
@@ -311,8 +351,9 @@ const App: React.FC = () => {
       toast.error('Could not extract tab from this score.');
       return;
     }
-    await library.importSong(gflow);
-  }, [importedScore.api, library, toast]);
+    const song = await library.importSong(gflow);
+    if (song) navigate(appPaths.create(song.id));
+  }, [importedScore.api, library, navigate, toast]);
 
   const handleClaimSong = useCallback(async (song: LibrarySong) => {
     try {
@@ -343,22 +384,25 @@ const App: React.FC = () => {
       toast.error(result.error);
       return;
     }
-    await library.importSong(result.data);
-  }, [library, toast, requireAuth]);
+    const song = await library.importSong(result.data);
+    if (song) navigate(appPaths.create(song.id));
+  }, [library, navigate, toast, requireAuth]);
 
   const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
       imported.openSong(song);
+      navigate(appPaths.practice(song.id));
       return;
     }
     library.openSong(song);
-  }, [imported, library]);
+    navigate(appPaths.create(song.id));
+  }, [imported, library, navigate]);
 
-  const handleOpenLibrarySongInMode = useCallback((song: LibrarySong, mode: 'preview' | 'practice') => {
+  const handleOpenLibrarySongInMode = useCallback((song: LibrarySong, mode: 'create' | 'practice') => {
     if (isImportedSong(song)) imported.openSong(song);
     else library.openSong(song);
-    setViewMode(mode);
-  }, [imported, library]);
+    navigate(mode === 'create' && !isImportedSong(song) ? appPaths.create(song.id) : appPaths.practice(song.id));
+  }, [imported, library, navigate]);
 
   const handleDeleteLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
@@ -384,9 +428,8 @@ const App: React.FC = () => {
     playback.stop();
     alphaPlayback.onStop();
     setActiveImportedSong(null);
-    setHomeSurface('library');
-    setViewMode('home');
-  }, [playback, alphaPlayback]);
+    navigate(appPaths.songs);
+  }, [playback, alphaPlayback, navigate]);
 
   // ─── Derived state ─────────────────────────────────────────────────────────
   const currentSection = editor.sections.find(s => s.id === editor.activeSectionId);
@@ -406,15 +449,15 @@ const App: React.FC = () => {
     : null;
 
   // ─── Home view ─────────────────────────────────────────────────────────────
-  if (viewMode === 'home') {
-    if (homeSurface === 'chords') {
+  if (viewMode === 'home' || ((route.name === 'create' || route.name === 'practice') && !auth.user)) {
+    if (route.name === 'chords') {
       return (
         <HomeChordLab
           globalChords={editor.globalChords}
           theme={theme}
-          onBack={() => setHomeSurface('library')}
+          onBack={() => navigate(appPaths.songs)}
           onToggleTheme={toggleTheme}
-          initialChord={homeChordSelection}
+          initialChord={route.symbol}
         />
       );
     }
@@ -427,12 +470,9 @@ const App: React.FC = () => {
           onOpenAuth={() => setAuthOpen(true)}
           onLogout={handleLogout}
           onCreateNew={createNewSong}
-          onOpenChordLab={chord => {
-            setHomeChordSelection(chord ?? null);
-            setHomeSurface('chords');
-          }}
+          onOpenChordLab={chord => navigate(appPaths.chords(chord))}
           onOpen={handleOpenLibrarySong}
-          onOpenRead={song => handleOpenLibrarySongInMode(song, 'preview')}
+          onOpenRead={song => handleOpenLibrarySongInMode(song, 'practice')}
           onOpenPractice={song => handleOpenLibrarySongInMode(song, 'practice')}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
@@ -454,9 +494,10 @@ const App: React.FC = () => {
         {gpPreviewFile && (
           <ImportPreviewModal
             file={gpPreviewFile}
-            onConfirm={title => {
-              imported.importFile(gpPreviewFile, title);
+            onConfirm={async title => {
+              const song = await imported.importFile(gpPreviewFile, title);
               setGpPreviewFile(null);
+              if (song) navigate(appPaths.practice(song.id));
             }}
             onCancel={() => setGpPreviewFile(null)}
             onError={toast.error}
@@ -473,8 +514,12 @@ const App: React.FC = () => {
     <div className="h-screen overflow-hidden flex flex-col bg-[#f7f5ef] dark:bg-[#151616] text-[#171a18] dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200 lg:pl-[72px] print:h-auto print:overflow-visible print:pl-0">
       <SongShellHeader
         isImported={isImported}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
+        viewMode={route.name === 'create' ? 'create' : 'practice'}
+        onViewModeChange={mode => {
+          if (route.name !== 'create' && route.name !== 'practice') return;
+          navigate(mode === 'create' ? appPaths.create(route.songId) : appPaths.practice(route.songId));
+        }}
+        onOpenChordLibrary={() => navigate(appPaths.chords())}
         onBack={goHome}
         title={isImported ? importedTitle : editor.songTitle}
         onTitleChange={title => {
@@ -510,7 +555,7 @@ const App: React.FC = () => {
 
       {/* ─ Main ───────────────────────────────────────────────────────────── */}
       <main className="flex-1 flex overflow-hidden pb-16 lg:pb-0">
-        {isImported && activeImportedSong && (viewMode === 'preview' || viewMode === 'practice') && (
+        {isImported && activeImportedSong && route.name === 'practice' && (
           <ImportedScorePanel
             songId={activeImportedSong.id}
             scoreData={importedScore.scoreData}
@@ -531,7 +576,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {!isImported && viewMode === 'edit' && (
+        {!isImported && route.name === 'create' && (
           <EditView
             sections={editor.sections}
             activeSectionId={editor.activeSectionId}
@@ -573,8 +618,8 @@ const App: React.FC = () => {
           />
         )}
 
-        {/* ── Preview view ─────────────────────────────────────────────────── */}
-        {!isImported && viewMode === 'preview' && (
+        {/* ── Practice workspace: reading and playback live in one route ──── */}
+        {!isImported && route.name === 'practice' && (
           <div className="flex-1 overflow-y-auto bg-[#f6f6f3] dark:bg-zinc-950 transition-colors duration-250">
             <SongPreview
               sections={editor.sections}
@@ -591,34 +636,9 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* ── Practice view ───────────────────────────────────────────────── */}
-        {!isImported && viewMode === 'practice' && (
-          <PracticeView
-            sections={editor.sections}
-            activeSectionId={editor.activeSectionId}
-            playState={playback.playState}
-            theme={theme}
-            chordLibrary={editor.chordLibrary}
-            onSelectSection={editor.setActiveSectionId}
-            onSelectCell={(sectionId, measureIdx, stringIdx, colIdx) =>
-              editor.setSelection({ sectionId, measureIdx, stringIdx, colIdx })
-            }
-          />
-        )}
-
-        {/* ── Chord library view ───────────────────────────────────────────── */}
-        {!isImported && viewMode === 'library' && (
-          <ChordManager
-            customChords={editor.customChords}
-            globalChords={editor.globalChords}
-            onAddChord={c => editor.setCustomChords([...editor.customChords, c])}
-            onDeleteChord={name => editor.setCustomChords(editor.customChords.filter(c => c.name !== name))}
-            theme={theme}
-          />
-        )}
       </main>
 
-      {(isImported ? viewMode === 'practice' : (viewMode === 'edit' || viewMode === 'preview' || viewMode === 'practice')) && (
+      {(route.name === 'create' || route.name === 'practice') && (
         isImported ? (
           <PlayerBar {...alphaPlayback} />
         ) : (

@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   ArrowLeft,
-  BookOpen,
   Check,
   ChevronDown,
   Download,
@@ -9,14 +8,10 @@ import {
   Eye,
   FileMusic,
   FileText,
-  Guitar,
-  Keyboard,
-  LogOut,
-  Moon,
   Music2,
   Redo2,
   Save,
-  Sun,
+  Shapes,
   Undo2,
   User,
 } from 'lucide-react';
@@ -24,12 +19,13 @@ import { ImportedSong } from '../types';
 import { AuthUser } from '../services/apiClient';
 import AppRail, { AppDestination } from './AppRail';
 
-type ShellViewMode = 'edit' | 'preview' | 'practice' | 'library';
+type ShellViewMode = 'create' | 'practice';
 
 interface SongShellHeaderProps {
   isImported: boolean;
   viewMode: ShellViewMode;
   onViewModeChange: (mode: ShellViewMode) => void;
+  onOpenChordLibrary: () => void;
   onBack: () => void;
   title: string;
   onTitleChange: (title: string) => void;
@@ -111,6 +107,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   isImported,
   viewMode,
   onViewModeChange,
+  onOpenChordLibrary,
   onBack,
   title,
   onTitleChange,
@@ -140,30 +137,20 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
 }) => {
   const modes = isImported
     ? [
-        { mode: 'preview' as const, label: '閱讀', icon: Eye },
         { mode: 'practice' as const, label: '練習', icon: Music2 },
       ]
     : [
-        { mode: 'edit' as const, label: '編輯', icon: Edit3 },
-        { mode: 'preview' as const, label: '閱讀', icon: Eye },
+        { mode: 'create' as const, label: '創作', icon: Edit3 },
         { mode: 'practice' as const, label: '練習', icon: Music2 },
-        { mode: 'library' as const, label: '學習', icon: BookOpen },
       ];
 
-  const activeDestination: AppDestination = viewMode === 'practice'
-    ? 'practice'
-    : viewMode === 'library'
-      ? 'learn'
-      : 'read';
+  const activeDestination: AppDestination = viewMode;
 
   const navigateRail = (destination: AppDestination) => {
     if (destination === 'library') return onBack();
     if (destination === 'practice') return onViewModeChange('practice');
-    if (destination === 'learn' || destination === 'chords') {
-      if (!isImported) onViewModeChange('library');
-      return;
-    }
-    onViewModeChange('preview');
+    if (destination === 'chords') return onOpenChordLibrary();
+    if (!isImported) onViewModeChange('create');
   };
 
   return (
@@ -214,7 +201,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
         {user && <div className="hidden h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600 dark:bg-zinc-900 dark:text-zinc-300 xl:flex"><User size={14} />{user.username}</div>}
       </header>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-[65] grid border-t border-[#dedcd4] bg-[#fffefa]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl dark:border-zinc-800 dark:bg-[#171818]/95 lg:hidden print:hidden" style={{ gridTemplateColumns: `repeat(${modes.length + 1}, minmax(0, 1fr))` }}>
+      <nav className="fixed bottom-0 left-0 right-0 z-[65] grid border-t border-[#dedcd4] bg-[#fffefa]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl dark:border-zinc-800 dark:bg-[#171818]/95 lg:hidden print:hidden" style={{ gridTemplateColumns: `repeat(${modes.length + 2}, minmax(0, 1fr))` }}>
         <button type="button" onClick={onBack} className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold text-[#85877f]"><FileMusic size={18} /><span>歌曲庫</span></button>
         {modes.map(item => (
           <button key={item.mode} type="button" onClick={() => onViewModeChange(item.mode)} className={`flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold ${viewMode === item.mode ? item.mode === 'practice' ? 'text-[#2b6c59]' : 'text-[#4d5bd2]' : 'text-[#85877f] dark:text-zinc-500'}`}>
@@ -222,6 +209,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
             {item.label}
           </button>
         ))}
+        <button type="button" onClick={onOpenChordLibrary} className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold text-[#85877f] dark:text-zinc-500"><Shapes size={18} /><span>和弦庫</span></button>
       </nav>
 
       <div className="h-16 shrink-0 lg:h-[72px]" aria-hidden="true" />

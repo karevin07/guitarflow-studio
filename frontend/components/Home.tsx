@@ -83,13 +83,16 @@ const Home: React.FC<HomeProps> = ({
       document.getElementById('song-library')?.scrollIntoView({ behavior: 'smooth' });
       return;
     }
-    if (destination === 'chords' || destination === 'learn') {
+    if (destination === 'chords') {
       onOpenChordLab();
       return;
     }
+    if (destination === 'create') {
+      onCreateNew();
+      return;
+    }
     if (!featured) return;
-    if (destination === 'practice') onOpenPractice(featured);
-    else onOpenRead(featured);
+    onOpenPractice(featured);
   };
 
   return (
@@ -163,7 +166,7 @@ const Home: React.FC<HomeProps> = ({
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 grid grid-cols-4 border-t border-[#dedcd4] bg-[#fffefa]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl dark:border-zinc-800 dark:bg-[#171818]/95 lg:hidden">
-        {[{ id: 'library' as const, label: '歌曲庫', icon: FileMusic }, { id: 'read' as const, label: '閱讀', icon: BookOpenText }, { id: 'practice' as const, label: '練習', icon: Clock3 }, { id: 'chords' as const, label: '和弦庫', icon: Shapes }].map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-semibold ${item.id === 'library' ? 'text-[#4d5bd2]' : 'text-[#85877f]'}`}><item.icon size={18} /><span>{item.label}</span></button>)}
+        {[{ id: 'library' as const, label: '歌曲庫', icon: FileMusic }, { id: 'create' as const, label: '創作', icon: Plus }, { id: 'practice' as const, label: '練習', icon: Clock3 }, { id: 'chords' as const, label: '和弦庫', icon: Shapes }].map(item => <button key={item.id} type="button" onClick={() => navigate(item.id)} className={`flex min-h-12 flex-col items-center justify-center gap-1 rounded-xl text-[9px] font-semibold ${item.id === 'library' ? 'text-[#4d5bd2]' : 'text-[#85877f]'}`}><item.icon size={18} /><span>{item.label}</span></button>)}
       </nav>
     </div>
   );

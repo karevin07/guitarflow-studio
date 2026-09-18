@@ -34,8 +34,10 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
         setCurrentSongId(song.id);
         onSongOpened(song);
         onSuccess(`Imported "${song.title}" from ${song.importFormat.toUpperCase()}.`);
+        return song;
       } catch {
         onError('Failed to import file. The file may be corrupted or the server is unavailable.');
+        return null;
       }
     },
     [onError, onSuccess, onSongOpened]

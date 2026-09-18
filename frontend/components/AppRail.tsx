@@ -1,7 +1,6 @@
 import React from 'react';
 import {
-  BookOpenText,
-  GraduationCap,
+  Edit3,
   Library,
   Moon,
   Music2,
@@ -11,7 +10,7 @@ import {
   TimerReset,
 } from 'lucide-react';
 
-export type AppDestination = 'library' | 'read' | 'practice' | 'learn' | 'chords';
+export type AppDestination = 'library' | 'create' | 'practice' | 'chords';
 
 interface AppRailProps {
   active: AppDestination;
@@ -23,9 +22,8 @@ interface AppRailProps {
 
 const destinations = [
   { id: 'library' as const, label: '歌曲庫', icon: Library },
-  { id: 'read' as const, label: '閱讀', icon: BookOpenText },
+  { id: 'create' as const, label: '創作', icon: Edit3 },
   { id: 'practice' as const, label: '練習', icon: TimerReset },
-  { id: 'learn' as const, label: '學習', icon: GraduationCap },
   { id: 'chords' as const, label: '和弦庫', icon: Shapes },
 ];
 
