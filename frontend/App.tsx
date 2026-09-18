@@ -41,7 +41,7 @@ const App: React.FC = () => {
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('guitarflow-theme');
-    return (saved === 'light' || saved === 'dark') ? saved : 'dark';
+    return (saved === 'light' || saved === 'dark') ? saved : 'light';
   });
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -352,6 +352,12 @@ const App: React.FC = () => {
     library.openSong(song);
   }, [imported, library]);
 
+  const handleOpenLibrarySongInMode = useCallback((song: LibrarySong, mode: 'preview' | 'practice') => {
+    if (isImportedSong(song)) imported.openSong(song);
+    else library.openSong(song);
+    setViewMode(mode);
+  }, [imported, library]);
+
   const handleDeleteLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
       imported.deleteSong(song.id);
@@ -420,6 +426,8 @@ const App: React.FC = () => {
           onCreateNew={createNewSong}
           onOpenChordLab={() => setHomeSurface('chords')}
           onOpen={handleOpenLibrarySong}
+          onOpenRead={song => handleOpenLibrarySongInMode(song, 'preview')}
+          onOpenPractice={song => handleOpenLibrarySongInMode(song, 'practice')}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
           onImportGp={file => {
@@ -456,7 +464,7 @@ const App: React.FC = () => {
 
   // ─── Song shell (gflow + imported) ─────────────────────────────────────────
   return (
-    <div className="h-screen overflow-hidden flex flex-col bg-[#f4f4f1] dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200 lg:pl-[84px] print:h-auto print:overflow-visible print:pl-0">
+    <div className="h-screen overflow-hidden flex flex-col bg-[#f7f5ef] dark:bg-[#151616] text-[#171a18] dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200 lg:pl-[72px] print:h-auto print:overflow-visible print:pl-0">
       <SongShellHeader
         isImported={isImported}
         viewMode={viewMode}
@@ -580,6 +588,7 @@ const App: React.FC = () => {
             activeSectionId={editor.activeSectionId}
             playState={playback.playState}
             theme={theme}
+            chordLibrary={editor.chordLibrary}
             onSelectSection={editor.setActiveSectionId}
             onSelectCell={(sectionId, measureIdx, stringIdx, colIdx) =>
               editor.setSelection({ sectionId, measureIdx, stringIdx, colIdx })

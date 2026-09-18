@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Guitar, Moon, Sun } from 'lucide-react';
+import { ArrowLeft, Moon, Search, Sun } from 'lucide-react';
 import { ChordDefinition } from '../types';
 import ChordManager from './ChordManager';
+import AppRail from './AppRail';
 
 const STORAGE_KEY = 'guitarflow-chord-lab-shapes';
 
@@ -34,17 +35,18 @@ const HomeChordLab: React.FC<HomeChordLabProps> = ({
   }, [savedShapes]);
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#f4f4f1] text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
-      <header className="flex h-16 shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-950 sm:px-5">
-        <button type="button" onClick={onBack} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-900" aria-label="Back to library">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#f7f5ef] text-[#171a18] dark:bg-[#151616] dark:text-zinc-100 lg:pl-[72px]">
+      <AppRail active="chords" theme={theme} onNavigate={destination => { if (destination !== 'chords') onBack(); }} onToggleTheme={onToggleTheme} />
+      <header className="flex h-[72px] shrink-0 items-center gap-3 border-b border-[#dedcd4] bg-[#fffefa] px-3 dark:border-zinc-800 dark:bg-[#171818] sm:px-5 lg:px-8">
+        <button type="button" onClick={onBack} className="grid h-11 w-11 place-items-center rounded-xl text-[#6e716b] hover:bg-[#efede7] dark:text-zinc-400 dark:hover:bg-zinc-900 lg:hidden" aria-label="回到歌曲庫">
           <ArrowLeft size={18} />
         </button>
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950"><Guitar size={17} /></div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-sm font-bold tracking-tight sm:text-base">Chord lab</h1>
-          <p className="truncate text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-zinc-500">Explore, compare, and save guitar shapes</p>
+          <h1 className="text-base font-bold tracking-[-0.02em] sm:text-xl">和弦庫</h1>
+          <p className="truncate text-[10px] text-[#85877f] dark:text-zinc-500">搜尋、比較並收藏適合你的吉他按法</p>
         </div>
-        <button type="button" onClick={onToggleTheme} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-900" aria-label="Toggle theme">
+        <div className="hidden items-center gap-2 rounded-xl border border-[#dedcd4] bg-white px-3 py-2 text-[10px] text-[#85877f] dark:border-zinc-800 dark:bg-zinc-900 sm:flex"><Search size={14} />輸入 Cmaj7、F#m7 或 Bbadd9</div>
+        <button type="button" onClick={onToggleTheme} className="grid h-10 w-10 place-items-center rounded-xl text-[#6e716b] hover:bg-[#efede7] dark:text-zinc-400 dark:hover:bg-zinc-900 lg:hidden" aria-label="切換主題">
           {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
         </button>
       </header>
