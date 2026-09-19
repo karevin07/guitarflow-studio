@@ -62,7 +62,7 @@ export const durationToColAdvance = (duration: number): number => {
 export const convertAlphaTabScoreToGflow = (
   score: AlphaTabScoreLike,
   trackIndex: number
-): { title: string; sections: TabSection[]; customChords: []; transposeOffset: number } | null => {
+): { title: string; sections: TabSection[]; customChords: []; voicingPlan: {}; transposeOffset: number } | null => {
   const track = score.tracks?.[trackIndex];
   if (!track || track.isPercussion) return null;
 
@@ -110,6 +110,7 @@ export const convertAlphaTabScoreToGflow = (
     title: `${baseTitle} (from GP)`,
     sections: [section],
     customChords: [],
+    voicingPlan: {},
     transposeOffset: 0,
   };
 };

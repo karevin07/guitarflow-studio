@@ -19,6 +19,7 @@ export interface GuitarSong {
   lastModified: number;
   sections: TabSection[];
   customChords: ChordDefinition[];
+  voicingPlan: SongVoicingPlan;
   transposeOffset: number;
   source?: 'gflow';
   isLegacy?: boolean;
@@ -45,3 +46,18 @@ export interface ChordDefinition {
   fingers?: number[];
   barres?: Array<{ fret: number; fromString: number; toString: number }>;
 }
+
+export type VoicingPositionPreference = 'recommended' | 'low' | 'middle' | 'high';
+
+export interface LockedChordShape extends ChordDefinition {
+  /** Effective chord symbol at the transpose offset where this shape was chosen. */
+  symbol: string;
+}
+
+export interface SongVoicingPreference {
+  position: VoicingPositionPreference;
+  lockedShape?: LockedChordShape;
+}
+
+/** Keyed by the source chord symbol stored in the song. */
+export type SongVoicingPlan = Record<string, SongVoicingPreference>;

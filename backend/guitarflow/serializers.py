@@ -17,6 +17,65 @@ def normalize_time_signature(value):
     return [4, 4]
 
 
+def validate_voicing_plan(value):
+    if not isinstance(value, dict):
+        raise serializers.ValidationError('Expected an object keyed by chord symbol.')
+
+    valid_positions = {'recommended', 'low', 'middle', 'high'}
+    normalized = {}
+    for chord_symbol, preference in value.items():
+        if not isinstance(chord_symbol, str) or not chord_symbol.strip():
+            raise serializers.ValidationError('Chord symbols must be non-empty strings.')
+        if not isinstance(preference, dict) or preference.get('position') not in valid_positions:
+            raise serializers.ValidationError(f'Invalid voicing preference for {chord_symbol}.')
+
+        item = {'position': preference['position']}
+        locked = preference.get('lockedShape')
+        if locked is not None:
+            if (
+                not isinstance(locked, dict)
+                or not isinstance(locked.get('symbol'), str)
+                or not locked['symbol'].strip()
+            ):
+                raise serializers.ValidationError(f'Invalid locked shape for {chord_symbol}.')
+            frets = locked.get('frets')
+            if (
+                not isinstance(frets, list)
+                or len(frets) != 6
+                or any(fret is not None and (not isinstance(fret, int) or fret < 0 or fret > 24) for fret in frets)
+            ):
+                raise serializers.ValidationError(f'Locked shape for {chord_symbol} must contain six valid frets.')
+            locked_symbol = locked['symbol'].strip()
+            locked_name = locked.get('name')
+            item['lockedShape'] = {
+                'symbol': locked_symbol,
+                'name': locked_name.strip() if isinstance(locked_name, str) and locked_name.strip() else locked_symbol,
+                'frets': frets,
+            }
+            fingers = locked.get('fingers')
+            if fingers is not None:
+                if not isinstance(fingers, list) or any(not isinstance(finger, int) or finger < 0 or finger > 4 for finger in fingers):
+                    raise serializers.ValidationError(f'Invalid fingers for {chord_symbol}.')
+                item['lockedShape']['fingers'] = fingers
+            barres = locked.get('barres')
+            if barres is not None:
+                if not isinstance(barres, list) or any(
+                    not isinstance(barre, dict)
+                    or not isinstance(barre.get('fret'), int)
+                    or barre['fret'] < 0
+                    or barre['fret'] > 24
+                    or not isinstance(barre.get('fromString'), int)
+                    or not isinstance(barre.get('toString'), int)
+                    or not 1 <= barre['fromString'] <= 6
+                    or not 1 <= barre['toString'] <= 6
+                    for barre in barres
+                ):
+                    raise serializers.ValidationError(f'Invalid barres for {chord_symbol}.')
+                item['lockedShape']['barres'] = barres
+        normalized[chord_symbol.strip()] = item
+    return normalized
+
+
 class TabSectionSerializer(serializers.ModelSerializer):
     id = serializers.SerializerMethodField()
     timeSignature = serializers.JSONField(source='time_signature', required=False)
@@ -48,6 +107,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     sections = TabSectionSerializer(many=True, read_only=True)
     customChords = CustomChordSerializer(source='custom_chords', many=True, read_only=True)
     transposeOffset = serializers.IntegerField(source='transpose_offset', required=False, default=0)
+    voicingPlan = serializers.JSONField(source='voicing_plan', required=False)
     source = serializers.ChoiceField(
         choices=GuitarSong.SOURCE_CHOICES,
         required=False,
@@ -65,6 +125,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'lastModified',
             'sections',
             'customChords',
+            'voicingPlan',
             'transposeOffset',
             'source',
             'importFormat',
@@ -81,11 +142,15 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     def get_lastModified(self, obj):
         return int(obj.last_modified.timestamp() * 1000)
 
+    def validate_voicingPlan(self, value):
+        return validate_voicing_plan(value)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.source == GuitarSong.SOURCE_IMPORTED:
             data['sections'] = []
             data['customChords'] = []
+            data['voicingPlan'] = {}
         return data
 
     def create(self, validated_data):
@@ -127,6 +192,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
 
         instance.title = validated_data.get('title', instance.title)
         instance.transpose_offset = validated_data.get('transpose_offset', instance.transpose_offset)
+        instance.voicing_plan = validated_data.get('voicing_plan', instance.voicing_plan)
         instance.save()
 
         request = self.context.get('request')

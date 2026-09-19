@@ -77,12 +77,13 @@ const App: React.FC = () => {
     sections: editor.sections,
     transposeOffset: editor.transposeOffset,
     chordLibrary: editor.chordLibrary,
+    voicingPlan: editor.voicingPlan,
   });
 
   // ─── Song library ──────────────────────────────────────────────────────────
   const library = useSongLibrary({
-    onSongOpened: (title, sections, chords, transpose) => {
-      editor.loadSong(title, sections, chords, transpose);
+    onSongOpened: (title, sections, chords, transpose, voicingPlan) => {
+      editor.loadSong(title, sections, chords, transpose, voicingPlan);
       skipDirtyRef.current = true;
       setIsDirty(false);
       setActiveImportedSong(null);
@@ -159,9 +160,10 @@ const App: React.FC = () => {
       title: editor.songTitle,
       sections: editor.sections,
       customChords: editor.customChords,
+      voicingPlan: editor.voicingPlan,
       transposeOffset: editor.transposeOffset,
     });
-  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.transposeOffset]);
+  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.voicingPlan, editor.transposeOffset]);
 
   useEffect(() => {
     if (viewMode === 'home' || !library.currentSongId) return;
@@ -170,7 +172,7 @@ const App: React.FC = () => {
       return;
     }
     setIsDirty(true);
-  }, [editor.sections, editor.songTitle, editor.customChords, editor.transposeOffset, viewMode, library.currentSongId]);
+  }, [editor.sections, editor.songTitle, editor.customChords, editor.voicingPlan, editor.transposeOffset, viewMode, library.currentSongId]);
 
   useEffect(() => {
     if (library.saveStatus === 'saved') {
@@ -286,6 +288,7 @@ const App: React.FC = () => {
       title: 'New Song',
       sections: [initialSection],
       customChords: [],
+      voicingPlan: {},
       transposeOffset: 0,
     });
     if (song) navigate(appPaths.create(song.id));
@@ -303,6 +306,7 @@ const App: React.FC = () => {
         title: editor.songTitle,
         sections: editor.sections,
         customChords: editor.customChords,
+        voicingPlan: editor.voicingPlan,
         transposeOffset: editor.transposeOffset,
       }, null, 2)],
       { type: 'application/json' }
@@ -625,6 +629,8 @@ const App: React.FC = () => {
               sections={editor.sections}
               customChords={editor.customChords}
               globalChords={editor.globalChords}
+              voicingPlan={editor.voicingPlan}
+              onVoicingPlanChange={editor.setVoicingPlan}
               externalTranspose={editor.transposeOffset}
               onTransposeChange={editor.setTransposeOffset}
               theme={theme}

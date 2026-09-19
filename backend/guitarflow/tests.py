@@ -81,7 +81,17 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
                     'name': 'Cmaj7',
                     'frets': [None, 3, 2, 0, 0, 0]
                 }
-            ]
+            ],
+            'voicingPlan': {
+                'Cmaj7': {
+                    'position': 'low',
+                    'lockedShape': {
+                        'symbol': 'Cmaj7',
+                        'name': 'Cmaj7',
+                        'frets': [0, 0, 0, 2, 3, None],
+                    },
+                },
+            },
         }
         
         response = self.client.post(self.song_url, data, format='json')
@@ -92,6 +102,7 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         song = GuitarSong.objects.first()
         self.assertEqual(song.title, 'Test Song')
         self.assertEqual(song.transpose_offset, 2)
+        self.assertEqual(song.voicing_plan['Cmaj7']['position'], 'low')
         self.assertEqual(song.owner, self.user)
         
         # Sections
@@ -107,6 +118,24 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         chord = song.custom_chords.first()
         self.assertEqual(chord.name, 'Cmaj7')
         self.assertEqual(chord.frets, [None, 3, 2, 0, 0, 0])
+
+    def test_rejects_invalid_voicing_plan(self):
+        response = self.client.post(
+            self.song_url,
+            {
+                'title': 'Invalid Plan',
+                'sections': [],
+                'customChords': [],
+                'voicingPlan': {
+                    'C': {
+                        'position': 'high',
+                        'lockedShape': {'symbol': 'C', 'frets': [1, 2]},
+                    },
+                },
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_create_song_persists_time_signature(self):
         data = {
@@ -136,7 +165,12 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
     def test_update_song_diff_and_patch(self):
         """Test that updating a song uses diff-and-patch on sections/chords and preserves PKs."""
         # Pre-populate a song with 2 sections and 1 chord
-        song = GuitarSong.objects.create(title='Old Title', transpose_offset=0, owner=self.user)
+        song = GuitarSong.objects.create(
+            title='Old Title',
+            transpose_offset=0,
+            owner=self.user,
+            voicing_plan={'C': {'position': 'low'}},
+        )
         sec1 = TabSection.objects.create(
             song=song, title='Sec 1', capo=0, order=0,
             measures=[[['-'] * 16] * 6], chords=[[None] * 16], lyrics=[[None] * 16]
@@ -189,6 +223,7 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         song.refresh_from_db()
         self.assertEqual(song.title, 'New Title')
         self.assertEqual(song.transpose_offset, -1)
+        self.assertEqual(song.voicing_plan, {'C': {'position': 'low'}})
         self.assertEqual(song.sections.count(), 2)
         self.assertTrue(song.sections.filter(pk=sec1.pk).exists())
         self.assertFalse(song.sections.filter(pk=sec2.pk).exists())

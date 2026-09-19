@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Anchor, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Type } from 'lucide-react';
-import { TabSection, ChordDefinition } from '../types';
+import { Anchor, Check, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Sparkles, Type } from 'lucide-react';
+import { TabSection, ChordDefinition, SongVoicingPlan, SongVoicingPreference } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import { formatPitch, parseChord, transposeChordSymbol, transposePitch } from '../music-theory';
 import ChordWorkspacePanel from './ChordWorkspacePanel';
 import LeadSheetMeasure from './LeadSheetMeasure';
+import VoicingPlanReview from './VoicingPlanReview';
 
 interface SongPreviewProps {
   sections: TabSection[];
@@ -17,6 +18,8 @@ interface SongPreviewProps {
   isPlaying?: boolean;
   isPaused?: boolean;
   onTogglePlayPause?: () => void;
+  voicingPlan?: SongVoicingPlan;
+  onVoicingPlanChange?: (plan: SongVoicingPlan) => void;
 }
 
 const sectionAnchor = (id: string): string => `preview-section-${id}`;
@@ -34,11 +37,14 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   isPlaying = false,
   isPaused = false,
   onTogglePlayPause,
+  voicingPlan = {},
+  onVoicingPlanChange,
 }) => {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [selectedChord, setSelectedChord] = useState<string | null>(null);
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const [showChordPanel, setShowChordPanel] = useState(true);
+  const [plannerOpen, setPlannerOpen] = useState(false);
   const [autoScroll, setAutoScroll] = useState(false);
   const [fontScale, setFontScale] = useState(() => {
     const stored = Number(localStorage.getItem(SCORE_FONT_SCALE_KEY));
@@ -121,6 +127,13 @@ const SongPreview: React.FC<SongPreviewProps> = ({
     setSelectedChord(name);
     if (showChordPanel) setMobilePanelOpen(true);
   };
+  const updateSelectedPreference = (preference: SongVoicingPreference | null) => {
+    if (!selectedChord || !onVoicingPlanChange) return;
+    const next = { ...voicingPlan };
+    if (preference) next[selectedChord] = preference;
+    else delete next[selectedChord];
+    onVoicingPlanChange(next);
+  };
 
   return (
     <div ref={rootRef} className="min-h-full bg-[#f6f6f3] text-slate-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -191,14 +204,21 @@ const SongPreview: React.FC<SongPreviewProps> = ({
         <div className="min-w-0">
           {chordNames.length > 0 && (
             <section className="mb-12 border-b border-slate-200 pb-8 dark:border-zinc-800 print:hidden">
-              <div className="mb-4 flex items-center gap-2"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" /><h2 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-400">Chords used</h2></div>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" /><h2 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-400">Chords used</h2></div>
+                {onVoicingPlanChange && (
+                  <button type="button" onClick={() => setPlannerOpen(true)} className="flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:border-violet-800 dark:hover:bg-violet-950/70">
+                    <Sparkles size={14} /> 自動配置
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-2">
                 {chordNames.map(name => {
                   const displayName = transposeChordSymbol(name, transpose) ?? name;
                   const isActive = selectedChord === name;
                   return (
-                    <button key={name} type="button" onClick={() => chooseChord(name)} className={`rounded-lg px-2.5 py-1.5 font-mono text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/40 dark:text-violet-300' : 'text-slate-600 underline-offset-4 hover:text-indigo-600 hover:underline dark:text-zinc-300 dark:hover:text-violet-400'}`}>
-                      {displayName}
+                    <button key={name} type="button" onClick={() => chooseChord(name)} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/40 dark:text-violet-300' : 'text-slate-600 underline-offset-4 hover:text-indigo-600 hover:underline dark:text-zinc-300 dark:hover:text-violet-400'}`}>
+                      {displayName}{voicingPlan[name] && <Check size={11} strokeWidth={3} aria-label="已配置指法" />}
                     </button>
                   );
                 })}
@@ -238,8 +258,8 @@ const SongPreview: React.FC<SongPreviewProps> = ({
         </div>
 
         {showChordPanel && <aside className="hidden lg:block print:hidden">
-          <div className="sticky top-36 max-h-[calc(100vh-10rem)] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.08)] dark:border-zinc-800 dark:bg-zinc-900">
-            <ChordWorkspacePanel symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} />
+          <div className="sticky top-36 max-h-[calc(100vh-10rem)] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.08)] dark:border-zinc-800 dark:bg-zinc-900">
+            <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord ? voicingPlan[selectedChord] : undefined} onPreferenceChange={updateSelectedPreference} />
           </div>
         </aside>}
       </div>
@@ -262,9 +282,21 @@ const SongPreview: React.FC<SongPreviewProps> = ({
         <div className="fixed inset-0 z-[70] flex items-end bg-slate-950/35 backdrop-blur-[2px] lg:hidden print:hidden" onClick={() => setMobilePanelOpen(false)}>
           <div className="max-h-[88vh] w-full overflow-y-auto rounded-t-[28px] border-t border-slate-200 bg-white pt-3 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900" onClick={event => event.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 dark:bg-zinc-700" />
-            <ChordWorkspacePanel symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} compact onClose={() => setMobilePanelOpen(false)} />
+            <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord ? voicingPlan[selectedChord] : undefined} onPreferenceChange={updateSelectedPreference} compact onClose={() => setMobilePanelOpen(false)} />
           </div>
         </div>
+      )}
+
+      {plannerOpen && onVoicingPlanChange && (
+        <VoicingPlanReview
+          sections={sections}
+          chordLibrary={chordLibrary}
+          existingPlan={voicingPlan}
+          transposeOffset={transpose}
+          theme={theme}
+          onApply={onVoicingPlanChange}
+          onClose={() => setPlannerOpen(false)}
+        />
       )}
     </div>
   );

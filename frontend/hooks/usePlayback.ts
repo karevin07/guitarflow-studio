@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ChordDefinition, TabSection } from '../types';
+import { ChordDefinition, SongVoicingPlan, TabSection } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import Soundfont from 'soundfont-player';
 import { isMutedCell, parseTabCellPitches } from '../services/tabNotation';
-import { findChordVoicings } from '../guitar';
+import { transposeChordSymbol } from '../music-theory';
+import { resolvePlannedVoicing } from '../services/voicingPlan';
 
 export type { PlaybackPosition };
 
@@ -13,9 +14,10 @@ interface UsePlaybackOptions {
   sections: TabSection[];
   transposeOffset: number;
   chordLibrary?: ChordDefinition[];
+  voicingPlan?: SongVoicingPlan;
 }
 
-export const usePlayback = ({ sections, transposeOffset, chordLibrary = [] }: UsePlaybackOptions) => {
+export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voicingPlan = {} }: UsePlaybackOptions) => {
   const [status, setStatus] = useState<'stopped' | 'playing' | 'paused'>('stopped');
   const [playState, setPlayState] = useState<PlaybackPosition | null>(null);
   const [playBpm, setPlayBpm] = useState(120);
@@ -210,8 +212,8 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [] }: Us
 
       const capo = section.capo || 0;
 
-      const playPitchAt = (sIdx: number, fret: number, when: number, duration = 0.45) => {
-        const pitch = TUNING_PITCHES[sIdx] + fret + capo + transposeOffset;
+      const playPitchAt = (sIdx: number, fret: number, when: number, duration = 0.45, applyTranspose = true) => {
+        const pitch = TUNING_PITCHES[sIdx] + fret + capo + (applyTranspose ? transposeOffset : 0);
         const inst = instrumentRef.current;
         if (inst) {
           inst.play(pitch, when, {
@@ -282,9 +284,10 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [] }: Us
       // In that case, voice the chord at this column so Play remains audible.
       const chordSymbol = section.chords[measIdx]?.[cIdx];
       if (!hasTabEvent && chordSymbol) {
-        const voicing = findChordVoicings(chordSymbol, chordLibrary, undefined, { limit: 1 })?.shapes[0];
+        const effectiveSymbol = transposeChordSymbol(chordSymbol, transposeOffset) ?? chordSymbol;
+        const voicing = resolvePlannedVoicing(chordSymbol, effectiveSymbol, voicingPlan, chordLibrary);
         voicing?.frets.forEach((fret, stringIndex) => {
-          if (fret !== null) playPitchAt(stringIndex, fret, audioCtx.currentTime, 0.72);
+          if (fret !== null) playPitchAt(stringIndex, fret, audioCtx.currentTime, 0.72, false);
         });
       }
     };
@@ -323,7 +326,7 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [] }: Us
     return () => {
       clearIntervalRef();
     };
-  }, [status, playBpm, isLooping, abLoop, totalCols, isMetronomeOn, playbackVolume, sections, transposeOffset, chordLibrary, revision, clearIntervalRef, stop, ensureAudioContext, ensureInstrument, indexToPosition, positionToIndex]);
+  }, [status, playBpm, isLooping, abLoop, totalCols, isMetronomeOn, playbackVolume, sections, transposeOffset, chordLibrary, voicingPlan, revision, clearIntervalRef, stop, ensureAudioContext, ensureInstrument, indexToPosition, positionToIndex]);
 
   return {
     status,

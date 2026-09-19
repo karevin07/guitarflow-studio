@@ -20,6 +20,12 @@ describe('parseGflowFile', () => {
         },
       ],
       customChords: [{ name: 'C', frets: [0, 1, 0, 2, 3, null] }],
+      voicingPlan: {
+        C: {
+          position: 'low',
+          lockedShape: { symbol: 'C', frets: [0, 1, 0, 2, 3, null] },
+        },
+      },
     });
 
     expect(result.ok).toBe(true);
@@ -27,6 +33,22 @@ describe('parseGflowFile', () => {
     expect(result.data.title).toBe('Test Song');
     expect(result.data.sections[0].timeSignature).toEqual([3, 4]);
     expect(result.data.customChords).toHaveLength(1);
+    expect(result.data.voicingPlan.C.position).toBe('low');
+    expect(result.data.voicingPlan.C.lockedShape?.frets).toEqual([0, 1, 0, 2, 3, null]);
+  });
+
+  it('drops malformed voicing preferences without rejecting the song', () => {
+    const result = parseGflowFile({
+      title: 'Legacy Song',
+      sections: [{ title: 'Intro', measures: [emptyMeasure()] }],
+      voicingPlan: {
+        C: { position: 'sideways' },
+        G: { position: 'high', lockedShape: { symbol: 'G', frets: [1, 2] } },
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.voicingPlan).toEqual({ G: { position: 'high' } });
   });
 
   it('rejects invalid JSON shape', () => {

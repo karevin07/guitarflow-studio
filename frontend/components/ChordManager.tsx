@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookmarkPlus, Check, ChevronLeft, ChevronRight, Clipboard, Grid2X2, ListFilter, Plus, Search, Sparkles, Trash2, Volume2 } from 'lucide-react';
 import { TUNING_STANDARD } from '../constants';
-import { findChordVoicings, getVoicingPosition, inferVoicingTags, VoicingPosition } from '../guitar';
+import { inferVoicingTags } from '../guitar';
+import { usePositionedVoicings, VOICING_POSITION_LABELS, VOICING_POSITIONS } from '../hooks/usePositionedVoicings';
 import { formatPitch, getChordPitchClasses, parseChord } from '../music-theory';
 import { detectChordName } from '../services/chordDetector';
 import { ChordDefinition } from '../types';
@@ -10,7 +11,6 @@ import { previewChordVoicing } from '../services/chordPreview';
 
 type ShapeFilter = 'all' | 'open' | 'easy' | 'barre' | 'custom';
 type ChordFamily = 'all' | 'basic' | 'seventh' | 'color' | 'tension';
-type PositionFilter = 'recommended' | VoicingPosition;
 type LibraryChord = ChordDefinition & { isStandard: boolean };
 
 const ROOTS = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
@@ -29,14 +29,6 @@ const SHAPES: Array<{ value: ShapeFilter; label: string }> = [
   { value: 'all', label: '全部' }, { value: 'easy', label: '好上手' }, { value: 'open', label: '開放和弦' },
   { value: 'barre', label: '封閉和弦' }, { value: 'custom', label: '我的收藏' },
 ];
-const POSITIONS: Array<{ value: PositionFilter; label: string; range: string }> = [
-  { value: 'recommended', label: '推薦', range: '常用指法' },
-  { value: 'low', label: '低把位', range: '1–4 格' },
-  { value: 'middle', label: '中把位', range: '5–8 格' },
-  { value: 'high', label: '高把位', range: '9 格以上' },
-];
-const POSITION_LABELS: Record<VoicingPosition, string> = { low: '低把位', middle: '中把位', high: '高把位' };
-
 const sameFrets = (left: Array<number | null>, right: Array<number | null>) => left.length === right.length && left.every((fret, index) => fret === right[index]);
 const chordRoot = (name: string) => name.match(/^([A-G](?:#|b)?)/)?.[1] ?? '';
 const chordQuality = (name: string) => name.slice(chordRoot(name).length).split('/')[0];
@@ -73,8 +65,6 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
   const [qualityFilter, setQualityFilter] = useState<string | null>(null);
   const [familyFilter, setFamilyFilter] = useState<ChordFamily>('all');
   const [shapeFilter, setShapeFilter] = useState<ShapeFilter>('all');
-  const [positionFilter, setPositionFilter] = useState<PositionFilter>('recommended');
-  const [voicingIndex, setVoicingIndex] = useState(0);
   const [comparisonIndices, setComparisonIndices] = useState<number[]>([0]);
   const [copied, setCopied] = useState(false);
   const [auditioning, setAuditioning] = useState(false);
@@ -112,17 +102,16 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
   }, [fullLibrary, initialChord, selectedChordName]);
 
   const selectedChord = useMemo(() => fullLibrary.find(chord => chord.name === selectedChordName) ?? null, [fullLibrary, selectedChordName]);
-  const voicingResults = useMemo(() => {
-    if (!selectedChord) return null;
-    return {
-      recommended: findChordVoicings(selectedChord.name, fullLibrary, undefined, { limit: 12 }),
-      low: findChordVoicings(selectedChord.name, fullLibrary, undefined, { limit: 12, position: 'low' }),
-      middle: findChordVoicings(selectedChord.name, fullLibrary, undefined, { limit: 12, position: 'middle' }),
-      high: findChordVoicings(selectedChord.name, fullLibrary, undefined, { limit: 12, position: 'high' }),
-    };
-  }, [fullLibrary, selectedChord]);
-  const voicingResult = voicingResults?.[positionFilter] ?? null;
-  const selectedShape = voicingResult?.shapes[voicingIndex] ?? null;
+  const {
+    position: positionFilter,
+    setPosition: setPositionFilter,
+    voicingIndex,
+    setVoicingIndex,
+    results: voicingResults,
+    result: voicingResult,
+    shape: selectedShape,
+    shapePosition: selectedPosition,
+  } = usePositionedVoicings({ symbol: selectedChord?.name ?? null, chordLibrary: fullLibrary });
   const selectedShapeSaved = Boolean(selectedChord && selectedShape && customChords.some(chord => chord.name === selectedChord.name && sameFrets(chord.frets, selectedShape.frets)));
   const suggestedName = useMemo(() => detectChordName(newFrets, fullLibrary), [fullLibrary, newFrets]);
   const parsedChord = selectedChord ? parseChord(selectedChord.name) : null;
@@ -132,7 +121,6 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
   const startFret = pressedFrets.length ? Math.min(...pressedFrets) : 0;
   const fretSpan = pressedFrets.length ? Math.max(...pressedFrets) - Math.min(...pressedFrets) + 1 : 0;
   const difficulty = !selectedShape || selectedShape.score >= 125 ? 'Easy' : selectedShape.score >= 105 ? 'Medium' : 'Advanced';
-  const selectedPosition = selectedShape ? getVoicingPosition(selectedShape.frets) : null;
 
   useEffect(() => { setVoicingIndex(0); setComparisonIndices([0]); }, [positionFilter, selectedChordName]);
   useEffect(() => {
@@ -207,8 +195,8 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
 
         <main className="flex min-h-[600px] flex-col bg-[#fbfaf7] px-5 py-7 dark:bg-zinc-950 sm:px-8 lg:min-h-0 lg:overflow-y-auto lg:px-10">
           {selectedChord && selectedShape ? <>
-            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a8983]">Selected chord</p><h3 className="mt-1 font-mono text-4xl font-bold tracking-tight sm:text-5xl">{selectedChord.name}</h3><div className="mt-2 flex flex-wrap gap-2"><span className="rounded-full bg-[#dfe5ff] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#2343ba] dark:bg-violet-950 dark:text-violet-300">{selectedShape.source}</span>{selectedPosition && <span className="rounded-full bg-[#e7f3eb] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#277447] dark:bg-emerald-950 dark:text-emerald-300">{POSITION_LABELS[selectedPosition]}</span>}{selectedShape.tags.map(tag => <span key={tag} className="rounded-full bg-[#ecebe5] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#6d6c66] dark:bg-zinc-900 dark:text-zinc-400">{tag}</span>)}</div></div><div className="flex gap-2"><button type="button" onClick={auditionShape} disabled={auditioning} className={`grid h-10 w-10 place-items-center rounded-full border transition ${auditioning ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="試聽和弦"><Volume2 size={16} /></button><button type="button" onClick={copyShape} className="grid h-10 w-10 place-items-center rounded-full border border-[#d8d7d0] bg-white text-[#62615c] transition hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900" aria-label="複製指法"><Clipboard size={16} /></button><button type="button" onClick={saveSelectedShape} disabled={selectedShapeSaved} className={`grid h-10 w-10 place-items-center rounded-full border transition ${selectedShapeSaved ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="儲存指法">{selectedShapeSaved ? <Check size={17} /> : <BookmarkPlus size={17} />}</button></div></div>
-            <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl border border-[#deddd7] bg-[#f2f1ec] p-1.5 dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-4">{POSITIONS.map(position => { const count = voicingResults?.[position.value]?.shapes.length ?? 0; return <button key={position.value} type="button" onClick={() => setPositionFilter(position.value)} disabled={count === 0} className={`rounded-xl px-3 py-2.5 text-left transition ${positionFilter === position.value ? 'bg-white text-[#1b1c1e] shadow-sm ring-1 ring-[#d8d7d0] dark:bg-zinc-800 dark:text-white dark:ring-zinc-700' : 'text-[#77766f] hover:bg-white/60 disabled:cursor-not-allowed disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800/60'}`}><span className="flex items-center justify-between gap-2 text-xs font-bold"><span>{position.label}</span><span className="font-mono text-[9px] text-[#92918b]">{count}</span></span><span className="mt-0.5 block text-[9px] font-medium text-[#92918b]">{position.range}</span></button>; })}</div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8a8983]">Selected chord</p><h3 className="mt-1 font-mono text-4xl font-bold tracking-tight sm:text-5xl">{selectedChord.name}</h3><div className="mt-2 flex flex-wrap gap-2"><span className="rounded-full bg-[#dfe5ff] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#2343ba] dark:bg-violet-950 dark:text-violet-300">{selectedShape.source}</span>{selectedPosition && <span className="rounded-full bg-[#e7f3eb] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#277447] dark:bg-emerald-950 dark:text-emerald-300">{VOICING_POSITION_LABELS[selectedPosition]}</span>}{selectedShape.tags.map(tag => <span key={tag} className="rounded-full bg-[#ecebe5] px-2.5 py-1 text-[9px] font-bold uppercase tracking-wide text-[#6d6c66] dark:bg-zinc-900 dark:text-zinc-400">{tag}</span>)}</div></div><div className="flex gap-2"><button type="button" onClick={auditionShape} disabled={auditioning} className={`grid h-10 w-10 place-items-center rounded-full border transition ${auditioning ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="試聽和弦"><Volume2 size={16} /></button><button type="button" onClick={copyShape} className="grid h-10 w-10 place-items-center rounded-full border border-[#d8d7d0] bg-white text-[#62615c] transition hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900" aria-label="複製指法"><Clipboard size={16} /></button><button type="button" onClick={saveSelectedShape} disabled={selectedShapeSaved} className={`grid h-10 w-10 place-items-center rounded-full border transition ${selectedShapeSaved ? 'border-[#8fbca2] bg-[#e7f3eb] text-[#277447]' : 'border-[#d8d7d0] bg-white text-[#62615c] hover:border-[#3154d7] hover:text-[#3154d7] dark:border-zinc-700 dark:bg-zinc-900'}`} aria-label="儲存指法">{selectedShapeSaved ? <Check size={17} /> : <BookmarkPlus size={17} />}</button></div></div>
+            <div className="mt-5 grid grid-cols-2 gap-2 rounded-2xl border border-[#deddd7] bg-[#f2f1ec] p-1.5 dark:border-zinc-800 dark:bg-zinc-900 sm:grid-cols-4">{VOICING_POSITIONS.map(position => { const count = voicingResults?.[position.value]?.shapes.length ?? 0; return <button key={position.value} type="button" onClick={() => setPositionFilter(position.value)} disabled={count === 0} className={`rounded-xl px-3 py-2.5 text-left transition ${positionFilter === position.value ? 'bg-white text-[#1b1c1e] shadow-sm ring-1 ring-[#d8d7d0] dark:bg-zinc-800 dark:text-white dark:ring-zinc-700' : 'text-[#77766f] hover:bg-white/60 disabled:cursor-not-allowed disabled:opacity-35 dark:text-zinc-400 dark:hover:bg-zinc-800/60'}`}><span className="flex items-center justify-between gap-2 text-xs font-bold"><span>{position.label}</span><span className="font-mono text-[9px] text-[#92918b]">{count}</span></span><span className="mt-0.5 block text-[9px] font-medium text-[#92918b]">{position.range}</span></button>; })}</div>
             <div className="flex flex-1 flex-col items-center justify-center py-8"><div className="relative grid min-h-[320px] w-full max-w-xl place-items-center rounded-[32px] border border-[#e0dfd9] bg-white p-6 shadow-[0_22px_70px_rgba(43,43,38,0.06)] dark:border-zinc-800 dark:bg-zinc-900"><ChordDiagram chord={{ name: selectedChord.name, frets: selectedShape.frets, fingers: selectedShape.fingers, barres: selectedShape.barres }} size={270} theme={theme} variant="bare" /><div className="absolute bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#f1f0ea] px-4 py-2 font-mono text-xs font-semibold tracking-[0.18em] text-[#55544f] dark:bg-zinc-800 dark:text-zinc-300">{selectedShape.frets.map(fret => fret ?? 'X').reverse().join(' ')}</div></div></div>
             <div className="mx-auto flex w-full max-w-xl items-center justify-between rounded-2xl border border-[#deddd7] bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900"><button type="button" onClick={() => setVoicingIndex(index => Math.max(0, index - 1))} disabled={voicingIndex === 0} className="rounded-full p-2 text-[#66655f] hover:bg-[#ecebe5] disabled:opacity-25 dark:hover:bg-zinc-800" aria-label="上一個指法"><ChevronLeft size={20} /></button><div className="text-center"><p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-[#92918b]">Voicing</p><p className="mt-0.5 text-sm font-bold">{voicingIndex + 1} / {voicingResult.shapes.length}</p></div><button type="button" onClick={() => setVoicingIndex(index => Math.min(voicingResult.shapes.length - 1, index + 1))} disabled={voicingIndex >= voicingResult.shapes.length - 1} className="rounded-full p-2 text-[#66655f] hover:bg-[#ecebe5] disabled:opacity-25 dark:hover:bg-zinc-800" aria-label="下一個指法"><ChevronRight size={20} /></button></div>
             {copied && <div className="mt-3 text-center text-xs font-semibold text-[#277447]">已複製和弦與指法</div>}

@@ -1,4 +1,5 @@
 import { GuitarSong, TabSection, ChordDefinition } from '../types';
+import { parseVoicingPlan } from './voicingPlan';
 import { createEmptyMeasure } from '../hooks/useEditorState';
 import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
 
@@ -128,10 +129,11 @@ export const parseGflowFile = (raw: unknown): GflowImportResult => {
       if (parsed) customChords.push(parsed);
     }
   }
+  const voicingPlan = parseVoicingPlan(obj.voicingPlan);
 
   return {
     ok: true,
-    data: { title, sections, customChords, transposeOffset },
+    data: { title, sections, customChords, voicingPlan, transposeOffset },
   };
 };
 

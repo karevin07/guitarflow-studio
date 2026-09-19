@@ -13,6 +13,7 @@ class GuitarSong(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
     transpose_offset = models.IntegerField(default=0)
+    voicing_plan = models.JSONField(default=dict, blank=True)
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_GFLOW)
     import_format = models.CharField(max_length=20, null=True, blank=True)
     import_file_name = models.CharField(max_length=255, null=True, blank=True)

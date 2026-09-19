@@ -37,9 +37,13 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme, v
       } else if (fret === 0) {
         fingers.push([stringNum, 0]);
       } else {
-        fingers.push([stringNum, fret]);
+        fingers.push([stringNum, baseFret > 1 ? fret - baseFret + 1 : fret]);
       }
     });
+    const barres = (chord.barres ?? []).map(barre => ({
+      ...barre,
+      fret: baseFret > 1 ? barre.fret - baseFret + 1 : barre.fret,
+    }));
 
     const chart = new SVGuitarChord(containerRef.current);
     const isDark = theme === 'dark' || document.documentElement.classList.contains('dark');
@@ -66,7 +70,7 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme, v
 
     chart.chord({
       fingers,
-      barres: chord.barres ?? [],
+      barres,
     });
 
     try {

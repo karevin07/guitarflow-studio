@@ -1,40 +1,75 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Music2, X } from 'lucide-react';
-import { ChordDefinition } from '../types';
-import { findChordVoicings } from '../guitar';
+import React, { useMemo } from 'react';
+import { BookmarkCheck, ChevronLeft, ChevronRight, LockKeyhole, Music2, RotateCcw, X } from 'lucide-react';
+import { ChordDefinition, SongVoicingPreference } from '../types';
 import { formatPitch, getChordPitchClasses, parseChord } from '../music-theory';
+import { usePositionedVoicings, VOICING_POSITION_LABELS, VOICING_POSITIONS } from '../hooks/usePositionedVoicings';
+import { applicableLockedShape, sameFrets } from '../services/voicingPlan';
 import ChordDiagram from './ChordDiagram';
 
 interface ChordWorkspacePanelProps {
   symbol: string | null;
+  sourceSymbol?: string | null;
   chordLibrary: ChordDefinition[];
   theme: 'light' | 'dark';
+  preference?: SongVoicingPreference;
+  onPreferenceChange?: (preference: SongVoicingPreference | null) => void;
   onClose?: () => void;
   compact?: boolean;
 }
 
 const ChordWorkspacePanel: React.FC<ChordWorkspacePanelProps> = ({
   symbol,
+  sourceSymbol,
   chordLibrary,
   theme,
+  preference,
+  onPreferenceChange,
   onClose,
   compact = false,
 }) => {
-  const [voicingIndex, setVoicingIndex] = useState(0);
-  const result = useMemo(
-    () => symbol ? findChordVoicings(symbol, chordLibrary, undefined, { limit: 8 }) : null,
-    [symbol, chordLibrary]
-  );
-
-  useEffect(() => setVoicingIndex(0), [symbol]);
-
-  const shape = result?.shapes[voicingIndex] ?? null;
+  const lockedShape = applicableLockedShape(preference, symbol);
+  const effectiveLibrary = useMemo(() => {
+    if (!lockedShape || !symbol) return chordLibrary;
+    const alreadyIncluded = chordLibrary.some(chord => chord.name === symbol && sameFrets(chord.frets, lockedShape.frets));
+    return alreadyIncluded ? chordLibrary : [{ ...lockedShape, name: symbol }, ...chordLibrary];
+  }, [chordLibrary, lockedShape, symbol]);
+  const {
+    position,
+    setPosition,
+    voicingIndex,
+    setVoicingIndex,
+    results,
+    result,
+    shape,
+    shapePosition,
+  } = usePositionedVoicings({
+    symbol,
+    chordLibrary: effectiveLibrary,
+    initialPosition: preference?.position ?? 'recommended',
+    preferredFrets: lockedShape?.frets,
+    limit: 8,
+  });
   const parsed = symbol ? parseChord(symbol) : null;
   const notes = parsed
     ? getChordPitchClasses(parsed).map(pitch => formatPitch(pitch, parsed.accidentalPreference))
     : [];
   const difficulty = !shape || shape.score >= 125 ? 'Easy' : shape.score >= 105 ? 'Medium' : 'Advanced';
   const fretText = shape?.frets.map(fret => fret ?? 'X').reverse().join(' ') ?? '';
+  const isLocked = Boolean(lockedShape && shape && sameFrets(lockedShape.frets, shape.frets));
+  const applyPosition = () => onPreferenceChange?.({ position });
+  const lockShape = () => {
+    if (!shape || !symbol) return;
+    onPreferenceChange?.({
+      position,
+      lockedShape: {
+        symbol,
+        name: symbol,
+        frets: [...shape.frets],
+        fingers: shape.fingers,
+        barres: shape.barres,
+      },
+    });
+  };
   const voicingLabel = (index: number) => {
     const candidate = result?.shapes[index];
     if (!candidate) return `Shape ${index + 1}`;
@@ -80,6 +115,12 @@ const ChordWorkspacePanel: React.FC<ChordWorkspacePanelProps> = ({
 
       {shape && symbol ? (
         <>
+          <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-zinc-800/70">
+            {VOICING_POSITIONS.map(option => {
+              const count = results?.[option.value]?.shapes.length ?? 0;
+              return <button key={option.value} type="button" onClick={() => setPosition(option.value)} disabled={count === 0} className={`rounded-xl px-2.5 py-2 text-left transition-colors ${position === option.value ? 'bg-white text-slate-950 shadow-sm dark:bg-zinc-700 dark:text-white' : 'text-slate-500 hover:text-indigo-600 disabled:opacity-30 dark:text-zinc-400 dark:hover:text-violet-300'}`}><span className="flex items-center justify-between text-[10px] font-semibold"><span>{option.label}</span><span className="font-mono text-[8px] opacity-60">{count}</span></span><span className="mt-0.5 block text-[8px] opacity-60">{option.range}</span></button>;
+            })}
+          </div>
           <div className="flex min-h-0 flex-1 items-center justify-center py-4">
             <ChordDiagram
               chord={{ name: symbol, frets: shape.frets, fingers: shape.fingers, barres: shape.barres }}
@@ -98,6 +139,7 @@ const ChordWorkspacePanel: React.FC<ChordWorkspacePanelProps> = ({
                 <span>{shape.source === 'curated' ? 'Library' : 'Generated'}</span>
                 <span aria-hidden="true">·</span>
                 <span>{difficulty}</span>
+                {shapePosition && <><span aria-hidden="true">·</span><span>{VOICING_POSITION_LABELS[shapePosition]}</span></>}
                 {shape.tags.filter(tag => tag !== difficulty.toLowerCase()).map(tag => <span key={tag}>· {tag}</span>)}
               </div>
             </div>
@@ -149,6 +191,14 @@ const ChordWorkspacePanel: React.FC<ChordWorkspacePanelProps> = ({
                 <ChevronRight size={18} />
               </button>
             </div>
+
+            {sourceSymbol && onPreferenceChange && (
+              <div className="grid grid-cols-2 gap-2 border-t border-slate-200/80 pt-4 dark:border-zinc-800">
+                <button type="button" onClick={applyPosition} className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-[10px] font-semibold text-slate-600 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-zinc-700 dark:text-zinc-300 dark:hover:border-violet-700 dark:hover:text-violet-300"><BookmarkCheck size={14} />套用此把位</button>
+                <button type="button" onClick={lockShape} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[10px] font-semibold transition-colors ${isLocked ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-slate-950 text-white hover:bg-indigo-600 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-violet-300'}`}><LockKeyhole size={14} />{isLocked ? '已固定此指法' : '固定此指法'}</button>
+                {preference && <button type="button" onClick={() => onPreferenceChange(null)} className="col-span-2 flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-[10px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"><RotateCcw size={13} />恢復自動推薦</button>}
+              </div>
+            )}
 
             <div className="flex items-center gap-2 border-t border-slate-200/80 pt-4 dark:border-zinc-800">
               <Music2 size={14} className="text-indigo-500 dark:text-violet-400" />

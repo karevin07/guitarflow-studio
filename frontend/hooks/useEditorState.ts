@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { TabSection, ChordDefinition } from '../types';
+import { TabSection, ChordDefinition, SongVoicingPlan } from '../types';
 import { api } from '../services/api';
 import { detectChordFromColumn } from '../services/chordDetector';
 import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
@@ -13,6 +13,7 @@ export const useEditorState = () => {
   const [customChords, setCustomChords] = useState<ChordDefinition[]>([]);
   const [globalChords, setGlobalChords] = useState<ChordDefinition[]>([]);
   const [transposeOffset, setTransposeOffset] = useState(0);
+  const [voicingPlan, setVoicingPlan] = useState<SongVoicingPlan>({});
 
   const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [selection, setSelectionRaw] = useState<{
@@ -45,11 +46,12 @@ export const useEditorState = () => {
 
   /** Load a song's data into the editor (called when opening a song) */
   const loadSong = useCallback(
-    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number) => {
+    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number, plan: SongVoicingPlan = {}) => {
       setSongTitle(title);
       setSections(newSections);
       setCustomChords(chords);
       setTransposeOffset(transpose);
+      setVoicingPlan(plan);
       setActiveSectionId(newSections[0]?.id || '');
       setHistory([newSections]);
       setHistoryIndex(0);
@@ -432,6 +434,7 @@ export const useEditorState = () => {
     customChords, setCustomChords,
     globalChords, setGlobalChords,
     transposeOffset, setTransposeOffset,
+    voicingPlan, setVoicingPlan,
     activeSectionId, setActiveSectionId,
     selection, setSelection,
     previewChord, setPreviewChord,
