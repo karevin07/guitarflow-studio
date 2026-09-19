@@ -1,7 +1,7 @@
 import { formatChord, parseChord } from '../../music-theory';
 import { GuitarTuning, STANDARD_TUNING } from '../tuning';
 import { generateChordShapes } from './generator';
-import { inferVoicingTags, scoreChordShape } from './scorer';
+import { getVoicingPosition, inferVoicingTags, scoreChordShape } from './scorer';
 import {
   ChordShape,
   ChordVoicingResult,
@@ -29,6 +29,7 @@ export const findChordVoicings = (
   const curated: ChordShape[] = curatedLibrary
     .filter(voicing => sameChord(voicing.name, symbol))
     .filter(voicing => voicing.frets.length === tuning.strings.length)
+    .filter(voicing => !options.position || getVoicingPosition(voicing.frets) === options.position)
     .map(voicing => ({
       frets: [...voicing.frets],
       fingers: voicing.fingers,

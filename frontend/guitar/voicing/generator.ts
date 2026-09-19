@@ -5,10 +5,10 @@ import {
 } from '../../music-theory';
 import { fretsForPitchClasses, noteAt } from '../fretboard';
 import { GuitarTuning, STANDARD_TUNING } from '../tuning';
-import { scoreChordShape, fretSpan, inferVoicingTags } from './scorer';
+import { scoreChordShape, fretSpan, getVoicingPosition, inferVoicingTags } from './scorer';
 import { ChordShape, VoicingSearchOptions } from './types';
 
-const DEFAULT_OPTIONS: Required<VoicingSearchOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<VoicingSearchOptions, 'position'>> = {
   maxFret: 12,
   maxSpan: 4,
   minStrings: 3,
@@ -35,6 +35,7 @@ export const generateChordShapes = (
 
     if (stringIndex === tuning.strings.length) {
       if (playedCount < config.minStrings || fretSpan(current) > config.maxSpan) return;
+      if (config.position && getVoicingPosition(current) !== config.position) return;
 
       const notes = new Set(current.flatMap((fret, index) =>
         fret === null ? [] : [noteAt(tuning.strings[index], fret)]

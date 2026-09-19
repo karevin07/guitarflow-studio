@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseChord } from '../../music-theory';
 import { generateChordShapes } from './generator';
 import { findChordVoicings } from './library';
-import { inferVoicingTags } from './scorer';
+import { getVoicingPosition, inferVoicingTags, voicingStartFret } from './scorer';
 
 describe('voicing generator', () => {
   it('generates playable shapes containing essential chord tones', () => {
@@ -43,6 +43,18 @@ describe('voicing generator', () => {
       expect(shapes.length).toBeGreaterThan(0);
     }
   );
+
+  it.each(['low', 'middle', 'high'] as const)(
+    'generates %s-position references on request',
+    position => {
+      const chord = parseChord('Cmaj7');
+      if (!chord) throw new Error('test chord did not parse');
+
+      const shapes = generateChordShapes(chord, undefined, { position, maxFret: 12, limit: 4 });
+      expect(shapes.length).toBeGreaterThan(0);
+      expect(shapes.every(shape => getVoicingPosition(shape.frets) === position)).toBe(true);
+    }
+  );
 });
 
 describe('voicing metadata', () => {
@@ -51,6 +63,13 @@ describe('voicing metadata', () => {
     expect(inferVoicingTags([1, 1, 2, 3, 3, 1])).toContain('barre');
     expect(inferVoicingTags([5, 5, 5, null, null, null])).toEqual(expect.arrayContaining(['barre', 'triad']));
     expect(inferVoicingTags([1, 2, 3, null, null, null], [{ fret: 1, fromString: 1, toString: 3 }])).toContain('barre');
+  });
+
+  it('classifies low, middle, and high neck positions by the first pressed fret', () => {
+    expect(voicingStartFret([0, 1, 0, 2, 3, null])).toBe(1);
+    expect(getVoicingPosition([0, 1, 0, 2, 3, null])).toBe('low');
+    expect(getVoicingPosition([8, 8, 9, 10, 10, 8])).toBe('middle');
+    expect(getVoicingPosition([12, 12, 13, 14, 14, 12])).toBe('high');
   });
 });
 

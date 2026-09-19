@@ -1,7 +1,7 @@
 import { Chord, getEssentialPitchClasses } from '../../music-theory';
 import { noteAt } from '../fretboard';
 import { GuitarTuning, STANDARD_TUNING } from '../tuning';
-import { ChordShape } from './types';
+import { ChordShape, VoicingPosition } from './types';
 
 export const playedFrets = (frets: Array<number | null>): number[] =>
   frets.filter((fret): fret is number => fret !== null);
@@ -9,6 +9,18 @@ export const playedFrets = (frets: Array<number | null>): number[] =>
 export const fretSpan = (frets: Array<number | null>): number => {
   const pressed = playedFrets(frets).filter(fret => fret > 0);
   return pressed.length < 2 ? 0 : Math.max(...pressed) - Math.min(...pressed);
+};
+
+export const voicingStartFret = (frets: Array<number | null>): number => {
+  const pressed = playedFrets(frets).filter(fret => fret > 0);
+  return pressed.length ? Math.min(...pressed) : 0;
+};
+
+export const getVoicingPosition = (frets: Array<number | null>): VoicingPosition => {
+  const startFret = voicingStartFret(frets);
+  if (startFret <= 4) return 'low';
+  if (startFret <= 8) return 'middle';
+  return 'high';
 };
 
 export const inferVoicingTags = (

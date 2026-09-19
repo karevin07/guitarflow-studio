@@ -8,6 +8,7 @@ export interface Barre {
 
 export type VoicingSource = 'curated' | 'generated';
 export type VoicingTag = 'open' | 'barre' | 'easy' | 'jazz' | 'shell' | 'triad';
+export type VoicingPosition = 'low' | 'middle' | 'high';
 
 export interface ChordShape {
   /** App order: high e to low E; null means muted. */
@@ -33,6 +34,7 @@ export interface VoicingSearchOptions {
   maxSpan?: number;
   minStrings?: number;
   limit?: number;
+  position?: VoicingPosition;
 }
 
 export interface ChordVoicingResult {
