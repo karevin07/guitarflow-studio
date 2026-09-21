@@ -1,7 +1,21 @@
-import { ChordDefinition } from '../types';
+import { ChordDefinition, TabSection } from '../types';
 import { cellToFret } from './tabNotation';
-import { CHORD_FORMULAS, ChordQuality, formatChord, toPitchClass, transposePitch } from '../music-theory';
+import { CHORD_FORMULAS, ChordQuality, formatChord, formatPitch, toPitchClass, transposePitch } from '../music-theory';
 import { STANDARD_TUNING, noteAt } from '../guitar';
+
+export interface ChordDetectionCandidate {
+  name: string;
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+  exactShape: boolean;
+  score: number;
+}
+
+export interface ChordDetectionResult {
+  frets: (number | null)[];
+  notes: string[];
+  candidates: ChordDetectionCandidate[];
+}
 
 const fretsMatch = (a: (number | null)[], b: (number | null)[]): boolean => {
   if (a.length !== 6 || b.length !== 6) return false;
@@ -19,22 +33,18 @@ export const columnNotesToFrets = (columnNotes: string[]): (number | null)[] =>
     return cellToFret(n);
   });
 
-export const detectChordName = (
+export const detectChordCandidates = (
   frets: (number | null)[],
   library: ChordDefinition[]
-): string | null => {
-  const hasAnyNote = frets.some(f => f !== null);
-  if (!hasAnyNote) return null;
-
-  for (const chord of library) {
-    if (fretsMatch(chord.frets, frets)) return chord.name;
-  }
+): ChordDetectionResult => {
+  const empty = { frets, notes: [], candidates: [] };
+  if (frets.length !== STANDARD_TUNING.strings.length || !frets.some(f => f !== null)) return empty;
 
   const pitches = frets.flatMap((fret, stringIndex) =>
     fret === null ? [] : [noteAt(STANDARD_TUNING.strings[stringIndex], fret)]
   );
   const pitchSet = new Set(pitches);
-  if (pitchSet.size < 2) return null;
+  const notes = [...pitchSet].sort((a, b) => a - b).map(pitch => formatPitch(pitch, 'sharp'));
 
   const qualities = Object.keys(CHORD_FORMULAS) as ChordQuality[];
   let bassString = -1;
@@ -45,7 +55,20 @@ export const detectChordName = (
     }
   }
   const bass = bassString >= 0 ? noteAt(STANDARD_TUNING.strings[bassString], frets[bassString]!) : null;
-  const matches: Array<{ name: string; score: number }> = [];
+  const matches = new Map<string, ChordDetectionCandidate>();
+
+  for (const chord of library) {
+    if (!fretsMatch(chord.frets, frets)) continue;
+    matches.set(chord.name, {
+      name: chord.name,
+      confidence: 'high',
+      reason: '與和弦庫指法完全相同',
+      exactShape: true,
+      score: 1000,
+    });
+  }
+
+  if (pitchSet.size < 2) return { frets, notes, candidates: [...matches.values()].slice(0, 5) };
 
   for (let root = 0; root < 12; root += 1) {
     const rootPitch = toPitchClass(root);
@@ -56,15 +79,50 @@ export const detectChordName = (
       if (![...pitchSet].every(pitch => chordPitches.has(pitch)) || !essentials.every(pitch => pitchSet.has(pitch))) {
         continue;
       }
-      matches.push({
-        name: formatChord({ root: rootPitch, quality, accidentalPreference: 'sharp' }),
-        score: (bass === root ? 20 : 0) + formula.intervals.length * 2 - (chordPitches.size - pitchSet.size),
+      const name = formatChord({ root: rootPitch, quality, accidentalPreference: 'sharp' });
+      if (matches.has(name)) continue;
+      const complete = [...chordPitches].every(pitch => pitchSet.has(pitch));
+      const rootInBass = bass === root;
+      matches.set(name, {
+        name,
+        confidence: complete && rootInBass && pitchSet.size >= 3 ? 'high' : complete ? 'medium' : 'low',
+        reason: !complete ? '部分組成音省略，需確認和弦語境' : rootInBass ? '組成音完整，最低音為根音' : '組成音完整，但最低音不是根音',
+        exactShape: false,
+        score: (rootInBass ? 20 : 0) + formula.intervals.length * 2 - (chordPitches.size - pitchSet.size),
       });
     }
   }
 
-  return matches.sort((a, b) => b.score - a.score || a.name.length - b.name.length)[0]?.name ?? null;
+  return {
+    frets,
+    notes,
+    candidates: [...matches.values()].sort((a, b) => b.score - a.score || a.name.length - b.name.length).slice(0, 5),
+  };
 };
+
+export const detectChordName = (frets: (number | null)[], library: ChordDefinition[]): string | null =>
+  detectChordCandidates(frets, library).candidates[0]?.name ?? null;
+
+export const detectChordCandidatesFromColumn = (
+  columnNotes: string[],
+  library: ChordDefinition[]
+): ChordDetectionResult => detectChordCandidates(columnNotesToFrets(columnNotes), library);
+
+/** Confirm a detected label without replacing the frets the musician entered. */
+export const labelChordColumn = (
+  sections: TabSection[],
+  sectionId: string,
+  measureIdx: number,
+  colIdx: number,
+  name: string
+): TabSection[] => sections.map(section => {
+  if (section.id !== sectionId || section.chords[measureIdx]?.[colIdx] === undefined) return section;
+  if (section.chords[measureIdx][colIdx] === name) return section;
+  const chords = [...section.chords];
+  chords[measureIdx] = [...chords[measureIdx]];
+  chords[measureIdx][colIdx] = name;
+  return { ...section, chords };
+});
 
 export const detectChordFromColumn = (
   columnNotes: string[],
@@ -73,8 +131,6 @@ export const detectChordFromColumn = (
   const frets = columnNotesToFrets(columnNotes);
   const name = detectChordName(frets, library);
   if (name) {
-    const found = library.find(c => c.name === name);
-    if (found) return found;
     return { name, frets };
   }
   const hasNotes = frets.some(f => f !== null);

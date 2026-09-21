@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import EditScoreView from './EditScoreView';
 import EditInspectorPanel from './EditInspectorPanel';
 import FretboardDock from './FretboardDock';
 import { TabSection, ChordDefinition } from '../types';
 import { TechniqueInputHint } from '../services/tabNotation';
+import { detectChordCandidatesFromColumn } from '../services/chordDetector';
 
 interface EditorSelection {
   sectionId: string;
@@ -40,6 +41,7 @@ interface EditViewProps {
   onAddMeasure: () => void;
   onSetSelection: (sel: EditorSelection) => void;
   onChordNameChange: (measureIdx: number, colIdx: number, name: string) => void;
+  onConfirmChordName: (measureIdx: number, colIdx: number, name: string) => void;
   onLyricChange: (measureIdx: number, colIdx: number, text: string) => void;
   onDeleteMeasure: (measureIdx: number) => void;
   onCopyMeasure: (measureIdx: number) => void;
@@ -85,6 +87,7 @@ const EditView: React.FC<EditViewProps> = ({
   onAddMeasure,
   onSetSelection,
   onChordNameChange,
+  onConfirmChordName,
   onLyricChange,
   onDeleteMeasure,
   onCopyMeasure,
@@ -98,6 +101,16 @@ const EditView: React.FC<EditViewProps> = ({
   onOpenHelp,
 }) => {
   const currentSection = sections.find(s => s.id === activeSectionId);
+  const selectedColumn = selection && currentSection?.id === selection.sectionId
+    ? currentSection.measures[selection.measureIdx]?.map(string => string[selection.colIdx])
+    : null;
+  const chordDetection = useMemo(
+    () => selectedColumn ? detectChordCandidatesFromColumn(selectedColumn, chordLibrary) : null,
+    [selectedColumn?.join('|'), chordLibrary]
+  );
+  const selectedChordName = selection && currentSection?.id === selection.sectionId
+    ? currentSection.chords[selection.measureIdx]?.[selection.colIdx] ?? null
+    : null;
 
   const cellValue =
     selection && currentSection
@@ -218,6 +231,11 @@ const EditView: React.FC<EditViewProps> = ({
               playState={playState}
               theme={theme}
               techniqueHint={techniqueHint}
+              chordDetection={chordDetection}
+              selectedChordName={selectedChordName}
+              onConfirmChordName={name => {
+                if (selection?.sectionId === currentSection.id) onConfirmChordName(selection.measureIdx, selection.colIdx, name);
+              }}
               onUpdateTitle={onUpdateSectionTitle}
               onSetTimeSignature={onSetTimeSignature}
               onSetCapo={onSetCapo}

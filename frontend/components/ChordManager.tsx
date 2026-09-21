@@ -4,10 +4,11 @@ import { TUNING_STANDARD } from '../constants';
 import { inferVoicingTags } from '../guitar';
 import { usePositionedVoicings, VOICING_POSITION_LABELS, VOICING_POSITIONS } from '../hooks/usePositionedVoicings';
 import { formatPitch, getChordPitchClasses, parseChord } from '../music-theory';
-import { detectChordName } from '../services/chordDetector';
+import { detectChordCandidates } from '../services/chordDetector';
 import { ChordDefinition } from '../types';
 import ChordDiagram from './ChordDiagram';
 import { previewChordVoicing } from '../services/chordPreview';
+import ChordCandidatePicker from './ChordCandidatePicker';
 
 type ShapeFilter = 'all' | 'open' | 'easy' | 'barre' | 'custom';
 type ChordFamily = 'all' | 'basic' | 'seventh' | 'color' | 'tension';
@@ -113,7 +114,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
     shapePosition: selectedPosition,
   } = usePositionedVoicings({ symbol: selectedChord?.name ?? null, chordLibrary: fullLibrary });
   const selectedShapeSaved = Boolean(selectedChord && selectedShape && customChords.some(chord => chord.name === selectedChord.name && sameFrets(chord.frets, selectedShape.frets)));
-  const suggestedName = useMemo(() => detectChordName(newFrets, fullLibrary), [fullLibrary, newFrets]);
+  const chordDetection = useMemo(() => detectChordCandidates(newFrets, fullLibrary), [fullLibrary, newFrets]);
   const parsedChord = selectedChord ? parseChord(selectedChord.name) : null;
   const chordTones = parsedChord ? getChordPitchClasses(parsedChord).map(note => formatPitch(note, parsedChord.accidentalPreference)) : [];
   const frets = selectedShape?.frets ?? selectedChord?.frets ?? [];
@@ -214,7 +215,7 @@ const ChordManager: React.FC<ChordManagerProps> = ({ customChords, globalChords 
         <div className="mx-auto grid max-w-5xl overflow-hidden rounded-[28px] border border-[#deddd7] bg-white shadow-[0_24px_80px_rgba(43,43,38,0.08)] dark:border-zinc-800 dark:bg-zinc-900 md:grid-cols-[1fr_360px]">
           <div className="p-6 sm:p-9"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#3154d7] text-white"><Sparkles size={18} /></div><div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#3154d7]">Custom shape</p><h3 className="text-2xl font-bold">建立自己的和弦</h3></div></div>
             <label className="mt-8 block"><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#85847e]">和弦名稱</span><input value={newChordName} onChange={event => setNewChordName(event.target.value)} placeholder="例如 Amaj9" className="mt-2 w-full rounded-xl border border-[#d8d7d0] bg-[#fbfaf7] px-4 py-3 text-lg font-bold outline-none focus:border-[#3154d7] dark:border-zinc-700 dark:bg-zinc-950" /></label>
-            {suggestedName && suggestedName !== newChordName && <button type="button" onClick={() => setNewChordName(suggestedName)} className="mt-2 text-xs font-semibold text-[#3154d7]">偵測到 {suggestedName}，套用名稱</button>}
+            <div className="mt-3"><ChordCandidatePicker result={chordDetection} currentName={newChordName} onConfirm={setNewChordName} compact /></div>
             <div className="mt-8 overflow-x-auto rounded-2xl border border-[#deddd7] bg-[#f7f6f2] p-5 dark:border-zinc-800 dark:bg-zinc-950"><div className="grid min-w-[480px] grid-cols-6 gap-3">{TUNING_STANDARD.map((string, stringIndex) => <div key={`${string}-${stringIndex}`} className="text-center"><p className="mb-3 font-mono text-xs font-bold text-[#77766f]">{string}</p><button type="button" onClick={() => toggleFret(stringIndex, newFrets[stringIndex] === 0 ? null : 0)} className={`mb-2 h-9 w-9 rounded-full border text-xs font-bold ${newFrets[stringIndex] === 0 ? 'border-[#3154d7] bg-[#3154d7] text-white' : 'border-[#d2d1ca] bg-white text-[#77766f] dark:border-zinc-700 dark:bg-zinc-900'}`}>{newFrets[stringIndex] === null ? 'X' : newFrets[stringIndex] === 0 ? 'O' : '·'}</button>{[1, 2, 3, 4, 5].map(fret => <button key={fret} type="button" onClick={() => toggleFret(stringIndex, fret)} className={`mx-auto my-1 grid h-9 w-9 place-items-center rounded-full text-xs font-bold transition ${newFrets[stringIndex] === fret ? 'bg-[#1b1c1e] text-white dark:bg-white dark:text-zinc-950' : 'text-[#aaa9a2] hover:bg-[#e6e5df] dark:hover:bg-zinc-800'}`}>{fret}</button>)}</div>)}</div></div>
           </div>
           <aside className="flex flex-col border-t border-[#deddd7] bg-[#f2f1ec] p-6 dark:border-zinc-800 dark:bg-zinc-950 md:border-l md:border-t-0"><p className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-[#8a8983]">即時預覽</p><div className="grid flex-1 place-items-center py-8"><ChordDiagram chord={{ name: newChordName || 'New', frets: newFrets }} size={230} theme={theme} variant="bare" /></div><button type="button" onClick={saveCustomChord} disabled={!newChordName.trim()} className="flex items-center justify-center gap-2 rounded-xl bg-[#1b1c1e] py-3.5 text-sm font-semibold text-white transition hover:bg-[#3154d7] disabled:cursor-not-allowed disabled:bg-[#cfcec7] dark:bg-zinc-100 dark:text-zinc-950"><Plus size={17} /> 儲存到我的和弦</button></aside>

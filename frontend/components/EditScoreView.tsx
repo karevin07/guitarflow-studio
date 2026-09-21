@@ -11,6 +11,8 @@ import {
 } from '../constants/practice';
 import { TechniqueInputHint, revertPendingTechnique } from '../services/tabNotation';
 import { applyNotationAction, canApplyNotationAction, NotationAction } from '../services/notationInput';
+import { ChordDetectionResult } from '../services/chordDetector';
+import ChordCandidatePicker from './ChordCandidatePicker';
 
 interface EditorSelection {
   sectionId: string;
@@ -32,6 +34,9 @@ interface EditScoreViewProps {
   playState: PlayState | null;
   theme: 'light' | 'dark';
   techniqueHint: TechniqueInputHint | null;
+  chordDetection: ChordDetectionResult | null;
+  selectedChordName: string | null;
+  onConfirmChordName: (name: string) => void;
   onUpdateTitle: (title: string) => void;
   onSetTimeSignature: (ts: [number, number]) => void;
   onSetCapo: (capo: number) => void;
@@ -64,6 +69,9 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
   playState,
   theme,
   techniqueHint,
+  chordDetection,
+  selectedChordName,
+  onConfirmChordName,
   onUpdateTitle,
   onSetTimeSignature,
   onSetCapo,
@@ -196,6 +204,10 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
         onRedo={onRedo}
         onOpenHelp={onOpenHelp}
       />
+
+      {chordDetection && (
+        <ChordCandidatePicker result={chordDetection} currentName={selectedChordName} onConfirm={onConfirmChordName} />
+      )}
 
       <div className="flex-1 overflow-y-auto p-3 pb-4 min-h-0 sm:p-6 sm:pb-4">
         <div

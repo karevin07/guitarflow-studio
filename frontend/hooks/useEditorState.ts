@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { TabSection, ChordDefinition, SongVoicingPlan } from '../types';
 import { api } from '../services/api';
-import { detectChordFromColumn } from '../services/chordDetector';
+import { detectChordFromColumn, labelChordColumn } from '../services/chordDetector';
 import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
 
 export const createEmptyMeasure = (): string[][] =>
@@ -384,6 +384,24 @@ export const useEditorState = () => {
     [history, chordLibrary]
   );
 
+  const confirmDetectedChordName = useCallback(
+    (sectionId: string, mIdx: number, cIdx: number, name: string) => {
+      setSections(prev => {
+        const next = labelChordColumn(prev, sectionId, mIdx, cIdx, name);
+        if (next.every((section, index) => section === prev[index])) return prev;
+        setHistoryIndex(prevIdx => {
+          const nextHistory = history.slice(0, prevIdx + 1);
+          nextHistory.push(JSON.parse(JSON.stringify(next)));
+          if (nextHistory.length > 50) nextHistory.shift();
+          setHistory(nextHistory);
+          return nextHistory.length - 1;
+        });
+        return next;
+      });
+    },
+    [history]
+  );
+
   const handleDropChord = useCallback(
     (sectionId: string, mIdx: number, cIdx: number, chordName: string) => {
       const chord = chordLibrary.find(c => c.name === chordName);
@@ -412,15 +430,12 @@ export const useEditorState = () => {
       if (selection && currentSection) {
         const { measureIdx, colIdx } = selection;
         const chordName = currentSection.chords[measureIdx]?.[colIdx];
-        if (chordName) {
-          const namedChord = chordLibrary.find(c => c.name === chordName);
-          if (namedChord) return namedChord;
-        }
         const columnNotes = currentSection.measures[measureIdx]?.map(str => str[colIdx]);
         if (columnNotes) {
           const detected = detectChordFromColumn(columnNotes, chordLibrary);
-          if (detected) return detected;
+          if (detected) return chordName ? { ...detected, name: chordName } : detected;
         }
+        if (chordName) return chordLibrary.find(c => c.name === chordName) ?? null;
       }
       return null;
     },
@@ -448,7 +463,7 @@ export const useEditorState = () => {
     addMeasure, deleteMeasure, copyMeasure, clearColumn,
     addSection, updateSectionTitle, deleteSection, moveSection,
     applyChordToColumn,
-    handleChordNameChange, handleDropChord, handleChordInput,
+    handleChordNameChange, confirmDetectedChordName, handleDropChord, handleChordInput,
     getActiveChord,
   };
 };

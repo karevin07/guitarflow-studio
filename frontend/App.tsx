@@ -604,6 +604,9 @@ const App: React.FC = () => {
             onChordNameChange={(mIdx, cIdx, name) =>
               editor.handleChordNameChange(editor.activeSectionId, mIdx, cIdx, name)
             }
+            onConfirmChordName={(mIdx, cIdx, name) =>
+              editor.confirmDetectedChordName(editor.activeSectionId, mIdx, cIdx, name)
+            }
             onLyricChange={(mIdx, cIdx, text) =>
               editor.updateLyric(editor.activeSectionId, mIdx, cIdx, text)
             }
