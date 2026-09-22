@@ -1,9 +1,7 @@
 
 # GuitarFlow Studio
 
-GuitarFlow Studio is a professional-grade, web-based guitar tablature editor designed for songwriters and musicians. It provides a seamless interface for creating, editing, managing, and visualizing guitar music.
-
-GuitarFlow Studio 是一個專業級的網頁版吉他譜編輯器，專為詞曲創作者和音樂家設計。它提供了一個流暢的介面，用於創作、編輯、管理和視覺化吉他音樂。
+GuitarFlow Studio 是一個網頁版吉他創作與練習工具。主要入口為創作、練習與和弦庫；歌曲可儲存在個人帳號中，也可匯入 Guitar Pro 或 MusicXML 樂譜供閱譜與播放。
 
 ## Features (功能)
 
@@ -20,17 +18,17 @@ GuitarFlow Studio 是一個專業級的網頁版吉他譜編輯器，專為詞�
 - **Interactive Fretboard**: Visual fretboard with audio playback via Web Audio API.
 
 ### 🎼 Chord Management (和弦管理)
-- **Visual Library**: Drag-and-drop chord library with standard and custom chords.
-- **Global Chord Library**: Pre-seeded standard chords served from the backend API.
-- **Chord Detector**: Automatically detects and names chords based on the notes entered in the tab.
-- **Custom Chords**: Create your own chord shapes with a visual designer and save them per song.
+- **和弦庫**：搜尋標準與自訂和弦，查看開放、高低把位及替代指法。
+- **和弦辨識**：依輸入音符列出候選名稱，由使用者確認後寫入譜面，不改動原本指法。
+- **指法規劃**：練習頁可為整首歌自動挑選指法並儲存，也可個別鎖定指法。
 
 ### 👁️ Preview, Playback & Export (預覽、播放與匯出)
-- **Clean Mode**: View your song in a read-only, clean format optimized for practice.
+- **Practice Mode**: Read-only score, playback, auto-scroll and chord guidance for practice.
 - **Transposition**: Instantly transpose the entire song (notes and chord names) up or down.
 - **Playback**: Play back tablature with BPM control, loop, metronome, and volume.
 - **Export**: Export songs as `.gflow` files or MIDI.
-- **Cloud Save**: Songs are persisted to the backend (PostgreSQL in Docker, SQLite for local-only dev).
+- **Import**: Preview and persist Guitar Pro / MusicXML scores using alphaTab.
+- **Account Save**: Songs belong to the signed-in user and persist to the backend (PostgreSQL in Docker, SQLite for local-only dev).
 
 ---
 
@@ -82,13 +80,13 @@ make migrate
 
 ## Getting Started (開始使用)
 
-1. **Create a Song**: Click "Create New" on the home screen.
-2. **Edit**:
+1. **登入或註冊**，從歌曲庫建立歌曲，或匯入現有樂譜。
+2. **創作**：
    - Use your mouse or keyboard to select a cell.
    - Type numbers to add notes.
    - Drag chords from the sidebar to the top of the measure.
-3. **Sections**: Add new sections using the sidebar (e.g., "Chorus") to keep your song organized.
-4. **Save**: Click Save to persist your song to the backend API.
+3. **練習**：切換到練習頁播放、循環段落，或用「自動配置」規劃和弦指法。
+4. **和弦庫**：查找不同把位的按法；回到歌曲後按 Save 儲存變更。
 
 ---
 
@@ -118,6 +116,22 @@ Run `make help` to see all available targets.
 | `make test` | Run backend + frontend tests |
 | `make build` | Build frontend production bundle |
 | `make docker` | Start full stack with Docker Compose |
+
+### Browser E2E tests
+
+Use the isolated test Compose project. Its frontend, API and database bind to `127.0.0.1:3303`, `127.0.0.1:18000` and `127.0.0.1:15432`, so it does not take over the normal Docker service or Tailscale endpoint.
+
+```bash
+docker compose --env-file .env.e2e.example -p guitarflow-e2e up -d --build --wait
+cd frontend
+npm ci
+npx playwright install chromium
+npm run test:e2e
+cd ..
+docker compose --env-file .env.e2e.example -p guitarflow-e2e down -v --remove-orphans
+```
+
+The last command deletes only the isolated `guitarflow-e2e` containers and test database volume. CI runs the same browser suite. It covers account creation and save/reopen, chord-candidate confirmation, practice voicing planning and playback, and MusicXML preview/import. Guitar Pro binary-format import still needs a real-file smoke test.
 
 See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details, [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes, and [docs/TAILSCALE_DOCKER_TESTING.md](docs/TAILSCALE_DOCKER_TESTING.md) for private-network device testing with Tailscale.
 

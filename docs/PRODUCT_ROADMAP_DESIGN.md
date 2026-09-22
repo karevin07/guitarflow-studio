@@ -3,7 +3,7 @@
 > 策略：**C — 混合路線**（創作 + 閱譜/練習）  
 > 執行順序：**先 A（創作工具）→ 再 B（alphaTab 整合）**  
 > 參考：[alphaTab](https://github.com/CoderLine/alphaTab) UI/UX 與功能設計  
-> 日期：2025-06-20 · **最後更新：2026-06-20**
+> 日期：2025-06-20 · **最後更新：2026-09-22**
 
 ### 進度總覽
 
@@ -16,8 +16,9 @@
 | Sprint C1（品質 & 合規） | ✅ 完成 | 100% |
 | **Phase D（GP 風格 Edit UI）** | ✅ 完成 | ~95% |
 | **Phase C2（使用者隔離）** | ✅ 完成 | ~95% |
+| **Sprint Q1（核心流程驗收）** | 🔄 進行中 | E2E 與文件已建立，待正式 CI 驗證 |
 
-**當前 Sprint：B3 收尾 / 生產環境 auth 強化（backlog）**
+**當前 Sprint：Q1 核心流程驗收；B3 / D3 與生產環境 auth 強化保留於 backlog。** 上表較早階段的百分比為歷史估計，不代表本次重新驗收結果。
 
 ---
 
@@ -34,7 +35,7 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 
 ---
 
-## 2. 現況摘要（2026-06-21）
+## 2. 現況摘要（2026-09-22）
 
 ### 已有能力
 - 6 弦 × 16 分音符格線編輯器（鍵盤/指板輸入）
@@ -53,6 +54,7 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 
 - **Phase C2**：Token 認證、song ownership、legacy claim、列表分頁/搜尋
 - **B3 PoC**：GP→gflow 轉換、MusicXML 匯出
+- **目前導覽**：創作、練習、和弦庫三個主要功能頁；和弦庫提供多把位指法，創作頁可確認辨識候選，練習頁可規劃整首歌的指法
 
 ### 仍待完成
 - B3 低優先：音訊同步（alphaTab external media）
@@ -67,6 +69,17 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 | GitHub Actions CI（backend + frontend + docker build） | ✅ |
 | MPL-2.0 授權結論（docs/MPL_LICENSING.md + NOTICE.md） | ✅ |
 | Bend 輸入 UX（提示 + Esc 取消 + 快捷鍵說明） | ✅ |
+
+### Sprint Q1 — 核心流程驗收 🔄
+
+| 項目 | 狀態 |
+|------|------|
+| Playwright 瀏覽器流程：註冊、建歌、存檔、重開 | ✅ 已加入測試 |
+| 和弦候選確認後保留原音符；練習頁指法配置、存檔與播放 | ✅ 已加入測試 |
+| MusicXML 預覽與後端持久化 | ✅ 已加入測試 |
+| 獨立 Docker Compose 測試環境與 CI E2E job | ✅ 已建立，待 GitHub Actions 實跑 |
+| 移除無作用的 Settings 入口；補齊測試操作文件 | ✅ |
+| Guitar Pro 二進位實檔匯入、預覽、重開 smoke test | ⏳ 需合法測試檔 |
 
 ---
 
@@ -742,3 +755,4 @@ const loadAlphaTab = () => import('@coderline/alphatab');
     - ✅ 前端登入/註冊 + API 隔離
     - ✅ SongShell / Home 登出、legacy claim、列表分頁/搜尋
 12. **Sprint B3 / D3**（音訊同步、拍長模型 — 低優先 backlog）
+13. **Sprint Q1 驗收收尾**：確認 GitHub Actions E2E 綠燈；取得可合法納入測試的 Guitar Pro 實檔後，補齊二進位格式匯入、重開與播放 smoke test。
