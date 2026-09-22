@@ -59,6 +59,17 @@ jobs:
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
         working-directory: frontend
+      - name: Pull database image
+        run: |
+          for attempt in 1 2 3; do
+            if docker pull postgres:15-alpine; then
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
       - name: Start isolated test stack
         run: docker compose --env-file .env.e2e.example -p guitarflow-ci-e2e up -d --build --wait --wait-timeout 180
       - name: Wait for frontend
