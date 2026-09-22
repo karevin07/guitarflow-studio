@@ -122,7 +122,14 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
     if (!selection || selection.sectionId !== section.id || !scrollRef.current) return;
     const playKey = `${sectionIdx}:${selection.measureIdx}`;
     const el = scrollRef.current.querySelector<HTMLElement>(`[data-play-key="${playKey}"]`);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    if (!el) return;
+    const scroller = scrollRef.current;
+    const target = el.getBoundingClientRect();
+    const viewport = scroller.getBoundingClientRect();
+    scroller.scrollTo({
+      left: scroller.scrollLeft + target.left - viewport.left - (scroller.clientWidth - target.width) / 2,
+      behavior: 'smooth',
+    });
   }, [selection, section.id, sectionIdx]);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {

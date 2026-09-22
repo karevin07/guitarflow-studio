@@ -4,7 +4,6 @@ import {
   Library,
   Moon,
   Music2,
-  Settings,
   Shapes,
   Sun,
   TimerReset,
@@ -71,9 +70,6 @@ const AppRail: React.FC<AppRailProps> = ({
     </nav>
 
     <div className="mt-auto flex flex-col items-center gap-2">
-      <button type="button" className="grid h-10 w-10 place-items-center rounded-xl text-[#85877f] hover:bg-[#f3f1eb] hover:text-[#171a18] dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100" aria-label="Settings">
-        <Settings size={17} />
-      </button>
       <button type="button" onClick={onToggleTheme} className="grid h-10 w-10 place-items-center rounded-xl text-[#85877f] hover:bg-[#f3f1eb] hover:text-[#171a18] dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100" aria-label="Toggle theme">
         {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
       </button>

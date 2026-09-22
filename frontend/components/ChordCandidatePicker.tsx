@@ -24,7 +24,7 @@ const ChordCandidatePicker: React.FC<ChordCandidatePickerProps> = ({
   if (!result.frets.some(fret => fret !== null)) return null;
 
   return (
-    <section aria-label="和弦辨識候選" className={`border-b border-slate-200 bg-indigo-50/50 dark:border-zinc-800 dark:bg-violet-950/10 ${compact ? 'rounded-2xl border px-4 py-4' : 'px-4 py-3 sm:px-6'}`}>
+    <section aria-label="和弦辨識候選" className={`shrink-0 border-b border-slate-200 bg-indigo-50/50 dark:border-zinc-800 dark:bg-violet-950/10 ${compact ? 'rounded-2xl border px-4 py-4' : 'px-4 py-3 sm:px-6'}`}>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-violet-300"><Sparkles size={14} /> 和弦辨識建議</div>
         <span className="text-[11px] text-slate-500 dark:text-zinc-400">音：{result.notes.join(' · ') || '—'}</span>

@@ -9,7 +9,7 @@ const loadDockOpen = (): boolean => {
   const stored = localStorage.getItem(FRETBOARD_DOCK_KEY);
   if (stored === 'true') return true;
   if (stored === 'false') return false;
-  return typeof window !== 'undefined' ? window.innerWidth >= 768 : true;
+  return typeof window !== 'undefined' ? window.innerWidth >= 768 && window.innerHeight >= 900 : false;
 };
 
 interface EditorSelection {
