@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@coderline/alphatab": "^1.8.3",
@@ -21,6 +22,7 @@
     "svguitar": "^2.5.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.1.4",
     "typescript": "~5.8.2",

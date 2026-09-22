@@ -9,7 +9,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${APP_DB_PORT:-5432}:5432"
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d guitarflow"]
@@ -22,7 +22,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "${APP_BIND_HOST:-127.0.0.1}:8000:8000"
+      - "${APP_BIND_HOST:-127.0.0.1}:${APP_BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
       - /app/.venv
@@ -54,7 +54,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "${APP_BIND_HOST:-127.0.0.1}:3003:3000"
+      - "${APP_BIND_HOST:-127.0.0.1}:${APP_FRONTEND_PORT:-3003}:3000"
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000/api}
       - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost}

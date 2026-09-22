@@ -42,5 +42,7 @@ backend/media/
 # Frontend / Node
 frontend/dist/
 frontend/node_modules/
+frontend/playwright-report/
+frontend/test-results/
 
 docs/notes
