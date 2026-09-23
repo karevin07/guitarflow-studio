@@ -9,6 +9,7 @@ import {
   FileMusic,
   FileText,
   Music2,
+  MoreHorizontal,
   Redo2,
   Save,
   Shapes,
@@ -191,13 +192,28 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
         )}
 
         {!isImported && (
-          <button type="button" onClick={onSave} className="flex h-10 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-3 text-xs font-semibold text-[#5f625c] hover:border-[#bfc2e8] hover:text-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+          <button type="button" onClick={onSave} className={`${viewMode === 'practice' ? 'hidden sm:flex' : 'flex'} h-10 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-3 text-xs font-semibold text-[#5f625c] hover:border-[#bfc2e8] hover:text-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200`}>
             {saveStatus === 'saved' ? <Check size={16} className="text-emerald-500" /> : <Save size={16} />}
             <span className="hidden md:inline">{saveStatus === 'saving' ? 'Saving' : saveStatus === 'saved' ? 'Saved' : 'Save'}</span>
           </button>
         )}
 
-        {!isImported && <ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} />}
+        {!isImported && viewMode === 'practice' && (
+          <div className="relative sm:hidden">
+            <button type="button" onClick={onToggleExport} aria-label="更多歌曲操作" aria-expanded={isExportOpen} className="grid h-10 w-10 place-items-center rounded-xl border border-[#dedcd4] bg-[#fffefa] text-[#5f625c] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"><MoreHorizontal size={20} /></button>
+            {isExportOpen && <div className="absolute right-0 top-12 z-[80] w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+              <button type="button" onClick={() => { onSave(); onToggleExport(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold hover:bg-slate-100 dark:hover:bg-zinc-800"><Save size={16} />儲存歌曲</button>
+              <div className="my-1 border-t border-slate-100 dark:border-zinc-800" />
+              {[
+                { label: '匯出 .gflow', action: onExportGflow },
+                { label: '匯出 MIDI', action: onExportMidi },
+                { label: '列印樂譜', action: onExportPdf },
+                { label: '匯出 MusicXML', action: onExportMusicXml },
+              ].map(item => <button key={item.label} type="button" onClick={() => { item.action(); onToggleExport(); }} className="block w-full rounded-xl px-3 py-2.5 text-left text-xs font-semibold hover:bg-slate-100 dark:hover:bg-zinc-800">{item.label}</button>)}
+            </div>}
+          </div>
+        )}
+        {!isImported && <div className={viewMode === 'practice' ? 'hidden sm:block' : ''}><ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} /></div>}
         {user && <div className="hidden h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600 dark:bg-zinc-900 dark:text-zinc-300 xl:flex"><User size={14} />{user.username}</div>}
       </header>
 
