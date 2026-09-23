@@ -8,6 +8,7 @@ import {
   Eye,
   FileMusic,
   FileText,
+  Guitar,
   Music2,
   MoreHorizontal,
   Redo2,
@@ -20,7 +21,7 @@ import { ImportedSong } from '../types';
 import { AuthUser } from '../services/apiClient';
 import AppRail, { AppDestination } from './AppRail';
 
-type ShellViewMode = 'create' | 'practice';
+type ShellViewMode = 'create' | 'practice' | 'arrange';
 
 interface SongShellHeaderProps {
   isImported: boolean;
@@ -143,9 +144,10 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
     : [
         { mode: 'create' as const, label: '創作', icon: Edit3 },
         { mode: 'practice' as const, label: '練習', icon: Music2 },
+        { mode: 'arrange' as const, label: '編曲', icon: Guitar },
       ];
 
-  const activeDestination: AppDestination = viewMode;
+  const activeDestination: AppDestination = viewMode === 'arrange' ? 'create' : viewMode;
 
   const navigateRail = (destination: AppDestination) => {
     if (destination === 'library') return onBack();

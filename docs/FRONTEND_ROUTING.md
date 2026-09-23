@@ -4,7 +4,7 @@
 
 GuitarFlow uses React Router in declarative browser-history mode. URLs identify the user's workspace and selected resource; editor, playback, authentication, and library data remain managed by the existing hooks in `App.tsx`.
 
-The product has three primary feature pages—Create, Practice, and Chord Library—plus the Song Library entry page.
+The product has three primary feature pages—Create, Practice, and Chord Library—plus the Song Library entry page. GuitarFlow songs also have an Arrange workspace for single-note solo suggestions.
 
 ## Route Map
 
@@ -14,6 +14,7 @@ The product has three primary feature pages—Create, Practice, and Chord Librar
 | `/songs` | Song Library | Optional | Guests can browse the shell and sign in |
 | `/songs/:songId/create` | Create | Required | GuitarFlow songs only |
 | `/songs/:songId/practice` | Practice | Required | Supports GuitarFlow and imported scores |
+| `/songs/:songId/arrange` | Arrange | Required | GuitarFlow songs only; imported scores redirect to Practice |
 | `/chords` | Chord Library | No | Opens the default recommended chord |
 | `/chords/:symbol` | Chord detail | No | Example: `/chords/F%23m7` |
 | Any unknown URL | Fallback | No | Replaced with `/songs` |
@@ -25,7 +26,7 @@ Route construction and parsing are centralized in `frontend/services/routes.ts`.
 - **`BrowserRouter`**: Owns browser history and enables back/forward navigation.
 - **`App.tsx`**: Resolves the current route, loads the requested song, and connects route state to existing application hooks.
 - **`AppRail`**: Provides the four user-facing destinations: Song Library, Create, Practice, and Chord Library.
-- **`SongShellHeader`**: Switches between Create and Practice for the currently loaded song.
+- **`SongShellHeader`**: Switches between Create, Practice, and Arrange for the currently loaded song.
 - **Route helpers**: Parse, encode, and test application URLs without coupling components to URL syntax.
 
 ## Navigation Flow
@@ -35,12 +36,14 @@ flowchart LR
     Songs[Song Library /songs]
     Create[Create /songs/:id/create]
     Practice[Practice /songs/:id/practice]
+    Arrange[Arrange /songs/:id/arrange]
     Chords[Chord Library /chords/:symbol?]
 
     Songs -->|New or edit| Create
     Songs -->|Play or imported score| Practice
     Songs -->|Chord shortcut| Chords
     Create <-->|Workspace switch| Practice
+    Practice <-->|Workspace switch| Arrange
     Create --> Chords
     Practice --> Chords
     Chords --> Songs
@@ -55,6 +58,7 @@ type AppRoute =
   | { name: 'songs' }
   | { name: 'create'; songId: string }
   | { name: 'practice'; songId: string }
+  | { name: 'arrange'; songId: string }
   | { name: 'chords'; symbol: string | null }
   | { name: 'not-found' };
 ```

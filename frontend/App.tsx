@@ -3,6 +3,7 @@ import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router';
 import EditView from './components/EditView';
 import SongPreview from './components/SongPreview';
+import ArrangeView from './components/ArrangeView';
 import Home from './components/Home';
 import HomeChordLab from './components/HomeChordLab';
 import PlayerBar from './components/PlayerBar';
@@ -37,7 +38,8 @@ const App: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const route = useMemo(() => parseAppRoute(location.pathname), [location.pathname]);
-  const viewMode: 'home' | 'edit' | 'preview' = route.name === 'create' ? 'edit' : route.name === 'practice' ? 'preview' : 'home';
+  const isSongWorkspace = route.name === 'create' || route.name === 'practice' || route.name === 'arrange';
+  const viewMode: 'home' | 'edit' | 'preview' = route.name === 'create' ? 'edit' : isSongWorkspace ? 'preview' : 'home';
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [importedTitle, setImportedTitle] = useState('');
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
@@ -128,7 +130,7 @@ const App: React.FC = () => {
   }, [location.pathname, navigate, route.name]);
 
   useEffect(() => {
-    if (route.name !== 'create' && route.name !== 'practice') return;
+    if (route.name !== 'create' && route.name !== 'practice' && route.name !== 'arrange') return;
     if (auth.loading) return;
     if (!auth.user) {
       setAuthOpen(true);
@@ -144,7 +146,7 @@ const App: React.FC = () => {
     }
 
     if (isImportedSong(song)) {
-      if (route.name === 'create') {
+      if (route.name === 'create' || route.name === 'arrange') {
         navigate(appPaths.practice(song.id), { replace: true });
         return;
       }
@@ -453,7 +455,7 @@ const App: React.FC = () => {
     : null;
 
   // ─── Home view ─────────────────────────────────────────────────────────────
-  if (viewMode === 'home' || ((route.name === 'create' || route.name === 'practice') && !auth.user)) {
+  if (viewMode === 'home' || (isSongWorkspace && !auth.user)) {
     if (route.name === 'chords') {
       return (
         <HomeChordLab
@@ -518,10 +520,10 @@ const App: React.FC = () => {
     <div className="h-screen overflow-hidden flex flex-col bg-[#f7f5ef] dark:bg-[#151616] text-[#171a18] dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200 lg:pl-[72px] print:h-auto print:overflow-visible print:pl-0">
       <SongShellHeader
         isImported={isImported}
-        viewMode={route.name === 'create' ? 'create' : 'practice'}
+        viewMode={route.name === 'create' || route.name === 'arrange' ? route.name : 'practice'}
         onViewModeChange={mode => {
-          if (route.name !== 'create' && route.name !== 'practice') return;
-          navigate(mode === 'create' ? appPaths.create(route.songId) : appPaths.practice(route.songId));
+          if (route.name !== 'create' && route.name !== 'practice' && route.name !== 'arrange') return;
+          navigate(appPaths[mode](route.songId));
         }}
         onOpenChordLibrary={() => navigate(appPaths.chords())}
         onBack={goHome}
@@ -645,9 +647,20 @@ const App: React.FC = () => {
           </div>
         )}
 
+        {/* ── Arrange workspace: solo note suggestions over the progression ── */}
+        {!isImported && route.name === 'arrange' && (
+          <div className="flex-1 overflow-y-auto bg-[#f6f6f3] dark:bg-zinc-950 transition-colors duration-250">
+            <ArrangeView
+              sections={editor.sections}
+              transposeOffset={editor.transposeOffset}
+              playState={playback.playState}
+            />
+          </div>
+        )}
+
       </main>
 
-      {(route.name === 'create' || route.name === 'practice') && (
+      {isSongWorkspace && (
         isImported ? (
           <PlayerBar {...alphaPlayback} />
         ) : (

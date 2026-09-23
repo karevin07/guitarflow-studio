@@ -12,25 +12,28 @@ export const voicingToMidiNotes = (
     : [{ stringIndex, midi: STRING_MIDI_PITCHES[stringIndex] + fret + capo + transpose }]
 ));
 
-export const previewChordVoicing = async (
-  frets: Array<number | null>,
-  volume = 0.55,
-): Promise<void> => {
+const getAudioContext = async (): Promise<AudioContext> => {
   const AudioContextClass = window.AudioContext
     || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   if (!AudioContextClass) throw new Error('Web Audio API is unavailable');
 
   audioContext ??= new AudioContextClass();
   if (audioContext.state === 'suspended') await audioContext.resume();
+  return audioContext;
+};
 
-  const now = audioContext.currentTime;
-  const notes = voicingToMidiNotes(frets);
-  notes.forEach(({ midi, stringIndex }) => {
-    if (!audioContext) return;
-    const start = now + (5 - stringIndex) * 0.032;
-    const oscillator = audioContext.createOscillator();
-    const filter = audioContext.createBiquadFilter();
-    const gain = audioContext.createGain();
+/** Pluck MIDI notes with a soft triangle tone; each note starts after its offset in seconds. */
+const playPluckedNotes = async (
+  notes: Array<{ midi: number; offset: number }>,
+  volume: number,
+): Promise<void> => {
+  const context = await getAudioContext();
+  const now = context.currentTime;
+  notes.forEach(({ midi, offset }) => {
+    const start = now + offset;
+    const oscillator = context.createOscillator();
+    const filter = context.createBiquadFilter();
+    const gain = context.createGain();
 
     oscillator.type = 'triangle';
     oscillator.frequency.setValueAtTime(440 * Math.pow(2, (midi - 69) / 12), start);
@@ -43,8 +46,27 @@ export const previewChordVoicing = async (
 
     oscillator.connect(filter);
     filter.connect(gain);
-    gain.connect(audioContext.destination);
+    gain.connect(context.destination);
     oscillator.start(start);
     oscillator.stop(start + 1.3);
   });
+};
+
+export const previewChordVoicing = async (
+  frets: Array<number | null>,
+  volume = 0.55,
+): Promise<void> => playPluckedNotes(
+  voicingToMidiNotes(frets).map(({ midi, stringIndex }) => ({ midi, offset: (5 - stringIndex) * 0.032 })),
+  volume,
+);
+
+/** Play one fretted note; `fret` is relative to the capo. */
+export const previewSingleNote = async (
+  stringIndex: number,
+  fret: number,
+  capo = 0,
+  volume = 0.7,
+): Promise<void> => {
+  const frets = Array.from({ length: 6 }, (_, index) => (index === stringIndex ? fret : null));
+  return playPluckedNotes(voicingToMidiNotes(frets, capo).map(({ midi }) => ({ midi, offset: 0 })), volume);
 };

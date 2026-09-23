@@ -73,6 +73,25 @@ test('plan chord voicings, save them and start practice playback', async ({ page
   await page.getByRole('button', { name: 'Stop' }).click();
 });
 
+test('suggest solo notes over the chord progression', async ({ page, request }) => {
+  const token = await register(request);
+  const songId = await seedSong(request, token, {
+    title: 'E2E Arrange Song', chordColumns: { 0: 'C', 4: 'G', 8: 'Am', 12: 'F' },
+  });
+  await authenticatePage(page, token);
+  await page.goto(`/songs/${songId}/practice`);
+
+  await page.getByRole('button', { name: '編曲' }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/songs/${songId}/arrange$`));
+  await expect(page.getByRole('combobox', { name: '調性' })).toHaveValue('0:major');
+  await expect(page.getByTestId('arrange-key-bar')).toContainText('C 大調五聲 ＝ A 小調五聲');
+
+  const progression = page.getByTestId('arrange-progression');
+  await progression.getByRole('button', { name: /^G/ }).click();
+  await expect(page.getByTestId('arrange-suggestions')).toContainText('3 度 B');
+  await expect(page.getByTestId('solo-fretboard').getByRole('button', { name: 'B 弦第 0 格 B' })).toBeVisible();
+});
+
 test('preview and persist an imported MusicXML score', async ({ page, request }) => {
   const token = await register(request);
   await authenticatePage(page, token);

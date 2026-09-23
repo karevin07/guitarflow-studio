@@ -10,6 +10,7 @@ import {
 } from '../constants/practice';
 import LeadSheetMeasure from './LeadSheetMeasure';
 import ChordWorkspacePanel from './ChordWorkspacePanel';
+import { chordAtPosition } from '../services/progression';
 
 interface PracticeViewProps {
   sections: TabSection[];
@@ -27,15 +28,6 @@ const loadStoredZoom = (): PracticeZoom => {
   return (PRACTICE_ZOOM_LEVELS as readonly number[]).includes(parsed)
     ? (parsed as PracticeZoom)
     : DEFAULT_PRACTICE_ZOOM;
-};
-
-const chordAtPosition = (sections: TabSection[], playState: PracticeViewProps['playState']) => {
-  if (!playState) return null;
-  const row = sections[playState.sectionIdx]?.chords[playState.measureIdx] ?? [];
-  for (let index = Math.min(playState.colIdx, row.length - 1); index >= 0; index -= 1) {
-    if (row[index]) return row[index];
-  }
-  return row.find(Boolean) ?? null;
 };
 
 const PracticeView: React.FC<PracticeViewProps> = ({

@@ -2,6 +2,7 @@ export type AppRoute =
   | { name: 'songs' }
   | { name: 'create'; songId: string }
   | { name: 'practice'; songId: string }
+  | { name: 'arrange'; songId: string }
   | { name: 'chords'; symbol: string | null }
   | { name: 'not-found' };
 
@@ -21,10 +22,10 @@ export const parseAppRoute = (pathname: string): AppRoute => {
   const chordMatch = cleanPath.match(/^\/chords\/([^/]+)$/);
   if (chordMatch) return { name: 'chords', symbol: decodeSegment(chordMatch[1]) };
 
-  const songMatch = cleanPath.match(/^\/songs\/([^/]+)\/(create|practice)$/);
+  const songMatch = cleanPath.match(/^\/songs\/([^/]+)\/(create|practice|arrange)$/);
   if (songMatch) {
     return {
-      name: songMatch[2] as 'create' | 'practice',
+      name: songMatch[2] as 'create' | 'practice' | 'arrange',
       songId: decodeSegment(songMatch[1]),
     };
   }
@@ -36,5 +37,6 @@ export const appPaths = {
   songs: '/songs',
   create: (songId: string) => `/songs/${encodeURIComponent(songId)}/create`,
   practice: (songId: string) => `/songs/${encodeURIComponent(songId)}/practice`,
+  arrange: (songId: string) => `/songs/${encodeURIComponent(songId)}/arrange`,
   chords: (symbol?: string | null) => symbol ? `/chords/${encodeURIComponent(symbol)}` : '/chords',
 };
