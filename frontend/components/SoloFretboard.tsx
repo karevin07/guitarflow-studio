@@ -12,6 +12,8 @@ interface SoloFretboardProps {
   window?: { from: number; to: number } | null;
   /** When set, only these "string:fret" positions are shown (e.g. a pentatonic box). */
   only?: ReadonlySet<string> | null;
+  /** "string:fret" positions sounding right now during a preview. */
+  activePositions?: ReadonlySet<string> | null;
   maxFret?: number;
   onPlayNote?: (stringIndex: number, fret: number) => void;
 }
@@ -48,6 +50,7 @@ const SoloFretboard: React.FC<SoloFretboardProps> = ({
   targets,
   window,
   only = null,
+  activePositions = null,
   maxFret = 15,
   onPlayNote,
 }) => {
@@ -65,6 +68,7 @@ const SoloFretboard: React.FC<SoloFretboardProps> = ({
               const visible = mark && (!only || only.has(`${stringIndex}:${fret}`));
               const dimmed = window && (fret < window.from || fret > window.to);
               const isTarget = visible && targets?.has(pitch);
+              const isActive = activePositions?.has(`${stringIndex}:${fret}`) ?? false;
               return (
                 <div
                   key={fret}
@@ -78,6 +82,14 @@ const SoloFretboard: React.FC<SoloFretboardProps> = ({
                   )}
                   {fret === 0 && !visible && (
                     <span className="font-mono text-[10px] font-semibold text-[#9a9c95]">{STRING_NAMES[stringIndex]}</span>
+                  )}
+                  {isActive && (
+                    <span
+                      className="absolute z-20 grid h-8 min-w-8 place-items-center rounded-full bg-[#e0a526] px-1 font-mono text-[10px] font-bold text-[#171a18] shadow-[0_0_0_4px_rgba(224,165,38,0.3)]"
+                      data-testid="solo-fretboard-active"
+                    >
+                      {fret}
+                    </span>
                   )}
                   {visible && (
                     <button

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, ChevronDown, Focus, Lightbulb, Music4, Target } from 'lucide-react';
-import { TabSection } from '../types';
+import { ChordDefinition, SongVoicingPlan, TabSection } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import {
   Chord,
@@ -32,11 +32,17 @@ import {
 } from '../services/soloGuide';
 import { previewSingleNote } from '../services/chordPreview';
 import SoloFretboard, { FRET_MARK_LEGEND, FretMarkSwatch } from './SoloFretboard';
+import SoloGeneratorPanel, { segmentButton } from './SoloGeneratorPanel';
 
 interface ArrangeViewProps {
   sections: TabSection[];
   transposeOffset: number;
   playState: PlaybackPosition | null;
+  chordLibrary: ChordDefinition[];
+  voicingPlan: SongVoicingPlan;
+  theme: 'light' | 'dark';
+  onInsertSolo: (afterSectionId: string, section: Omit<TabSection, 'id'>) => void;
+  onOpenCreate: () => void;
 }
 
 type ViewMode = 'chord' | 'scale';
@@ -60,12 +66,16 @@ const parseSteps = (section: TabSection | undefined, transposeOffset: number): P
     ? sectionChordSteps(section, transposeOffset).map(step => ({ ...step, chord: parseChord(step.effectiveSymbol) }))
     : [];
 
-const segmentButton = (active: boolean) =>
-  `h-8 rounded-lg px-3 text-[11px] font-semibold transition-colors ${active
-    ? 'bg-[#fffefa] text-[#171a18] shadow-sm dark:bg-zinc-800 dark:text-zinc-100'
-    : 'text-[#777a73] hover:text-[#171a18] dark:text-zinc-500 dark:hover:text-zinc-100'}`;
-
-const ArrangeView: React.FC<ArrangeViewProps> = ({ sections, transposeOffset, playState }) => {
+const ArrangeView: React.FC<ArrangeViewProps> = ({
+  sections,
+  transposeOffset,
+  playState,
+  chordLibrary,
+  voicingPlan,
+  theme,
+  onInsertSolo,
+  onOpenCreate,
+}) => {
   const [sectionIdx, setSectionIdx] = useState(0);
   const [focusIdx, setFocusIdx] = useState(0);
   const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
@@ -75,6 +85,8 @@ const ArrangeView: React.FC<ArrangeViewProps> = ({ sections, transposeOffset, pl
   const [windowChoice, setWindowChoice] = useState<WindowChoice>('all');
   const [safeScaleIdx, setSafeScaleIdx] = useState(0);
   const [box, setBox] = useState<number | null>(null);
+  const [activePositions, setActivePositions] = useState<ReadonlySet<string> | null>(null);
+  const handleActivePositions = useCallback((positions: ReadonlySet<string> | null) => setActivePositions(positions), []);
 
   const allChords = useMemo(
     () => sections.flatMap(section => parseSteps(section, transposeOffset).flatMap(step => step.chord ? [step.chord] : [])),
@@ -303,6 +315,7 @@ const ArrangeView: React.FC<ArrangeViewProps> = ({ sections, transposeOffset, pl
         targets={targets}
         window={windowRange}
         only={only}
+        activePositions={activePositions}
         onPlayNote={(stringIndex, fret) => { void previewSingleNote(stringIndex, fret, capo).catch(() => undefined); }}
       />
 
@@ -313,6 +326,21 @@ const ArrangeView: React.FC<ArrangeViewProps> = ({ sections, transposeOffset, pl
         <span className="flex items-center gap-1.5"><span className="inline-block h-3.5 w-3.5 rounded-full ring-2 ring-[#2b6c59] dark:ring-emerald-400" />換和弦時的目標音</span>
         {capo > 0 && <span>格數以 Capo 為 0 格</span>}
       </div>
+
+      {section && steps.length > 0 && (
+        <SoloGeneratorPanel
+          section={section}
+          displayKey={key}
+          transposeOffset={transposeOffset}
+          range={windowRange}
+          chordLibrary={chordLibrary}
+          voicingPlan={voicingPlan}
+          theme={theme}
+          onInsert={solo => onInsertSolo(section.id, solo)}
+          onOpenCreate={onOpenCreate}
+          onActivePositionsChange={handleActivePositions}
+        />
+      )}
 
       {/* Suggestions */}
       {analysis && focusStep?.chord && (

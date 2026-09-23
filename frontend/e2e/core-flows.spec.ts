@@ -92,6 +92,30 @@ test('suggest solo notes over the chord progression', async ({ page, request }) 
   await expect(page.getByTestId('solo-fretboard').getByRole('button', { name: 'B 弦第 0 格 B' })).toBeVisible();
 });
 
+test('generate a solo and add it to the song', async ({ page, request }) => {
+  const token = await register(request);
+  const songId = await seedSong(request, token, {
+    title: 'E2E Solo Song', chordColumns: { 0: 'C', 4: 'G', 8: 'Am', 12: 'F' },
+  });
+  await authenticatePage(page, token);
+  await page.goto(`/songs/${songId}/arrange`);
+
+  const generator = page.getByTestId('solo-generator');
+  await generator.getByRole('button', { name: '引導音線' }).click();
+  await generator.getByRole('button', { name: '產生', exact: true }).click();
+  await expect(page.getByTestId('solo-preview')).toBeVisible();
+  await generator.getByRole('button', { name: '加入歌曲' }).click();
+  await expect(page.getByTestId('solo-inserted')).toContainText('Solo（Verse）');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible();
+
+  const saved = await getSong(request, token, songId);
+  expect(saved.sections.map((section: { title: string }) => section.title)).toEqual(['Verse', 'Solo（Verse）']);
+  const solo = saved.sections[1];
+  expect(solo.chords).toEqual(saved.sections[0].chords);
+  expect(solo.measures.flat(2).filter((cell: string) => cell !== '-').length).toBeGreaterThan(0);
+});
+
 test('preview and persist an imported MusicXML score', async ({ page, request }) => {
   const token = await register(request);
   await authenticatePage(page, token);

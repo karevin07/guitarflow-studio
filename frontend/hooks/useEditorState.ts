@@ -325,6 +325,25 @@ export const useEditorState = () => {
     setActiveSectionId(newId);
   }, [history]);
 
+  const insertSectionAfter = useCallback((afterSectionId: string, section: Omit<TabSection, 'id'>) => {
+    const newId = Math.random().toString(36).slice(2, 11);
+    setSections(prev => {
+      const index = prev.findIndex(candidate => candidate.id === afterSectionId);
+      const next = [...prev];
+      next.splice(index < 0 ? prev.length : index + 1, 0, { ...section, id: newId });
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+    setActiveSectionId(newId);
+    return newId;
+  }, [history]);
+
   const applyChordToColumn = useCallback(
     (sectionId: string, mIdx: number, cIdx: number, chord: ChordDefinition) => {
       setSections(prev => {
@@ -461,7 +480,7 @@ export const useEditorState = () => {
     undo, redo,
     updateLyric, setCapo, setTimeSignature,
     addMeasure, deleteMeasure, copyMeasure, clearColumn,
-    addSection, updateSectionTitle, deleteSection, moveSection,
+    addSection, insertSectionAfter, updateSectionTitle, deleteSection, moveSection,
     applyChordToColumn,
     handleChordNameChange, confirmDetectedChordName, handleDropChord, handleChordInput,
     getActiveChord,

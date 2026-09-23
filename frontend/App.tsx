@@ -13,7 +13,7 @@ import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import ImportPreviewModal from './components/ImportPreviewModal';
 import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
-import { ImportedSong, LibrarySong, isImportedSong } from './types';
+import { ImportedSong, LibrarySong, TabSection, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { readGflowFile } from './services/gflowImport';
 import { downloadMusicXml } from './services/musicXmlExport';
@@ -430,6 +430,11 @@ const App: React.FC = () => {
     imported.refresh();
   }, [activeImportedSong, imported]);
 
+  const handleInsertSolo = useCallback((afterSectionId: string, section: Omit<TabSection, 'id'>) => {
+    editor.insertSectionAfter(afterSectionId, section);
+    toast.success(`已加入「${section.title}」`);
+  }, [editor, toast]);
+
   const goHome = useCallback(() => {
     playback.stop();
     alphaPlayback.onStop();
@@ -654,6 +659,11 @@ const App: React.FC = () => {
               sections={editor.sections}
               transposeOffset={editor.transposeOffset}
               playState={playback.playState}
+              chordLibrary={editor.chordLibrary}
+              voicingPlan={editor.voicingPlan}
+              theme={theme}
+              onInsertSolo={handleInsertSolo}
+              onOpenCreate={() => navigate(appPaths.create(route.songId))}
             />
           </div>
         )}
