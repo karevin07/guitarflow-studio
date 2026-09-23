@@ -23,6 +23,8 @@ const AlphaTabViewer: React.FC<AlphaTabViewerProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<AlphaTabApi | null>(null);
+  const callbacksRef = useRef({ onReady, onScoreLoaded, onPlayerStateChange, onError });
+  callbacksRef.current = { onReady, onScoreLoaded, onPlayerStateChange, onError };
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -55,27 +57,27 @@ const AlphaTabViewer: React.FC<AlphaTabViewerProps> = ({
         });
 
         apiRef.current = api;
-        onReady?.(api);
+        callbacksRef.current.onReady?.(api);
 
         api.scoreLoaded.on(score => {
           const title = score.title?.trim() || score.album?.trim();
-          if (title) onScoreLoaded?.(title);
+          if (title) callbacksRef.current.onScoreLoaded?.(title);
         });
 
         api.playerStateChanged.on(args => {
-          onPlayerStateChange?.(args.state === 1);
+          callbacksRef.current.onPlayerStateChange?.(args.state === 1);
         });
 
         api.error.on(err => {
-          onError?.(err.message || 'alphaTab failed to render this score.');
+          callbacksRef.current.onError?.(err.message || 'alphaTab failed to render this score.');
         });
 
         const loaded = api.load(data);
         if (!loaded) {
-          onError?.('Unsupported score format.');
+          callbacksRef.current.onError?.('Unsupported score format.');
         }
       } catch (err) {
-        onError?.(err instanceof Error ? err.message : 'Failed to initialize alphaTab.');
+        callbacksRef.current.onError?.(err instanceof Error ? err.message : 'Failed to initialize alphaTab.');
       } finally {
         if (!disposed) setLoading(false);
       }
@@ -88,7 +90,7 @@ const AlphaTabViewer: React.FC<AlphaTabViewerProps> = ({
       apiRef.current?.destroy();
       apiRef.current = null;
     };
-  }, [data, onError, onPlayerStateChange, onReady, onScoreLoaded]);
+  }, [data]);
 
   return (
     <div className="relative min-h-[480px]">
