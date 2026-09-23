@@ -16,7 +16,7 @@
 | Sprint C1（品質 & 合規） | ✅ 完成 | 100% |
 | **Phase D（GP 風格 Edit UI）** | ✅ 完成 | ~95% |
 | **Phase C2（使用者隔離）** | ✅ 完成 | ~95% |
-| **Sprint Q1（核心流程驗收）** | 🔄 進行中 | E2E 與文件已建立，待正式 CI 驗證 |
+| **Sprint Q1（核心流程驗收）** | 🔄 進行中 | 原有 E2E 已通過 CI；新增 GP7／手機測試待推送後驗證 |
 
 **當前 Sprint：Q1 核心流程驗收；B3 / D3 與生產環境 auth 強化保留於 backlog。** 上表較早階段的百分比為歷史估計，不代表本次重新驗收結果。
 
@@ -77,9 +77,11 @@ GuitarFlow Studio 最終成為 **雙模式吉他音樂 App**：
 | Playwright 瀏覽器流程：註冊、建歌、存檔、重開 | ✅ 已加入測試 |
 | 和弦候選確認後保留原音符；練習頁指法配置、存檔與播放 | ✅ 已加入測試 |
 | MusicXML 預覽與後端持久化 | ✅ 已加入測試 |
-| 獨立 Docker Compose 測試環境與 CI E2E job | ✅ 已建立，待 GitHub Actions 實跑 |
+| 獨立 Docker Compose 測試環境與 CI E2E job | ✅ GitHub Actions 已通過（2026-09-22） |
 | 移除無作用的 Settings 入口；補齊測試操作文件 | ✅ |
-| Guitar Pro 二進位實檔匯入、預覽、重開 smoke test | ⏳ 需合法測試檔 |
+| 原創 GP7 二進位測試檔：匯入、預覽、重開、播放及檔案持久化 | ✅ 本機 E2E 通過，待新版 CI 驗證 |
+| 390px 手機閱譜：和弦面板、轉調、播放與水平溢出 | ✅ 本機 E2E 通過，待新版 CI 驗證 |
+| GP3/4/5、GPX 等其他格式相容性 | ⏳ 需各格式合法測試檔 |
 
 ---
 
@@ -755,4 +757,4 @@ const loadAlphaTab = () => import('@coderline/alphatab');
     - ✅ 前端登入/註冊 + API 隔離
     - ✅ SongShell / Home 登出、legacy claim、列表分頁/搜尋
 12. **Sprint B3 / D3**（音訊同步、拍長模型 — 低優先 backlog）
-13. **Sprint Q1 驗收收尾**：確認 GitHub Actions E2E 綠燈；取得可合法納入測試的 Guitar Pro 實檔後，補齊二進位格式匯入、重開與播放 smoke test。
+13. **Sprint Q1 驗收收尾**：確認新增 GP7／手機流程在 GitHub Actions 綠燈；視支援範圍取得 GP3/4/5、GPX 合法測試檔並補相容性測試。

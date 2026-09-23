@@ -1,59 +1,13 @@
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test } from '@playwright/test';
+import { apiBase, authenticatePage, getSong, register, seedSong } from './support';
 
-const apiBase = process.env.E2E_API_URL ?? 'http://127.0.0.1:18000/api';
 const fixtureDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
 type ChordPlan = Record<string, { position: string; lockedShape?: { symbol: string; frets: (number | null)[] } }>;
-
-const register = async (request: APIRequestContext) => {
-  const response = await request.post(`${apiBase}/auth/register/`, {
-    data: { username: `e2e_${randomUUID().replaceAll('-', '').slice(0, 16)}`, password: 'E2e-test-pass-2026' },
-  });
-  expect(response.ok()).toBeTruthy();
-  return (await response.json()).token as string;
-};
-
-const authenticatePage = async (page: Page, token: string) => {
-  await page.addInitScript(value => localStorage.setItem('guitarflow-auth-token', value), token);
-};
-
-const seedSong = async (
-  request: APIRequestContext,
-  token: string,
-  options: { title: string; chordColumns?: Record<number, string>; playedFrets?: Array<number | null> }
-) => {
-  const rows = Array.from({ length: 6 }, () => Array(16).fill('-'));
-  options.playedFrets?.forEach((fret, stringIndex) => {
-    rows[stringIndex][0] = fret === null ? '-' : String(fret);
-  });
-  const chords: Array<string | null> = Array(16).fill(null);
-  Object.entries(options.chordColumns ?? {}).forEach(([column, symbol]) => {
-    chords[Number(column)] = symbol;
-  });
-  const response = await request.post(`${apiBase}/songs/`, {
-    headers: { Authorization: `Token ${token}` },
-    data: {
-      title: options.title,
-      transposeOffset: 0,
-      voicingPlan: {},
-      customChords: [],
-      sections: [{ title: 'Verse', capo: 0, timeSignature: [4, 4], measures: [rows], chords: [chords], lyrics: [Array(16).fill(null)] }],
-    },
-  });
-  expect(response.ok()).toBeTruthy();
-  return (await response.json()).id as string;
-};
-
-const getSong = async (request: APIRequestContext, token: string, songId: string) => {
-  const response = await request.get(`${apiBase}/songs/${songId}/`, {
-    headers: { Authorization: `Token ${token}` },
-  });
-  expect(response.ok()).toBeTruthy();
-  return response.json();
-};
 
 test('register, create, save and reopen a song', async ({ page }) => {
   await page.goto('/songs');
@@ -136,4 +90,37 @@ test('preview and persist an imported MusicXML score', async ({ page, request })
   const imported = await getSong(request, token, songId!);
   expect(imported).toMatchObject({ source: 'imported', importFormat: 'musicxml' });
   expect(imported.title.replace(/\s/g, ' ')).toBe('E2E Simple Score');
+
+  await page.reload();
+  await expect(page.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
+});
+
+test('import, reopen and play a Guitar Pro score', async ({ page, request }) => {
+  const token = await register(request);
+  await authenticatePage(page, token);
+  await page.goto('/songs');
+
+  const fixture = path.join(fixtureDir, 'simple-score.gp');
+  await page.locator('input[type="file"][accept*=".gp"]').setInputFiles(fixture);
+  const dialog = page.getByRole('dialog', { name: 'Import Preview' });
+  await expect(dialog.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
+  await dialog.getByRole('button', { name: 'Import to Library' }).click();
+  await expect(page).toHaveURL(/\/songs\/[^/]+\/practice$/);
+
+  const songId = page.url().match(/\/songs\/([^/]+)\/practice$/)?.[1];
+  expect(songId).toBeDefined();
+  const imported = await getSong(request, token, songId!);
+  expect(imported).toMatchObject({ source: 'imported', importFormat: 'gp' });
+  expect(imported.title.replace(/\s/g, ' ')).toBe('E2E Simple Score');
+
+  const fileResponse = await request.get(`${apiBase}/songs/${songId}/score-file/`, {
+    headers: { Authorization: `Token ${token}` },
+  });
+  expect(fileResponse.ok()).toBeTruthy();
+  expect(await fileResponse.body()).toEqual(readFileSync(fixture));
+
+  await page.reload();
+  await expect(page.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
 });
