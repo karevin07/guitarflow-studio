@@ -73,6 +73,29 @@ test('plan chord voicings, save them and start practice playback', async ({ page
   await page.getByRole('button', { name: 'Stop' }).click();
 });
 
+test('drop the capo to read chords in the sounding key', async ({ page, request }) => {
+  const token = await register(request);
+  const songId = await seedSong(request, token, {
+    title: 'E2E Capo Song', capo: 4, chordColumns: { 0: 'C', 4: 'Am', 8: 'F', 12: 'G' },
+  });
+  await authenticatePage(page, token);
+  await page.goto(`/songs/${songId}/practice`);
+
+  const capoView = page.getByRole('group', { name: 'Capo 顯示' });
+  await expect(capoView.getByRole('button', { name: 'Capo 4・C 指型' })).toHaveAttribute('aria-pressed', 'true');
+  await capoView.getByRole('button', { name: '不夾 Capo・E 調' }).click();
+  for (const name of ['E', 'C#m', 'A', 'B']) {
+    await expect(page.getByRole('button', { name, exact: true }).first()).toBeVisible();
+  }
+  await expect(page.getByText('不夾 Capo（原 Capo 4）')).toBeVisible();
+  await expect(page.getByRole('button', { name: '自動配置' })).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByRole('group', { name: 'Capo 顯示' }).getByRole('button', { name: '不夾 Capo・E 調' })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('group', { name: 'Capo 顯示' }).getByRole('button', { name: 'Capo 4・C 指型' }).click();
+  await expect(page.getByRole('button', { name: 'Am', exact: true }).first()).toBeVisible();
+});
+
 test('suggest solo notes over the chord progression', async ({ page, request }) => {
   const token = await register(request);
   const songId = await seedSong(request, token, {

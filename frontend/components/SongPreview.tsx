@@ -2,13 +2,26 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Anchor, Check, ChevronDown, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Sparkles, Type } from 'lucide-react';
 import { TabSection, ChordDefinition, SongVoicingPlan, SongVoicingPreference } from '../types';
 import { PlaybackPosition } from '../types/playback';
-import { formatPitch, parseChord, transposeChordSymbol, transposePitch } from '../music-theory';
+import { formatPitch, parseChord, transposePitch } from '../music-theory';
+import {
+  CapoViewMode,
+  describeKey,
+  displaySpelling,
+  loadCapoViewMode,
+  primaryCapo,
+  saveCapoViewMode,
+  sectionDisplayShift,
+  shiftChordForDisplay,
+  shiftedSongKey,
+} from '../services/capoView';
 import ChordWorkspacePanel from './ChordWorkspacePanel';
 import LeadSheetMeasure from './LeadSheetMeasure';
 import VoicingPlanReview from './VoicingPlanReview';
 
 interface SongPreviewProps {
   sections: TabSection[];
+  /** Used to remember the capo view per song. */
+  songId?: string | null;
   customChords?: ChordDefinition[];
   globalChords?: ChordDefinition[];
   externalTranspose?: number;
@@ -28,6 +41,7 @@ const SCORE_FONT_SCALE_KEY = 'guitarflow-read-font-scale';
 
 const SongPreview: React.FC<SongPreviewProps> = ({
   sections,
+  songId = null,
   customChords = [],
   globalChords = [],
   externalTranspose = 0,
@@ -58,6 +72,28 @@ const SongPreview: React.FC<SongPreviewProps> = ({
     return Number.isFinite(stored) && stored >= 0.5 && stored <= 2 ? stored : 1;
   });
   const transpose = externalTranspose;
+  const [capoMode, setCapoMode] = useState<CapoViewMode>(() => loadCapoViewMode(songId));
+  useEffect(() => setCapoMode(loadCapoViewMode(songId)), [songId]);
+  const changeCapoMode = (mode: CapoViewMode) => {
+    setCapoMode(mode);
+    saveCapoViewMode(songId, mode);
+  };
+  const hasCapo = sections.some(section => section.capo > 0);
+  const viewMode: CapoViewMode = hasCapo ? capoMode : 'shape';
+  const concert = viewMode === 'concert';
+  const songCapo = primaryCapo(sections);
+  // Chord names, the diagram panel and the key label all read in this shift.
+  const globalShift = sectionDisplayShift(songCapo, transpose, viewMode);
+  // Spell by the sounding key only when the capo is dropped; plain transposing keeps its old spelling.
+  const spellingFor = useMemo(() => {
+    const cache = new Map<number, ReturnType<typeof displaySpelling>>();
+    return (shift: number) => {
+      if (!concert) return undefined;
+      if (!cache.has(shift)) cache.set(shift, displaySpelling(sections, shift));
+      return cache.get(shift);
+    };
+  }, [concert, sections]);
+  const displayChord = (name: string | null, shift = globalShift) => shiftChordForDisplay(name, shift, spellingFor(shift));
   const chordLibrary = useMemo(
     () => [...globalChords, ...customChords],
     [globalChords, customChords]
@@ -119,19 +155,28 @@ const SongPreview: React.FC<SongPreviewProps> = ({
     return () => cancelAnimationFrame(frame);
   }, [autoScroll, scrollSpeed]);
 
-  const renderedSections = useMemo(() => sections.map(section => ({
-    ...section,
-    displayChords: section.chords.map(measure =>
-      measure.map(name => transposeChordSymbol(name, transpose))
-    ),
-  })), [sections, transpose]);
+  const renderedSections = useMemo(() => sections.map(section => {
+    const shift = sectionDisplayShift(section.capo, transpose, viewMode);
+    return {
+      ...section,
+      displayChords: section.chords.map(measure =>
+        measure.map(name => shiftChordForDisplay(name, shift, spellingFor(shift)))
+      ),
+    };
+  }), [sections, transpose, viewMode, spellingFor]);
 
   const baseChord = chordNames.map(parseChord).find(chord => chord !== null) ?? null;
   const originalKey = baseChord ? formatPitch(baseChord.root, baseChord.accidentalPreference) : '—';
-  const currentKey = baseChord
-    ? formatPitch(transposePitch(baseChord.root, transpose), baseChord.accidentalPreference)
-    : '—';
-  const selectedDisplayChord = transposeChordSymbol(selectedChord, transpose);
+  const currentKey = concert
+    ? describeKey(shiftedSongKey(sections, globalShift))
+    : baseChord
+      ? formatPitch(transposePitch(baseChord.root, transpose), baseChord.accidentalPreference)
+      : '—';
+  const selectedDisplayChord = displayChord(selectedChord);
+  const shapeKeyLabel = describeKey(shiftedSongKey(sections, transpose));
+  const concertKeyLabel = describeKey(shiftedSongKey(sections, transpose + songCapo));
+  // Voicing locks are stored for the capo shapes, so editing them is only offered in that view.
+  const canEditVoicings = Boolean(onVoicingPlanChange) && !concert;
   const capoValues = Array.from(new Set(sections.map(section => section.capo).filter(Boolean)));
   const capoLabel = capoValues.length === 0 ? '0' : capoValues.length === 1 ? String(capoValues[0]) : 'Varies';
   const mobileSection = sections.find(section => section.id === mobileSectionId) ?? sections[0];
@@ -174,7 +219,14 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <div className="min-w-0 text-center"><div className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400">Key</div><div className="font-mono text-base font-bold">{currentKey}</div></div>
               <button type="button" onClick={() => onTransposeChange?.(Math.min(12, transpose + 1))} className="grid h-11 w-11 shrink-0 place-items-center text-slate-600 dark:text-zinc-300" aria-label="Transpose up"><Plus size={17} /></button>
             </div>
-            <div className="flex h-11 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900"><span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span><span className="font-mono text-sm font-bold">{capoLabel}</span></div>
+            {hasCapo ? (
+              <button type="button" onClick={() => changeCapoMode(concert ? 'shape' : 'concert')} aria-pressed={concert} aria-label={concert ? `改回 Capo ${capoLabel}・${shapeKeyLabel} 指型` : `不夾 Capo・${concertKeyLabel} 調`} className={`flex h-11 shrink-0 flex-col items-center justify-center rounded-xl border px-3 ${concert ? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300' : 'border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'}`}>
+                <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span>
+                <span className="font-mono text-sm font-bold">{concert ? '不夾' : capoLabel}</span>
+              </button>
+            ) : (
+              <div className="flex h-11 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900"><span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span><span className="font-mono text-sm font-bold">{capoLabel}</span></div>
+            )}
             <div className="flex h-11 shrink-0 items-center rounded-xl border border-slate-200 bg-white px-1 dark:border-zinc-800 dark:bg-zinc-900">
               <button type="button" onClick={() => setFontScale(scale => Math.max(0.8, Number((scale - 0.1).toFixed(1))))} className="grid h-9 w-8 place-items-center text-xs font-semibold text-slate-600 dark:text-zinc-300" aria-label="Decrease score font size">A−</button>
               <button type="button" onClick={() => setFontScale(scale => Math.min(1.4, Number((scale + 0.1).toFixed(1))))} className="grid h-9 w-8 place-items-center text-xs font-semibold text-slate-600 dark:text-zinc-300" aria-label="Increase score font size">A+</button>
@@ -215,7 +267,19 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <span className={transpose === 0 ? '' : 'font-semibold text-indigo-600 dark:text-violet-400'}>{transpose > 0 ? `+${transpose}` : transpose}</span>
             </div>
             <div className="h-7 w-px shrink-0 bg-slate-200 dark:bg-zinc-800" />
-            <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300"><Anchor size={14} className="text-slate-400" /> Capo {capoLabel}</div>
+            {hasCapo ? (
+              <div className="flex shrink-0 items-center rounded-xl border border-slate-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900" role="group" aria-label="Capo 顯示">
+                <Anchor size={14} className="mx-2 text-slate-400" />
+                <button type="button" onClick={() => changeCapoMode('shape')} aria-pressed={!concert} className={`h-9 rounded-lg px-3 text-xs font-semibold transition-colors ${!concert ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950' : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100'}`}>
+                  Capo {capoLabel}・{shapeKeyLabel} 指型
+                </button>
+                <button type="button" onClick={() => changeCapoMode('concert')} aria-pressed={concert} className={`h-9 rounded-lg px-3 text-xs font-semibold transition-colors ${concert ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-950' : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100'}`}>
+                  不夾 Capo・{concertKeyLabel} 調
+                </button>
+              </div>
+            ) : (
+              <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300"><Anchor size={14} className="text-slate-400" /> Capo {capoLabel}</div>
+            )}
             <div className="hidden h-7 w-px shrink-0 bg-slate-200 dark:bg-zinc-800 sm:block" />
             <div className="hidden shrink-0 items-center rounded-xl bg-white p-1 dark:bg-zinc-900 sm:flex">
               <Type size={13} className="ml-2 text-slate-400" />
@@ -257,7 +321,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <div className="flex items-center justify-between gap-3 sm:mb-4">
                 <button type="button" onClick={() => setMobileOverviewOpen(open => !open)} aria-expanded={mobileOverviewOpen} aria-label="本曲和弦" className="flex min-h-9 items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300 sm:hidden"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" />本曲和弦 · {chordNames.length}<ChevronDown size={14} className={mobileOverviewOpen ? 'rotate-180' : ''} /></button>
                 <div className="hidden items-center gap-2 sm:flex"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" /><h2 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-400">Chords used</h2></div>
-                {onVoicingPlanChange && (
+                {canEditVoicings && (
                   <button type="button" onClick={() => setPlannerOpen(true)} className="hidden items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:border-violet-800 dark:hover:bg-violet-950/70 sm:flex">
                     <Sparkles size={14} /> 自動配置
                   </button>
@@ -265,7 +329,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               </div>
               <div className={`${mobileOverviewOpen ? 'flex' : 'hidden'} flex-wrap gap-2 pt-3 sm:flex sm:pt-0`}>
                 {chordNames.map(name => {
-                  const displayName = transposeChordSymbol(name, transpose) ?? name;
+                  const displayName = displayChord(name) ?? name;
                   const isActive = selectedChord === name;
                   return (
                     <button key={name} type="button" onClick={() => chooseChord(name)} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/40 dark:text-violet-300' : 'text-slate-600 underline-offset-4 hover:text-indigo-600 hover:underline dark:text-zinc-300 dark:hover:text-violet-400'}`}>
@@ -273,7 +337,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                     </button>
                   );
                 })}
-                {onVoicingPlanChange && <button type="button" onClick={() => setPlannerOpen(true)} className="rounded-lg border border-indigo-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:border-violet-900 dark:text-violet-300 sm:hidden">自動配置</button>}
+                {canEditVoicings && <button type="button" onClick={() => setPlannerOpen(true)} className="rounded-lg border border-indigo-200 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 dark:border-violet-900 dark:text-violet-300 sm:hidden">自動配置</button>}
               </div>
             </section>
           )}
@@ -283,7 +347,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <section key={section.id} id={sectionAnchor(section.id)} className="scroll-mt-36">
                 <header className="mb-4 flex items-end justify-between gap-4 border-b border-slate-200 pb-3 dark:border-zinc-800 sm:mb-6 sm:pb-4">
                   <div><div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-zinc-500">Section {String(sectionIndex + 1).padStart(2, '0')}</div><h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">{section.title}</h2></div>
-                  <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500"><span>{section.timeSignature?.join('/') ?? '4/4'}</span>{section.capo > 0 && <span>Capo {section.capo}</span>}</div>
+                  <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500"><span>{section.timeSignature?.join('/') ?? '4/4'}</span>{section.capo > 0 && <span>{concert ? `不夾 Capo（原 Capo ${section.capo}）` : `Capo ${section.capo}`}</span>}</div>
                 </header>
 
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-zinc-800 dark:bg-zinc-900/45">
@@ -311,7 +375,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
 
         {showChordPanel && <aside className="hidden lg:block print:hidden">
           <div className="sticky top-36 max-h-[calc(100vh-10rem)] overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-[0_16px_48px_rgba(15,23,42,0.08)] dark:border-zinc-800 dark:bg-zinc-900">
-            <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord ? voicingPlan[selectedChord] : undefined} onPreferenceChange={updateSelectedPreference} />
+            <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord && !concert ? voicingPlan[selectedChord] : undefined} onPreferenceChange={canEditVoicings ? updateSelectedPreference : undefined} />
           </div>
         </aside>}
       </div>
@@ -334,12 +398,12 @@ const SongPreview: React.FC<SongPreviewProps> = ({
         <div className="fixed inset-0 z-[70] flex items-end bg-slate-950/35 backdrop-blur-[2px] lg:hidden print:hidden" onClick={() => setMobilePanelOpen(false)}>
           <div role="dialog" aria-modal="true" aria-label={`${selectedDisplayChord} 和弦按法`} className="max-h-[88vh] w-full overflow-y-auto rounded-t-[28px] border-t border-slate-200 bg-white pt-3 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900" onClick={event => event.stopPropagation()}>
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 dark:bg-zinc-700" />
-            <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord ? voicingPlan[selectedChord] : undefined} onPreferenceChange={updateSelectedPreference} compact onClose={() => setMobilePanelOpen(false)} />
+            <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord && !concert ? voicingPlan[selectedChord] : undefined} onPreferenceChange={canEditVoicings ? updateSelectedPreference : undefined} compact onClose={() => setMobilePanelOpen(false)} />
           </div>
         </div>
       )}
 
-      {plannerOpen && onVoicingPlanChange && (
+      {plannerOpen && onVoicingPlanChange && canEditVoicings && (
         <VoicingPlanReview
           sections={sections}
           chordLibrary={chordLibrary}

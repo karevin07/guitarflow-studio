@@ -637,6 +637,7 @@ const App: React.FC = () => {
           <div className="flex-1 overflow-y-auto bg-[#f6f6f3] dark:bg-zinc-950 transition-colors duration-250">
             <SongPreview
               sections={editor.sections}
+              songId={library.currentSongId}
               customChords={editor.customChords}
               globalChords={editor.globalChords}
               voicingPlan={editor.voicingPlan}
