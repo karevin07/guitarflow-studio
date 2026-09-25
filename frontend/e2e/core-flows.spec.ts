@@ -107,12 +107,16 @@ test('suggest solo notes over the chord progression', async ({ page, request }) 
   await page.getByRole('button', { name: '編曲' }).first().click();
   await expect(page).toHaveURL(new RegExp(`/songs/${songId}/arrange$`));
   await expect(page.getByRole('combobox', { name: '調性' })).toHaveValue('0:major');
-  await expect(page.getByTestId('arrange-key-bar')).toContainText('C 大調五聲 ＝ A 小調五聲');
+  await expect(page.getByRole('tab', { name: '產生 Solo' })).toHaveAttribute('aria-selected', 'true');
 
-  const progression = page.getByTestId('arrange-progression');
-  await progression.getByRole('button', { name: /^G/ }).click();
-  await expect(page.getByTestId('arrange-suggestions')).toContainText('3 度 B');
-  await expect(page.getByTestId('solo-fretboard').getByRole('button', { name: 'B 弦第 0 格 B' })).toBeVisible();
+  await page.getByRole('tab', { name: '查音' }).click();
+  await page.getByTestId('arrange-progression').getByRole('button', { name: /^G/ }).click();
+  await expect(page.getByTestId('arrange-suggestions')).toContainText('3 度');
+  await expect(page.getByTestId('solo-fretboard').getByRole('button', { name: '1 弦（e）第 7 格 B' })).toBeVisible();
+
+  await page.getByRole('button', { name: '整首歌的音階' }).click();
+  await expect(page.getByTestId('arrange-scale-card')).toContainText('C 大調五聲');
+  await expect(page.getByTestId('arrange-scale-card')).toContainText('A 小調五聲');
 });
 
 test('generate a solo and add it to the song', async ({ page, request }) => {
@@ -124,8 +128,8 @@ test('generate a solo and add it to the song', async ({ page, request }) => {
   await page.goto(`/songs/${songId}/arrange`);
 
   const generator = page.getByTestId('solo-generator');
-  await generator.getByRole('button', { name: '引導音線' }).click();
-  await generator.getByRole('button', { name: '產生', exact: true }).click();
+  await generator.getByRole('radio', { name: /引導音線/ }).click();
+  await generator.getByRole('button', { name: '產生 Solo' }).click();
   await expect(page.getByTestId('solo-preview')).toBeVisible();
   await generator.getByRole('button', { name: '加入歌曲' }).click();
   await expect(page.getByTestId('solo-inserted')).toContainText('Solo（Verse）');
