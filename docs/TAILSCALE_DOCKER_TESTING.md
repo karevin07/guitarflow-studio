@@ -9,14 +9,15 @@
 | 服務 | IP | Port | 連線網址 |
 |---|---:|---:|---|
 | GuitarFlow UI | `100.64.0.10` | `3003` | `http://100.64.0.10:3003` |
-| Backend API | `100.64.0.10` | `8000` | `http://100.64.0.10:8000/api/` |
-| API 健康檢查 | `100.64.0.10` | `8000` | `http://100.64.0.10:8000/api/global-chords/` |
+| API（經前端轉送） | `100.64.0.10` | `3003` | `http://100.64.0.10:3003/api/` |
+| API 健康檢查 | `100.64.0.10` | `3003` | `http://100.64.0.10:3003/api/global-chords/` |
+| Django（含 `/admin`） | `127.0.0.1` | `8000` | 僅限伺服器本機，不對 Tailnet 開放 |
 | PostgreSQL | `127.0.0.1` | `5432` | 僅限伺服器本機，不對 Tailnet 開放 |
 
 若 Tailnet 已啟用 MagicDNS，也可以使用節點名稱：
 
 - UI：`http://guitarflow-dev:3003`
-- API：`http://guitarflow-dev:8000/api/`
+- API：`http://guitarflow-dev:3003/api/`
 
 > 目前服務使用 HTTP，沒有啟用 HTTPS。Tailscale 負責裝置間的加密傳輸與私有網路存取。
 
@@ -28,8 +29,8 @@
         │ Tailscale encrypted network
         ▼
 guitarflow-dev (100.64.0.10)
-        ├── :3003 → Frontend container
-        ├── :8000 → Django container
+        ├── :3003 → Frontend container ──/api──▶ Django container
+        ├── 127.0.0.1:8000 → Django container（僅本機）
         └── 127.0.0.1:5432 → PostgreSQL container（僅本機）
 ```
 
@@ -99,7 +100,7 @@ docker compose --env-file .env.tailscale.local ps
 
 ```text
 frontend  100.64.0.10:3003->3000/tcp
-backend   100.64.0.10:8000->8000/tcp
+backend   127.0.0.1:8000->8000/tcp
 db        127.0.0.1:5432->5432/tcp
 ```
 
@@ -131,7 +132,7 @@ http://100.64.0.10:3003
 
 ```bash
 curl -I http://100.64.0.10:3003/
-curl http://100.64.0.10:8000/api/global-chords/
+curl http://100.64.0.10:3003/api/global-chords/
 ```
 
 第一個請求應回傳 HTTP `200`，第二個請求應回傳 JSON 和弦資料。
@@ -180,7 +181,7 @@ tailscale status
 2. `tailscale ping 100.64.0.10` 成功。
 3. `docker compose ... ps` 顯示 frontend 正在執行。
 4. frontend port 綁定的是 Tailscale IP，而不是只有 `127.0.0.1`。
-5. Tailnet ACL 沒有封鎖 TCP `3003` 或 `8000`。
+5. Tailnet ACL 沒有封鎖 TCP `3003`。
 
 ### UI 可以開啟，但 API 請求失敗
 
@@ -226,3 +227,19 @@ ssh -N -L 3003:100.64.0.10:3003 ubuntu@<伺服器 IP 或主機名稱>
 - 本機的 `3003` 若已被佔用，可改成其他 port，例如 `-L 8080:100.64.0.10:3003`，再開 <http://localhost:8080>。
 - `-N` 只建立通道，不開遠端 shell；按 `Ctrl+C` 結束。
 - `VITE_ALLOWED_HOSTS` 與 `DJANGO_ALLOWED_HOSTS` 需包含 `localhost`（上面的範例已包含）。
+
+## 從其他機器使用 Django 管理後台
+
+Django（`8000`，含 `/admin`）只綁在伺服器的 `127.0.0.1`，不對 Tailnet 或外部開放。需要從其他機器使用時，開一條 SSH 通道：
+
+```bash
+ssh -N -L 8000:127.0.0.1:8000 ubuntu@<伺服器 IP 或主機名稱>
+```
+
+再開啟 <http://localhost:8000/admin/>。若要讓 Django 對 Tailnet 開放，可在 `.env.tailscale.local` 設定 `APP_BACKEND_BIND_HOST=100.64.0.10`（不建議長期開啟）。
+
+在伺服器上對 live stack 跑 E2E 時，測試資料直接寫入本機的 Django：
+
+```bash
+E2E_BASE_URL=http://100.64.0.10:3003 E2E_API_URL=http://127.0.0.1:8000/api npm run test:e2e
+```

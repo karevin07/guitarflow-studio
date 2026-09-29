@@ -22,7 +22,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "${APP_BIND_HOST:-127.0.0.1}:${APP_BACKEND_PORT:-8000}:8000"
+      # The browser reaches Django through the frontend's /api proxy, so the API port stays on this machine.
+      - "${APP_BACKEND_BIND_HOST:-127.0.0.1}:${APP_BACKEND_PORT:-8000}:8000"
     volumes:
       - ./backend:/app
       - /app/.venv
