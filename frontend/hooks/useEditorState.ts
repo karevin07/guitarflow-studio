@@ -405,6 +405,34 @@ export const useEditorState = () => {
     [history, chordLibrary]
   );
 
+  /** Set only the chord symbol at a column; unlike handleChordNameChange it never writes tab frets. */
+  const setChordName = useCallback(
+    (sectionId: string, mIdx: number, cIdx: number, name: string | null) => {
+      setSections(prev => {
+        const section = prev.find(sec => sec.id === sectionId);
+        const current = section?.chords[mIdx]?.[cIdx] ?? null;
+        const nextName = name?.trim() || null;
+        if (!section || current === nextName) return prev;
+        const next = prev.map(sec => {
+          if (sec.id !== sectionId) return sec;
+          const newChords = [...sec.chords];
+          newChords[mIdx] = [...(newChords[mIdx] ?? Array(16).fill(null))];
+          newChords[mIdx][cIdx] = nextName;
+          return { ...sec, chords: newChords };
+        });
+        setHistoryIndex(prevIdx => {
+          const nextHistory = history.slice(0, prevIdx + 1);
+          nextHistory.push(JSON.parse(JSON.stringify(next)));
+          if (nextHistory.length > 50) nextHistory.shift();
+          setHistory(nextHistory);
+          return nextHistory.length - 1;
+        });
+        return next;
+      });
+    },
+    [history]
+  );
+
   const confirmDetectedChordName = useCallback(
     (sectionId: string, mIdx: number, cIdx: number, name: string) => {
       setSections(prev => {
@@ -485,7 +513,7 @@ export const useEditorState = () => {
     addMeasure, deleteMeasure, copyMeasure, clearColumn,
     addSection, insertSectionAfter, updateSectionTitle, deleteSection, moveSection,
     applyChordToColumn,
-    handleChordNameChange, confirmDetectedChordName, handleDropChord, handleChordInput,
+    handleChordNameChange, setChordName, confirmDetectedChordName, handleDropChord, handleChordInput,
     getActiveChord,
   };
 };

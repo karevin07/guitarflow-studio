@@ -116,7 +116,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                   onClearColumn?.(cIdx);
                 }}
                 className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover/col:opacity-100 hover:bg-red-600 transition-all z-20 shadow-md"
-                title="Clear Chord/Beat"
+                title="清除這一拍" aria-label="清除這一拍"
               >
                 <X size={8} strokeWidth={4} />
               </button>
@@ -195,7 +195,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                 e.stopPropagation();
                 onCopy?.();
               }}
-              title="Copy Measure"
+              title="複製小節" aria-label="複製小節"
               className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
             >
               <Copy size={12} />
@@ -206,7 +206,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                   e.stopPropagation();
                   onDelete?.();
                 }}
-                title="Delete Measure"
+                title="刪除小節" aria-label="刪除小節"
                 className="p-1.5 text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all"
               >
                 <Trash2 size={12} />
@@ -223,7 +223,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
               e.stopPropagation();
               onCopy?.();
             }}
-            title="Copy Measure"
+            title="複製小節" aria-label="複製小節"
             className="p-1 text-slate-400 dark:text-zinc-500 hover:text-indigo-600 dark:hover:text-violet-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md transition-all"
           >
             <Copy size={11} />
@@ -234,7 +234,7 @@ const TabMeasure: React.FC<TabMeasureProps> = ({
                 e.stopPropagation();
                 onDelete?.();
               }}
-              title="Delete Measure"
+              title="刪除小節" aria-label="刪除小節"
               className="p-1 text-slate-400 dark:text-zinc-500 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-all"
             >
               <Trash2 size={11} />

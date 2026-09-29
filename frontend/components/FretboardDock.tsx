@@ -9,7 +9,8 @@ const loadDockOpen = (): boolean => {
   const stored = localStorage.getItem(FRETBOARD_DOCK_KEY);
   if (stored === 'true') return true;
   if (stored === 'false') return false;
-  return typeof window !== 'undefined' ? window.innerWidth >= 768 && window.innerHeight >= 900 : false;
+  // Closed until the user asks for it, so selecting a cell never hides the score.
+  return false;
 };
 
 interface EditorSelection {
@@ -36,16 +37,17 @@ const FretboardDock: React.FC<FretboardDockProps> = ({ selection, techniqueHint,
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
         className="w-full flex items-center justify-between px-6 py-3 text-left hover:bg-slate-50/80 dark:hover:bg-zinc-900/60 transition-colors"
       >
         <div>
-          <h4 className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
+          <h4 className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest flex items-center gap-2">
             {open && <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />}
-            Fretboard
+            指板輸入
           </h4>
           {!open && selection && (
-            <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-0.5">
-              M{selection.measureIdx + 1} · S{selection.stringIdx + 1} · Col {selection.colIdx + 1}
+            <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-0.5">
+              第 {selection.measureIdx + 1} 小節 · 第 {selection.stringIdx + 1} 弦 · 位置 {selection.colIdx + 1}
             </p>
           )}
         </div>
@@ -57,7 +59,7 @@ const FretboardDock: React.FC<FretboardDockProps> = ({ selection, techniqueHint,
       </button>
 
       {open && (
-        <div className="px-6 pb-5 animate-in slide-in-from-bottom-1 duration-200">
+        <div className="max-h-[40vh] overflow-y-auto px-6 pb-5 animate-in slide-in-from-bottom-1 duration-200">
           {!selection ? (
             <p className="text-xs text-slate-400 dark:text-zinc-500 py-4 text-center">
               點選樂譜格子以使用指板輸入
@@ -65,16 +67,16 @@ const FretboardDock: React.FC<FretboardDockProps> = ({ selection, techniqueHint,
           ) : (
             <>
               <div className="flex items-center justify-between gap-4 mb-3">
-                <p className="text-[10px] text-slate-400 dark:text-zinc-500">
+                <p className="text-[11px] text-slate-400 dark:text-zinc-500">
                   點選品位寫入目前選取的格子
                 </p>
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-violet-400 uppercase tracking-widest">
-                  M{selection.measureIdx + 1} · S{selection.stringIdx + 1} · Col {selection.colIdx + 1}
+                <span className="text-[11px] font-bold text-indigo-600 dark:text-violet-400 uppercase tracking-widest">
+                  第 {selection.measureIdx + 1} 小節 · 第 {selection.stringIdx + 1} 弦 · 位置 {selection.colIdx + 1}
                 </span>
               </div>
               {techniqueHint && (
                 <p
-                  className={`text-[10px] font-semibold mb-3 ${
+                  className={`text-[11px] font-semibold mb-3 ${
                     techniqueHint.kind === 'bend'
                       ? 'text-orange-600 dark:text-orange-400'
                       : 'text-indigo-600 dark:text-violet-400'

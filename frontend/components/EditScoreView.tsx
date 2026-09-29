@@ -150,8 +150,8 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
             />
             <div className="hidden h-8 w-px bg-slate-200 dark:bg-zinc-800 sm:block" />
             <div className="flex items-center gap-2 bg-white/70 dark:bg-zinc-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
-              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
-                Time
+              <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+                拍號
               </span>
               <select
                 value={formatTimeSignature(ts)}
@@ -170,7 +170,7 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
             </div>
             <div className="flex items-center gap-2 bg-white/70 dark:bg-zinc-900/60 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800">
               <Anchor size={14} className="text-slate-400 dark:text-zinc-500" />
-              <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+              <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500">
                 Capo
               </span>
               <select
@@ -180,7 +180,7 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
               >
                 {Array.from({ length: 13 }).map((_, i) => (
                   <option key={i} value={i} className="bg-white dark:bg-zinc-900">
-                    {i === 0 ? 'None' : i}
+                    {i === 0 ? '不夾' : i}
                   </option>
                 ))}
               </select>
@@ -191,10 +191,10 @@ const EditScoreView: React.FC<EditScoreViewProps> = ({
             onClick={onAddMeasure}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-violet-900/40 text-indigo-600 dark:text-violet-400 border border-indigo-200/50 dark:border-violet-900/30 rounded-xl text-xs font-bold transition-all shadow-sm"
           >
-            <Plus size={16} /> Add Measure
+            <Plus size={16} /> 新增小節
           </button>
         </div>
-        <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-3 font-medium">
+        <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-3 font-medium">
           橫向連續樂譜 · Shift + 滾輪可左右捲動 · 上方工具列可輸入技巧
         </p>
       </div>

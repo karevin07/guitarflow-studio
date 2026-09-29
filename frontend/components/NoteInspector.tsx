@@ -73,16 +73,16 @@ const NoteInspector: React.FC<NoteInspectorProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
-          Note Inspector
+        <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+          選取的音符
         </span>
-        <span className="text-[10px] font-bold text-indigo-600 dark:text-violet-400 tabular-nums">
-          M{selection.measureIdx + 1} · {TUNING_STANDARD[selection.stringIdx]} · Col {selection.colIdx + 1}
+        <span className="text-[11px] font-bold text-indigo-600 dark:text-violet-400 tabular-nums">
+          第 {selection.measureIdx + 1} 小節 · {TUNING_STANDARD[selection.stringIdx]} 弦 · 位置 {selection.colIdx + 1}
         </span>
       </div>
 
       <div className="rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/40 p-4 space-y-4">
-        <div className="flex items-center justify-between text-[10px]">
+        <div className="flex items-center justify-between text-[11px]">
           <span className="font-bold text-slate-400 dark:text-zinc-500 uppercase">目前</span>
           <code className="font-mono font-bold text-slate-700 dark:text-zinc-200 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
             {cellValue === '-' ? '—' : cellValue}
@@ -90,7 +90,7 @@ const NoteInspector: React.FC<NoteInspectorProps> = ({
         </div>
 
         <label className="block space-y-1.5">
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">類型</span>
+          <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase">類型</span>
           <select
             value={model.kind}
             onChange={e => updateKind(e.target.value as CellNoteKind)}
@@ -106,7 +106,7 @@ const NoteInspector: React.FC<NoteInspectorProps> = ({
 
         {needsFret && (
           <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">起點品位</span>
+            <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase">起點品位</span>
             <input
               type="number"
               min={0}
@@ -123,7 +123,7 @@ const NoteInspector: React.FC<NoteInspectorProps> = ({
 
         {needsTarget && (
           <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">目標品位</span>
+            <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase">目標品位</span>
             <input
               type="number"
               min={0}
@@ -143,7 +143,7 @@ const NoteInspector: React.FC<NoteInspectorProps> = ({
 
         {techniqueHint && (
           <p
-            className={`text-[10px] font-semibold ${
+            className={`text-[11px] font-semibold ${
               techniqueHint.kind === 'bend'
                 ? 'text-orange-600 dark:text-orange-400'
                 : 'text-indigo-600 dark:text-violet-400'

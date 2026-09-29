@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
-import { Plus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Trash2, Guitar, ListMusic } from 'lucide-react';
 import EditScoreView from './EditScoreView';
 import EditInspectorPanel from './EditInspectorPanel';
 import FretboardDock from './FretboardDock';
+import LyricsChordEditor from './LyricsChordEditor';
+import { EditMode } from '../services/lyricsEditor';
 import { TabSection, ChordDefinition } from '../types';
 import { TechniqueInputHint } from '../services/tabNotation';
 import { detectChordCandidatesFromColumn } from '../services/chordDetector';
@@ -64,7 +66,15 @@ interface EditViewProps {
   onUndo: () => void;
   onRedo: () => void;
   onOpenHelp: () => void;
+  editMode: EditMode;
+  onEditModeChange: (mode: EditMode) => void;
+  onSetChordName: (measureIdx: number, colIdx: number, name: string | null) => void;
 }
+
+const EDIT_MODES: Array<{ id: EditMode; label: string; icon: typeof Guitar }> = [
+  { id: 'lyrics', label: '歌詞和弦', icon: ListMusic },
+  { id: 'tab', label: '六線譜', icon: Guitar },
+];
 
 const EditView: React.FC<EditViewProps> = ({
   sections,
@@ -99,6 +109,9 @@ const EditView: React.FC<EditViewProps> = ({
   onUndo,
   onRedo,
   onOpenHelp,
+  editMode,
+  onEditModeChange,
+  onSetChordName,
 }) => {
   const currentSection = sections.find(s => s.id === activeSectionId);
   const selectedColumn = selection && currentSection?.id === selection.sectionId
@@ -112,6 +125,13 @@ const EditView: React.FC<EditViewProps> = ({
     ? currentSection.chords[selection.measureIdx]?.[selection.colIdx] ?? null
     : null;
 
+  const songChords = useMemo(() => {
+    const counts = new Map<string, number>();
+    sections.forEach(section => section.chords.flat().forEach(name => { if (name) counts.set(name, (counts.get(name) ?? 0) + 1); }));
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+  }, [sections]);
+  const playingMeasure = playState && sections[playState.sectionIdx]?.id === activeSectionId ? playState.measureIdx : null;
+
   const cellValue =
     selection && currentSection
       ? currentSection.measures[selection.measureIdx]?.[selection.stringIdx]?.[selection.colIdx] ?? '-'
@@ -121,8 +141,8 @@ const EditView: React.FC<EditViewProps> = ({
     <>
       <aside className="hidden w-60 flex-col border-r border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 transition-colors duration-250 xl:flex">
         <div className="p-6 border-b border-slate-200 dark:border-zinc-800/80 flex items-center justify-between">
-          <h3 className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
-            Sections
+          <h3 className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+            段落
           </h3>
           <button
             type="button"
@@ -162,7 +182,7 @@ const EditView: React.FC<EditViewProps> = ({
                   }}
                   disabled={idx === 0}
                   className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-violet-400 disabled:opacity-30"
-                  title="Move up"
+                  title="上移" aria-label="上移段落"
                 >
                   <ChevronUp size={14} />
                 </button>
@@ -174,7 +194,7 @@ const EditView: React.FC<EditViewProps> = ({
                   }}
                   disabled={idx === sections.length - 1}
                   className="p-0.5 text-slate-400 hover:text-indigo-600 dark:hover:text-violet-400 disabled:opacity-30"
-                  title="Move down"
+                  title="下移" aria-label="下移段落"
                 >
                   <ChevronDown size={14} />
                 </button>
@@ -184,11 +204,11 @@ const EditView: React.FC<EditViewProps> = ({
                 onClick={e => {
                   e.stopPropagation();
                   if (sections.length <= 1) return;
-                  if (confirm(`Delete section "${sec.title}"?`)) onDeleteSection(sec.id);
+                  if (confirm(`刪除段落「${sec.title}」？`)) onDeleteSection(sec.id);
                 }}
                 disabled={sections.length <= 1}
                 className="p-2 mr-1 text-slate-400 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 disabled:opacity-30 transition-all"
-                title="Delete section"
+                title="刪除段落" aria-label="刪除段落"
               >
                 <Trash2 size={14} />
               </button>
@@ -218,12 +238,44 @@ const EditView: React.FC<EditViewProps> = ({
               <button
                 type="button"
                 onClick={onAddSection}
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
-                aria-label="Add section"
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-500 dark:border-zinc-800 dark:text-zinc-400"
+                aria-label="新增段落"
               >
                 <Plus size={15} />
               </button>
             </div>
+            <div className="flex shrink-0 items-center gap-3 border-b border-slate-200 bg-white px-4 py-2 dark:border-zinc-800 dark:bg-zinc-950 sm:px-6">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400">編輯方式</span>
+              <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-zinc-900" role="tablist" aria-label="編輯方式">
+                {EDIT_MODES.map(mode => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={editMode === mode.id}
+                    onClick={() => onEditModeChange(mode.id)}
+                    className={`flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${editMode === mode.id ? 'bg-white text-slate-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-100'}`}
+                  >
+                    <mode.icon size={14} />{mode.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {editMode === 'lyrics' ? (
+              <LyricsChordEditor
+                section={currentSection}
+                songChords={songChords}
+                playingMeasure={playingMeasure}
+                onSetChord={onSetChordName}
+                onSetLyric={onLyricChange}
+                onAddMeasure={onAddMeasure}
+                onDeleteMeasure={onDeleteMeasure}
+                onUpdateTitle={onUpdateSectionTitle}
+                onSetCapo={onSetCapo}
+                onSetTimeSignature={onSetTimeSignature}
+              />
+            ) : (
+            <>
             <EditScoreView
               section={currentSection}
               sections={sections}
@@ -262,16 +314,19 @@ const EditView: React.FC<EditViewProps> = ({
                 onCellInput(selection.sectionId, selection.measureIdx, stringIdx, selection.colIdx, fret.toString());
               }}
             />
+            </>
+            )}
           </>
         )}
       </div>
 
-      <EditInspectorPanel
+      {editMode === 'tab' && <EditInspectorPanel
         selection={selection}
         cellValue={cellValue}
         techniqueHint={techniqueHint}
         activeChord={activeChord}
         chordLibrary={chordLibrary}
+        songChords={songChords}
         theme={theme}
         onApplyCell={value => {
           if (!selection) return;
@@ -282,7 +337,7 @@ const EditView: React.FC<EditViewProps> = ({
           onCellClear(selection.sectionId, selection.measureIdx, selection.stringIdx, selection.colIdx);
         }}
         onChordClick={onChordInput}
-      />
+      />}
     </>
   );
 };
