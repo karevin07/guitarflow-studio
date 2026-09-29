@@ -90,16 +90,17 @@ const ChordDiagram: React.FC<ChordDiagramProps> = ({ chord, size = 160, theme, v
     }`}>
       {variant === 'card' && <div className="flex items-center gap-2 mb-2 flex-shrink-0">
         <h4 className="text-xl font-bold text-slate-800 dark:text-zinc-100 tracking-tight leading-none truncate max-w-[120px]">{chord.name}</h4>
-        {chord.name === 'Custom' && <span className="text-[9px] bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-250/50 dark:border-zinc-700/50 px-1.5 py-0.5 rounded-full font-bold">DETECTED</span>}
+        {chord.name === 'Custom' && <span className="text-[11px] bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-250/50 dark:border-zinc-700/50 px-1.5 py-0.5 rounded-full font-bold">辨識結果</span>}
       </div>}
       
       <div className="flex-1 flex items-center justify-center min-h-0 w-full relative pb-1">
-        <div ref={containerRef} style={{ width: `${size}px`, height: `${size}px` }} className="overflow-hidden flex items-center justify-center svguitar-container" />
+        {/* svguitar draws a 400×526 chart; a square box used to clip the open/muted row and the nut. */}
+        <div ref={containerRef} style={{ width: `${size}px`, maxWidth: '100%', aspectRatio: '400 / 526' }} className="flex items-center justify-center svguitar-container [&>svg]:h-full [&>svg]:w-full" />
       </div>
       
-      {variant === 'card' && <div className="mt-3 pt-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2 flex-shrink-0 border-t border-slate-100 dark:border-zinc-800/80 w-full justify-center">
+      {variant === 'card' && <div className="mt-3 pt-1 text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-2 flex-shrink-0 border-t border-slate-100 dark:border-zinc-800/80 w-full justify-center">
         <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50 dark:bg-violet-500/50 animate-pulse" />
-        Standard Tuning
+        標準調音
       </div>}
     </div>
   );
