@@ -217,7 +217,8 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
         const pitch = TUNING_PITCHES[sIdx] + fret + capo + (applyTranspose ? transposeOffset : 0);
         const inst = instrumentRef.current;
         if (inst) {
-          inst.play(pitch, when, {
+          // The player's types only list note names, but it reads numeric strings as MIDI numbers.
+          inst.play(String(pitch), when, {
             gain: Math.max(0, Math.min(1, playbackVolume)) * 0.9,
             duration,
           });
