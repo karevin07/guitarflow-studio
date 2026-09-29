@@ -5,6 +5,7 @@ import Soundfont from 'soundfont-player';
 import { isMutedCell, parseTabCellPitches } from '../services/tabNotation';
 import { transposeChordSymbol } from '../music-theory';
 import { resolvePlannedVoicing } from '../services/voicingPlan';
+import { DEFAULT_BPM } from '../constants/practice';
 
 export type { PlaybackPosition };
 
@@ -20,7 +21,7 @@ interface UsePlaybackOptions {
 export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voicingPlan = {} }: UsePlaybackOptions) => {
   const [status, setStatus] = useState<'stopped' | 'playing' | 'paused'>('stopped');
   const [playState, setPlayState] = useState<PlaybackPosition | null>(null);
-  const [playBpm, setPlayBpm] = useState(120);
+  const [playBpm, setPlayBpm] = useState(DEFAULT_BPM);
   const [isLooping, setIsLooping] = useState(false);
   const [isMetronomeOn, setIsMetronomeOn] = useState(false);
   const [playbackVolume, setPlaybackVolume] = useState(0.5);

@@ -51,6 +51,17 @@ describe('parseGflowFile', () => {
     expect(result.data.voicingPlan).toEqual({ G: { position: 'high' } });
   });
 
+  it.each([
+    [100, 100],
+    [10, 40],
+    [999, 240],
+    ['fast', null],
+    [undefined, null],
+  ])('reads bpm %s as %s', (bpm, expected) => {
+    const result = parseGflowFile({ title: 'Tempo', bpm, sections: [{ title: 'Verse' }] });
+    expect(result.ok && result.data.bpm).toBe(expected);
+  });
+
   it('rejects invalid JSON shape', () => {
     const result = parseGflowFile(null);
     if (!result.ok) {

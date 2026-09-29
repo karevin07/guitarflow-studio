@@ -108,6 +108,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     customChords = CustomChordSerializer(source='custom_chords', many=True, read_only=True)
     transposeOffset = serializers.IntegerField(source='transpose_offset', required=False, default=0)
     voicingPlan = serializers.JSONField(source='voicing_plan', required=False)
+    bpm = serializers.IntegerField(required=False, allow_null=True, min_value=30, max_value=300)
     source = serializers.ChoiceField(
         choices=GuitarSong.SOURCE_CHOICES,
         required=False,
@@ -127,6 +128,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'customChords',
             'voicingPlan',
             'transposeOffset',
+            'bpm',
             'source',
             'importFormat',
             'fileName',
@@ -193,6 +195,8 @@ class GuitarSongSerializer(serializers.ModelSerializer):
         instance.title = validated_data.get('title', instance.title)
         instance.transpose_offset = validated_data.get('transpose_offset', instance.transpose_offset)
         instance.voicing_plan = validated_data.get('voicing_plan', instance.voicing_plan)
+        if 'bpm' in validated_data:
+            instance.bpm = validated_data['bpm']
         instance.save()
 
         request = self.context.get('request')

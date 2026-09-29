@@ -137,6 +137,29 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_song_bpm_is_saved_kept_and_validated(self):
+        response = self.client.post(
+            self.song_url,
+            {'title': 'Tempo', 'sections': [], 'customChords': [], 'bpm': 100},
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['bpm'], 100)
+        detail_url = reverse('song-detail', args=[response.data['id']])
+
+        # Saving without a tempo keeps the stored one.
+        response = self.client.put(detail_url, {'title': 'Tempo', 'sections': [], 'customChords': []}, format='json')
+        self.assertEqual(response.data['bpm'], 100)
+
+        response = self.client.put(detail_url, {'title': 'Tempo', 'sections': [], 'customChords': [], 'bpm': None}, format='json')
+        self.assertIsNone(response.data['bpm'])
+
+        response = self.client.put(detail_url, {'title': 'Tempo', 'sections': [], 'customChords': [], 'bpm': 10}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response = self.client.post(self.song_url, {'title': 'No tempo', 'sections': [], 'customChords': []}, format='json')
+        self.assertIsNone(response.data['bpm'])
+
     def test_create_song_persists_time_signature(self):
         data = {
             'title': 'Time Sig Song',

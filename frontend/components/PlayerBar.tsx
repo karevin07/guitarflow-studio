@@ -14,6 +14,7 @@ import {
   Square,
   Volume2,
 } from 'lucide-react';
+import { MAX_BPM, MIN_BPM } from '../constants/practice';
 
 import { PlayerBarBindings } from '../types/playback';
 import { colIndexToMs, formatPlaybackMs } from '../services/playbackTime';
@@ -48,8 +49,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   const showStop = isPlaying || isPaused;
   const safeMax = Math.max(1, totalCols - 1);
   const canAb = abLoop.start !== null && abLoop.end !== null;
-  const minimumTempo = isAlphaTab ? 50 : 40;
-  const maximumTempo = isAlphaTab ? 150 : 240;
+  const minimumTempo = isAlphaTab ? 50 : MIN_BPM;
+  const maximumTempo = isAlphaTab ? 150 : MAX_BPM;
   const seekLabel = isAlphaTab
     ? `${formatPlaybackMs(playIndex)} / ${formatPlaybackMs(totalCols)}`
     : `${formatPlaybackMs(colIndexToMs(playIndex, playBpm))} / ${formatPlaybackMs(colIndexToMs(totalCols, playBpm))}`;

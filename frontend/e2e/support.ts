@@ -18,7 +18,7 @@ export const authenticatePage = async (page: Page, token: string) => {
 export const seedSong = async (
   request: APIRequestContext,
   token: string,
-  options: { title: string; chordColumns?: Record<number, string>; lyricColumns?: Record<number, string>; playedFrets?: Array<number | null>; sectionTitles?: string[]; capo?: number }
+  options: { title: string; chordColumns?: Record<number, string>; lyricColumns?: Record<number, string>; playedFrets?: Array<number | null>; sectionTitles?: string[]; capo?: number; bpm?: number }
 ) => {
   const rows = Array.from({ length: 6 }, () => Array(16).fill('-'));
   options.playedFrets?.forEach((fret, stringIndex) => {
@@ -37,6 +37,7 @@ export const seedSong = async (
     data: {
       title: options.title,
       transposeOffset: 0,
+      ...(options.bpm ? { bpm: options.bpm } : {}),
       voicingPlan: {},
       customChords: [],
       sections: (options.sectionTitles ?? ['Verse']).map(title => ({ title, capo: options.capo ?? 0, timeSignature: [4, 4], measures: [rows], chords: [chords], lyrics: [lyrics] })),

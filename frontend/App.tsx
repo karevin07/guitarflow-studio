@@ -31,8 +31,9 @@ import { useImportedScore } from './hooks/useImportedScore';
 import { useAlphaTabPlayback } from './hooks/useAlphaTabPlayback';
 import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
 import { useAuth } from './hooks/useAuth';
-import { DEFAULT_TIME_SIGNATURE } from './constants/practice';
+import { DEFAULT_BPM, DEFAULT_TIME_SIGNATURE } from './constants/practice';
 import { appPaths, parseAppRoute } from './services/routes';
+import { recordPlaybackPosition, recordSongOpened } from './services/sessionHistory';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -56,6 +57,7 @@ const App: React.FC = () => {
     () => localStorage.getItem('guitarflow-autosave') !== 'false'
   );
   const skipDirtyRef = useRef(true);
+  const lastOpenedSongRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (theme === 'dark') {
@@ -84,8 +86,9 @@ const App: React.FC = () => {
 
   // ─── Song library ──────────────────────────────────────────────────────────
   const library = useSongLibrary({
-    onSongOpened: (title, sections, chords, transpose, voicingPlan) => {
-      editor.loadSong(title, sections, chords, transpose, voicingPlan);
+    onSongOpened: (title, sections, chords, transpose, voicingPlan, bpm) => {
+      editor.loadSong(title, sections, chords, transpose, voicingPlan, bpm);
+      playback.setPlayBpm(bpm ?? DEFAULT_BPM);
       skipDirtyRef.current = true;
       setIsDirty(false);
       setActiveImportedSong(null);
@@ -130,7 +133,10 @@ const App: React.FC = () => {
   }, [location.pathname, navigate, route.name]);
 
   useEffect(() => {
-    if (route.name !== 'create' && route.name !== 'practice' && route.name !== 'arrange') return;
+    if (route.name !== 'create' && route.name !== 'practice' && route.name !== 'arrange') {
+      lastOpenedSongRef.current = null;
+      return;
+    }
     if (auth.loading) return;
     if (!auth.user) {
       setAuthOpen(true);
@@ -143,6 +149,10 @@ const App: React.FC = () => {
       toast.error('找不到這首歌曲，已返回歌曲庫。');
       navigate(appPaths.songs, { replace: true });
       return;
+    }
+    if (lastOpenedSongRef.current !== song.id) {
+      lastOpenedSongRef.current = song.id;
+      recordSongOpened(song.id);
     }
 
     if (isImportedSong(song)) {
@@ -157,6 +167,19 @@ const App: React.FC = () => {
     if (library.currentSongId !== song.id || activeImportedSong) library.openSong(song);
   }, [activeImportedSong, auth.loading, auth.user, imported, library, libraryReady, librarySongs, navigate, route, toast]);
 
+  // Remember where playback stopped so the library can offer to continue from there.
+  const lastRecordedMeasureRef = useRef<string | null>(null);
+  useEffect(() => {
+    const state = playback.playState;
+    const songId = library.currentSongId;
+    if (!state || !songId || playback.totalCols === 0) return;
+    const measureKey = `${songId}:${state.sectionIdx}:${state.measureIdx}`;
+    if (lastRecordedMeasureRef.current === measureKey) return;
+    lastRecordedMeasureRef.current = measureKey;
+    const sectionTitle = editor.sections[state.sectionIdx]?.title ?? '';
+    recordPlaybackPosition(songId, sectionTitle, (playback.playIndex / playback.totalCols) * 100);
+  }, [playback.playState, playback.playIndex, playback.totalCols, library.currentSongId, editor.sections]);
+
   const performSave = useCallback(() => {
     library.saveCurrentSong({
       title: editor.songTitle,
@@ -164,8 +187,9 @@ const App: React.FC = () => {
       customChords: editor.customChords,
       voicingPlan: editor.voicingPlan,
       transposeOffset: editor.transposeOffset,
+      bpm: editor.bpm,
     });
-  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.voicingPlan, editor.transposeOffset]);
+  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.voicingPlan, editor.transposeOffset, editor.bpm]);
 
   useEffect(() => {
     if (viewMode === 'home' || !library.currentSongId) return;
@@ -174,7 +198,7 @@ const App: React.FC = () => {
       return;
     }
     setIsDirty(true);
-  }, [editor.sections, editor.songTitle, editor.customChords, editor.voicingPlan, editor.transposeOffset, viewMode, library.currentSongId]);
+  }, [editor.sections, editor.songTitle, editor.customChords, editor.voicingPlan, editor.transposeOffset, editor.bpm, viewMode, library.currentSongId]);
 
   useEffect(() => {
     if (library.saveStatus === 'saved') {
@@ -310,6 +334,7 @@ const App: React.FC = () => {
         customChords: editor.customChords,
         voicingPlan: editor.voicingPlan,
         transposeOffset: editor.transposeOffset,
+        bpm: editor.bpm,
       }, null, 2)],
       { type: 'application/json' }
     );
@@ -696,7 +721,10 @@ const App: React.FC = () => {
           onToggleAbLoop={playback.toggleAbLoop}
           onClearAbLoop={playback.clearAbLoop}
           playBpm={playback.playBpm}
-          onBpmChange={playback.setPlayBpm}
+          onBpmChange={bpm => {
+            playback.setPlayBpm(bpm);
+            editor.setBpm(bpm);
+          }}
           isLooping={playback.isLooping}
           onToggleLoop={() => playback.setIsLooping(v => !v)}
           isMetronomeOn={playback.isMetronomeOn}

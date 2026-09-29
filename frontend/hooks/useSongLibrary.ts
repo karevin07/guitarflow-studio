@@ -8,7 +8,8 @@ interface UseSongLibraryOptions {
     sections: TabSection[],
     customChords: ChordDefinition[],
     transposeOffset: number,
-    voicingPlan: SongVoicingPlan
+    voicingPlan: SongVoicingPlan,
+    bpm: number | null
   ) => void;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
@@ -34,7 +35,7 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
         const newSong = await api.createSong(initialSongData as Omit<GuitarSong, 'id'>);
         setSongs(prev => [newSong, ...prev]);
         setCurrentSongId(newSong.id);
-        onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0, newSong.voicingPlan || {});
+        onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0, newSong.voicingPlan || {}, newSong.bpm ?? null);
         return newSong;
       } catch {
         onError('Failed to create song. Please try again.');
@@ -47,7 +48,7 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
   const openSong = useCallback(
     (song: GuitarSong) => {
       setCurrentSongId(song.id);
-      onSongOpened(song.title, song.sections, song.customChords || [], song.transposeOffset || 0, song.voicingPlan || {});
+      onSongOpened(song.title, song.sections, song.customChords || [], song.transposeOffset || 0, song.voicingPlan || {}, song.bpm ?? null);
     },
     [onSongOpened]
   );
@@ -67,7 +68,7 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
   );
 
   const saveCurrentSong = useCallback(
-    async (songData: { title: string; sections: TabSection[]; customChords: ChordDefinition[]; transposeOffset: number; voicingPlan: SongVoicingPlan }) => {
+    async (songData: { title: string; sections: TabSection[]; customChords: ChordDefinition[]; transposeOffset: number; voicingPlan: SongVoicingPlan; bpm: number | null }) => {
       if (!currentSongId) return;
       setSaveStatus('saving');
       try {
@@ -89,7 +90,7 @@ export const useSongLibrary = ({ onSongOpened, onError, onSuccess }: UseSongLibr
         const newSong = await api.createSong(songData as Omit<GuitarSong, 'id'>);
         setSongs(prev => [newSong, ...prev]);
         setCurrentSongId(newSong.id);
-        onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0, newSong.voicingPlan || {});
+        onSongOpened(newSong.title, newSong.sections, newSong.customChords || [], newSong.transposeOffset || 0, newSong.voicingPlan || {}, newSong.bpm ?? null);
         onSuccess(`Imported "${newSong.title}" successfully.`);
         return newSong;
       } catch {

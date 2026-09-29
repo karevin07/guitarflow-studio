@@ -1,7 +1,7 @@
 import { GuitarSong, TabSection, ChordDefinition } from '../types';
 import { parseVoicingPlan } from './voicingPlan';
 import { createEmptyMeasure } from '../hooks/useEditorState';
-import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
+import { DEFAULT_TIME_SIGNATURE, MAX_BPM, MIN_BPM } from '../constants/practice';
 
 export type GflowImportResult =
   | { ok: true; data: Omit<GuitarSong, 'id' | 'lastModified'> }
@@ -130,10 +130,13 @@ export const parseGflowFile = (raw: unknown): GflowImportResult => {
     }
   }
   const voicingPlan = parseVoicingPlan(obj.voicingPlan);
+  const bpm = typeof obj.bpm === 'number' && Number.isFinite(obj.bpm)
+    ? Math.round(Math.max(MIN_BPM, Math.min(MAX_BPM, obj.bpm)))
+    : null;
 
   return {
     ok: true,
-    data: { title, sections, customChords, voicingPlan, transposeOffset },
+    data: { title, sections, customChords, voicingPlan, transposeOffset, bpm },
   };
 };
 

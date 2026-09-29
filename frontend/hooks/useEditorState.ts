@@ -14,6 +14,7 @@ export const useEditorState = () => {
   const [globalChords, setGlobalChords] = useState<ChordDefinition[]>([]);
   const [transposeOffset, setTransposeOffset] = useState(0);
   const [voicingPlan, setVoicingPlan] = useState<SongVoicingPlan>({});
+  const [bpm, setBpm] = useState<number | null>(null);
 
   const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [selection, setSelectionRaw] = useState<{
@@ -46,12 +47,13 @@ export const useEditorState = () => {
 
   /** Load a song's data into the editor (called when opening a song) */
   const loadSong = useCallback(
-    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number, plan: SongVoicingPlan = {}) => {
+    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number, plan: SongVoicingPlan = {}, songBpm: number | null = null) => {
       setSongTitle(title);
       setSections(newSections);
       setCustomChords(chords);
       setTransposeOffset(transpose);
       setVoicingPlan(plan);
+      setBpm(songBpm);
       setActiveSectionId(newSections[0]?.id || '');
       setHistory([newSections]);
       setHistoryIndex(0);
@@ -469,6 +471,7 @@ export const useEditorState = () => {
     globalChords, setGlobalChords,
     transposeOffset, setTransposeOffset,
     voicingPlan, setVoicingPlan,
+    bpm, setBpm,
     activeSectionId, setActiveSectionId,
     selection, setSelection,
     previewChord, setPreviewChord,

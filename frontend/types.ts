@@ -21,6 +21,8 @@ export interface GuitarSong {
   customChords: ChordDefinition[];
   voicingPlan: SongVoicingPlan;
   transposeOffset: number;
+  /** Saved tempo; null or missing uses the player default. */
+  bpm?: number | null;
   source?: 'gflow';
   isLegacy?: boolean;
 }

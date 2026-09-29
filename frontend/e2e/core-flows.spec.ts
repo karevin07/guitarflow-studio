@@ -73,6 +73,21 @@ test('plan chord voicings, save them and start practice playback', async ({ page
   await page.getByRole('button', { name: 'Stop' }).click();
 });
 
+test('open a song at its saved tempo and save a new one', async ({ page, request }) => {
+  const token = await register(request);
+  const songId = await seedSong(request, token, { title: 'E2E Tempo Song', bpm: 100, chordColumns: { 0: 'C', 8: 'G' } });
+  await authenticatePage(page, token);
+  await page.goto(`/songs/${songId}/practice`);
+
+  await expect(page.getByRole('button', { name: 'Increase tempo' }).locator('xpath=..')).toContainText('100');
+  await page.getByRole('button', { name: 'Increase tempo' }).click();
+  await expect(page.getByRole('button', { name: 'Increase tempo' }).locator('xpath=..')).toContainText('105');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible();
+
+  expect((await getSong(request, token, songId)).bpm).toBe(105);
+});
+
 test('drop the capo to read chords in the sounding key', async ({ page, request }) => {
   const token = await register(request);
   const songId = await seedSong(request, token, {
