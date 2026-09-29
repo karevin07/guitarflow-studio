@@ -67,7 +67,7 @@ const ImportPreviewModal: React.FC<ImportPreviewModalProps> = ({
             type="button"
             onClick={onCancel}
             className="p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all"
-            title="Cancel"
+            title="取消" aria-label="取消"
           >
             <X size={20} />
           </button>

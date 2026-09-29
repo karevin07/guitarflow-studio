@@ -9,4 +9,4 @@ export const card = 'rounded-2xl border border-[#dedcd4] bg-[#fffefa] dark:borde
 
 export const stepLabel = 'flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#85877f]';
 
-export const stepNumber = 'grid h-5 w-5 place-items-center rounded-full bg-[#171a18] text-[10px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-950';
+export const stepNumber = 'grid h-5 w-5 place-items-center rounded-full bg-[#171a18] text-[11px] font-bold text-white dark:bg-zinc-100 dark:text-zinc-950';

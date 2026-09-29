@@ -183,10 +183,10 @@ const SoloGeneratorPanel: React.FC<SoloGeneratorPanelProps> = ({
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="text-sm font-bold">{style.label}</span>
-                    <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${style.level === '入門' ? 'bg-[#e8f0eb] text-[#2b6c59] dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-[#fbf1dc] text-[#8a5a12] dark:bg-amber-950/50 dark:text-amber-200'}`}>{style.level}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[11px] font-semibold ${style.level === '入門' ? 'bg-[#e8f0eb] text-[#2b6c59] dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-[#fbf1dc] text-[#8a5a12] dark:bg-amber-950/50 dark:text-amber-200'}`}>{style.level}</span>
                   </span>
                   <span className="text-[11px] leading-snug text-[#6e716b] dark:text-zinc-400">{style.description}</span>
-                  <pre className="overflow-hidden rounded-md bg-[#f3f1eb] px-2 py-1 font-mono text-[9px] leading-tight text-[#6e716b] dark:bg-zinc-800 dark:text-zinc-400" aria-hidden="true">{style.example}</pre>
+                  <pre className="overflow-hidden rounded-md bg-[#f3f1eb] px-2 py-1 font-mono text-[11px] leading-tight text-[#6e716b] dark:bg-zinc-800 dark:text-zinc-400" aria-hidden="true">{style.example}</pre>
                 </button>
               );
             })}

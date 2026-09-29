@@ -18,8 +18,8 @@ const shortcuts = [
   { keys: ['Tab'], desc: '下一拍' },
   { keys: ['Enter'], desc: '下一小節' },
   { keys: ['Backspace', 'Delete'], desc: '清除音符' },
-  { keys: ['Ctrl/Cmd + Z'], desc: 'Undo' },
-  { keys: ['Ctrl/Cmd + Y'], desc: 'Redo' },
+  { keys: ['Ctrl/Cmd + Z'], desc: '復原' },
+  { keys: ['Ctrl/Cmd + Y'], desc: '重做' },
   { keys: ['?'], desc: '開啟快捷鍵說明' },
   { keys: ['Toolbar'], desc: 'Edit 模式上方工具列：x / h / p / b / s / /，與鍵盤行為相同' },
 ];
@@ -41,7 +41,7 @@ const KeyboardShortcutsModal: React.FC<KeyboardShortcutsModalProps> = ({ open, o
             <div className="p-2 bg-indigo-50 dark:bg-violet-900/40 rounded-xl text-indigo-600 dark:text-violet-400">
               <Keyboard size={20} />
             </div>
-            <h2 className="text-lg font-bold text-slate-800 dark:text-zinc-100">Keyboard Shortcuts</h2>
+            <h2 className="text-lg font-bold text-slate-800 dark:text-zinc-100">鍵盤快捷鍵</h2>
           </div>
           <button
             onClick={onClose}

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Anchor, Check, ChevronDown, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Sparkles, Type } from 'lucide-react';
+import { Anchor, Check, ChevronDown, ChevronsDown, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Sparkles, Type } from 'lucide-react';
 import { TabSection, ChordDefinition, SongVoicingPlan, SongVoicingPreference } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import { formatPitch, parseChord, transposePitch } from '../music-theory';
@@ -28,9 +28,6 @@ interface SongPreviewProps {
   onTransposeChange?: (newVal: number) => void;
   theme?: 'light' | 'dark';
   playState?: PlaybackPosition | null;
-  isPlaying?: boolean;
-  isPaused?: boolean;
-  onTogglePlayPause?: () => void;
   voicingPlan?: SongVoicingPlan;
   onVoicingPlanChange?: (plan: SongVoicingPlan) => void;
 }
@@ -38,6 +35,8 @@ interface SongPreviewProps {
 const sectionAnchor = (id: string): string => `preview-section-${id}`;
 const AUTO_SCROLL_SPEED_KEY = 'guitarflow-auto-scroll-speed';
 const SCORE_FONT_SCALE_KEY = 'guitarflow-read-font-scale';
+// Songbook rows are short, so a gentle base speed keeps a row on screen for several bars.
+const AUTO_SCROLL_PX_PER_SECOND = 12;
 
 const SongPreview: React.FC<SongPreviewProps> = ({
   sections,
@@ -48,9 +47,6 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   onTransposeChange,
   theme = 'dark',
   playState = null,
-  isPlaying = false,
-  isPaused = false,
-  onTogglePlayPause,
   voicingPlan = {},
   onVoicingPlanChange,
 }) => {
@@ -142,7 +138,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
     let previousTime: number | null = null;
     const tick = (time: number) => {
       if (previousTime !== null) {
-        scroller.scrollTop += ((time - previousTime) / 1000) * 28 * scrollSpeed;
+        scroller.scrollTop += ((time - previousTime) / 1000) * AUTO_SCROLL_PX_PER_SECOND * scrollSpeed;
         if (scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 2) {
           setAutoScroll(false);
           return;
@@ -173,6 +169,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
       ? formatPitch(transposePitch(baseChord.root, transpose), baseChord.accidentalPreference)
       : '—';
   const selectedDisplayChord = displayChord(selectedChord);
+  const transposeLabel = transpose === 0 ? `原調 ${originalKey}` : `原調 ${originalKey} · 移調 ${transpose > 0 ? '+' : ''}${transpose}`;
   const shapeKeyLabel = describeKey(shiftedSongKey(sections, transpose));
   const concertKeyLabel = describeKey(shiftedSongKey(sections, transpose + songCapo));
   // Voicing locks are stored for the capo shapes, so editing them is only offered in that view.
@@ -216,21 +213,24 @@ const SongPreview: React.FC<SongPreviewProps> = ({
           <div className="flex items-center gap-2 sm:hidden">
             <div className="flex h-11 min-w-0 flex-1 items-center justify-between rounded-xl border border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
               <button type="button" onClick={() => onTransposeChange?.(Math.max(-12, transpose - 1))} className="grid h-11 w-11 shrink-0 place-items-center text-slate-600 dark:text-zinc-300" aria-label="Transpose down"><Minus size={17} /></button>
-              <div className="min-w-0 text-center"><div className="text-[8px] font-semibold uppercase tracking-[0.16em] text-slate-400">Key</div><div className="font-mono text-base font-bold">{currentKey}</div></div>
+              <div className="min-w-0 text-center"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">調性</div><div className="font-mono text-base font-bold">{currentKey}</div></div>
               <button type="button" onClick={() => onTransposeChange?.(Math.min(12, transpose + 1))} className="grid h-11 w-11 shrink-0 place-items-center text-slate-600 dark:text-zinc-300" aria-label="Transpose up"><Plus size={17} /></button>
             </div>
             {hasCapo ? (
               <button type="button" onClick={() => changeCapoMode(concert ? 'shape' : 'concert')} aria-pressed={concert} aria-label={concert ? `改回 Capo ${capoLabel}・${shapeKeyLabel} 指型` : `不夾 Capo・${concertKeyLabel} 調`} className={`flex h-11 shrink-0 flex-col items-center justify-center rounded-xl border px-3 ${concert ? 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300' : 'border-slate-200 bg-white dark:border-zinc-800 dark:bg-zinc-900'}`}>
-                <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span>
                 <span className="font-mono text-sm font-bold">{concert ? '不夾' : capoLabel}</span>
               </button>
             ) : (
-              <div className="flex h-11 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900"><span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span><span className="font-mono text-sm font-bold">{capoLabel}</span></div>
+              <div className="flex h-11 shrink-0 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900"><span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Capo</span><span className="font-mono text-sm font-bold">{capoLabel}</span></div>
             )}
             <div className="flex h-11 shrink-0 items-center rounded-xl border border-slate-200 bg-white px-1 dark:border-zinc-800 dark:bg-zinc-900">
-              <button type="button" onClick={() => setFontScale(scale => Math.max(0.8, Number((scale - 0.1).toFixed(1))))} className="grid h-9 w-8 place-items-center text-xs font-semibold text-slate-600 dark:text-zinc-300" aria-label="Decrease score font size">A−</button>
-              <button type="button" onClick={() => setFontScale(scale => Math.min(1.4, Number((scale + 0.1).toFixed(1))))} className="grid h-9 w-8 place-items-center text-xs font-semibold text-slate-600 dark:text-zinc-300" aria-label="Increase score font size">A+</button>
+              <button type="button" onClick={() => setFontScale(scale => Math.max(0.8, Number((scale - 0.1).toFixed(1))))} className="grid h-11 w-9 place-items-center text-xs font-semibold text-slate-600 dark:text-zinc-300" aria-label="Decrease score font size">A−</button>
+              <button type="button" onClick={() => setFontScale(scale => Math.min(1.4, Number((scale + 0.1).toFixed(1))))} className="grid h-11 w-9 place-items-center text-xs font-semibold text-slate-600 dark:text-zinc-300" aria-label="Increase score font size">A+</button>
             </div>
+            <button type="button" onClick={toggleAutoScroll} aria-label={autoScroll ? '暫停自動捲動' : '開始自動捲動'} aria-pressed={autoScroll} className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${autoScroll ? 'border-slate-950 bg-slate-950 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-950' : 'border-slate-200 bg-white text-slate-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300'}`}>
+              {autoScroll ? <Pause size={16} fill="currentColor" /> : <ChevronsDown size={18} />}
+            </button>
           </div>
 
           <div className="flex items-center justify-between gap-3 sm:hidden">
@@ -238,22 +238,25 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <button type="button" onClick={() => setMobileSectionOpen(open => !open)} aria-label="選擇段落" aria-expanded={mobileSectionOpen} className="flex h-8 max-w-44 items-center gap-1.5 rounded-lg px-1 text-xs font-semibold text-slate-700 dark:text-zinc-200"><span className="truncate">{mobileSection?.title ?? '段落'}</span><ChevronDown size={14} className="shrink-0" /></button>
               {mobileSectionOpen && <div className="absolute left-0 top-9 z-50 max-h-56 min-w-44 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900">{sections.map(section => <button key={section.id} type="button" onClick={() => jumpToSection(section.id)} className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold hover:bg-slate-100 dark:hover:bg-zinc-800">{section.title}</button>)}</div>}
             </div>
-            <span className="shrink-0 text-[10px] font-medium text-slate-500 dark:text-zinc-400">Original {originalKey} · {transpose > 0 ? `+${transpose}` : transpose}</span>
+            {autoScroll ? (
+              <div className="flex shrink-0 items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
+                捲動速度
+                <button type="button" onClick={() => setScrollSpeed(speed => Math.max(0.5, speed - 0.25))} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800" aria-label="Slower auto scroll"><Minus size={13} /></button>
+                <span className="w-8 text-center font-mono">{scrollSpeed}x</span>
+                <button type="button" onClick={() => setScrollSpeed(speed => Math.min(2, speed + 0.25))} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800" aria-label="Faster auto scroll"><Plus size={13} /></button>
+              </div>
+            ) : (
+              <span className="shrink-0 text-[11px] font-medium text-slate-500 dark:text-zinc-400">{transposeLabel}</span>
+            )}
           </div>
 
           <div className="hidden items-center gap-3 overflow-x-auto pb-1 sm:flex">
-            {onTogglePlayPause && (
-              <button type="button" onClick={onTogglePlayPause} className={`flex h-11 shrink-0 items-center gap-2 rounded-xl px-4 text-xs font-semibold text-white transition-colors ${isPlaying ? 'bg-[#2b6c59] hover:bg-[#245c4c]' : 'bg-[#1b1c1e] hover:bg-[#3154d7] dark:bg-zinc-100 dark:text-zinc-950'}`} aria-label={isPlaying ? '暫停播放' : isPaused ? '繼續播放' : '開始播放'}>
-                {isPlaying ? <Pause size={15} fill="currentColor" /> : <Play size={15} fill="currentColor" />}
-                {isPlaying ? '暫停' : isPaused ? '繼續' : '播放'}
-              </button>
-            )}
             <div className="flex shrink-0 items-center rounded-xl border border-slate-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900">
               <button type="button" onClick={() => onTransposeChange?.(Math.max(-12, transpose - 1))} className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-zinc-800 dark:hover:text-violet-400" aria-label="Transpose down">
                 <Minus size={16} />
               </button>
               <div className="min-w-[92px] px-3 text-center">
-                <div className="text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Key</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">調性</div>
                 <div className="font-mono text-base font-bold text-slate-900 dark:text-zinc-50">{currentKey}</div>
               </div>
               <button type="button" onClick={() => onTransposeChange?.(Math.min(12, transpose + 1))} className="grid h-9 w-9 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-indigo-600 dark:hover:bg-zinc-800 dark:hover:text-violet-400" aria-label="Transpose up">
@@ -261,11 +264,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               </button>
             </div>
 
-            <div className="shrink-0 text-xs leading-5 text-slate-500 dark:text-zinc-400">
-              <span>Original {originalKey}</span>
-              <span className="mx-2 text-slate-300 dark:text-zinc-700">·</span>
-              <span className={transpose === 0 ? '' : 'font-semibold text-indigo-600 dark:text-violet-400'}>{transpose > 0 ? `+${transpose}` : transpose}</span>
-            </div>
+            <div className={`shrink-0 text-xs leading-5 ${transpose === 0 ? 'text-slate-500 dark:text-zinc-400' : 'font-semibold text-indigo-600 dark:text-violet-400'}`}>{transposeLabel}</div>
             <div className="h-7 w-px shrink-0 bg-slate-200 dark:bg-zinc-800" />
             {hasCapo ? (
               <div className="flex shrink-0 items-center rounded-xl border border-slate-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900" role="group" aria-label="Capo 顯示">
@@ -287,24 +286,24 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <button type="button" onClick={() => setFontScale(scale => Math.min(1.4, Number((scale + 0.1).toFixed(1))))} className="grid h-8 w-8 place-items-center rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-zinc-300 dark:hover:bg-zinc-800" aria-label="Increase score font size">A+</button>
             </div>
             <button type="button" onClick={() => { setShowChordPanel(value => !value); setMobilePanelOpen(false); }} className={`hidden shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors sm:flex ${showChordPanel ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'bg-white text-slate-500 dark:bg-zinc-900 dark:text-zinc-400'}`}>
-              <PanelRight size={14} /> Chord diagrams
+              <PanelRight size={14} /> 和弦圖
             </button>
             <button type="button" onClick={toggleAutoScroll} className={`hidden shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors sm:flex ${autoScroll ? 'bg-slate-950 text-white dark:bg-zinc-100 dark:text-zinc-950' : 'bg-white text-slate-600 hover:text-indigo-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:text-violet-400'}`}>
               {autoScroll ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-              {autoScroll ? 'Pause scroll' : 'Auto scroll'}
+              {autoScroll ? '暫停捲動' : '自動捲動'}
             </button>
-            <label className={`hidden shrink-0 items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400 transition-opacity sm:flex ${autoScroll ? 'opacity-100' : 'opacity-45'}`}>
-              Speed
+            <label className={`hidden shrink-0 items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 transition-opacity sm:flex ${autoScroll ? 'opacity-100' : 'opacity-45'}`}>
+              速度
               <input type="range" min="0.5" max="2" step="0.25" value={scrollSpeed} disabled={!autoScroll} onChange={event => setScrollSpeed(Number(event.target.value))} className="w-20 accent-indigo-600 dark:accent-violet-500" />
               <span className="w-7 font-mono text-slate-600 dark:text-zinc-300">{scrollSpeed}x</span>
             </label>
             {transpose !== 0 && (
-              <button type="button" onClick={() => onTransposeChange?.(0)} className="ml-auto flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white hover:text-slate-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><RotateCcw size={13} /> Reset</button>
+              <button type="button" onClick={() => onTransposeChange?.(0)} className="ml-auto flex shrink-0 items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-white hover:text-slate-900 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"><RotateCcw size={13} /> 還原</button>
             )}
           </div>
 
           <div className="hidden items-center gap-2 overflow-x-auto sm:flex">
-            <span className="mr-1 shrink-0 text-[9px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">Sections</span>
+            <span className="mr-1 shrink-0 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400 dark:text-zinc-500">段落</span>
             {sections.map(section => (
               <button key={section.id} type="button" onClick={() => jumpToSection(section.id)} className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-white hover:text-slate-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100">
                 {section.title}
@@ -314,13 +313,13 @@ const SongPreview: React.FC<SongPreviewProps> = ({
         </div>
       </div>
 
-      <div className={`mx-auto grid max-w-[1500px] grid-cols-1 gap-8 px-4 pb-60 pt-5 sm:px-6 sm:pb-32 sm:pt-8 lg:px-10 lg:pb-20 lg:pt-10 xl:gap-12 ${showChordPanel ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-1'}`}>
+      <div className={`mx-auto grid max-w-[1500px] grid-cols-1 gap-8 px-4 pb-48 pt-5 sm:px-6 sm:pb-32 sm:pt-8 lg:px-10 lg:pb-20 lg:pt-10 xl:gap-12 ${showChordPanel ? 'lg:grid-cols-[minmax(0,1fr)_300px]' : 'lg:grid-cols-1'}`}>
         <div className="min-w-0">
           {chordNames.length > 0 && (
             <section className="mb-5 border-b border-slate-200 pb-3 dark:border-zinc-800 sm:mb-12 sm:pb-8 print:hidden">
               <div className="flex items-center justify-between gap-3 sm:mb-4">
                 <button type="button" onClick={() => setMobileOverviewOpen(open => !open)} aria-expanded={mobileOverviewOpen} aria-label="本曲和弦" className="flex min-h-9 items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300 sm:hidden"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" />本曲和弦 · {chordNames.length}<ChevronDown size={14} className={mobileOverviewOpen ? 'rotate-180' : ''} /></button>
-                <div className="hidden items-center gap-2 sm:flex"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" /><h2 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-400">Chords used</h2></div>
+                <div className="hidden items-center gap-2 sm:flex"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" /><h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-400">本曲和弦</h2></div>
                 {canEditVoicings && (
                   <button type="button" onClick={() => setPlannerOpen(true)} className="hidden items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:border-violet-800 dark:hover:bg-violet-950/70 sm:flex">
                     <Sparkles size={14} /> 自動配置
@@ -332,7 +331,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                   const displayName = displayChord(name) ?? name;
                   const isActive = selectedChord === name;
                   return (
-                    <button key={name} type="button" onClick={() => chooseChord(name)} className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-sm font-semibold transition-all ${isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/40 dark:text-violet-300' : 'text-slate-600 underline-offset-4 hover:text-indigo-600 hover:underline dark:text-zinc-300 dark:hover:text-violet-400'}`}>
+                    <button key={name} type="button" onClick={() => chooseChord(name)} className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-sm font-semibold transition-all sm:min-h-0 sm:min-w-0 ${isActive ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/40 dark:text-violet-300' : 'text-slate-600 underline-offset-4 hover:text-indigo-600 hover:underline dark:text-zinc-300 dark:hover:text-violet-400'}`}>
                       {displayName}{voicingPlan[name] && <Check size={11} strokeWidth={3} aria-label="已配置指法" />}
                     </button>
                   );
@@ -346,27 +345,33 @@ const SongPreview: React.FC<SongPreviewProps> = ({
             {renderedSections.map((section, sectionIndex) => (
               <section key={section.id} id={sectionAnchor(section.id)} className="scroll-mt-36">
                 <header className="mb-4 flex items-end justify-between gap-4 border-b border-slate-200 pb-3 dark:border-zinc-800 sm:mb-6 sm:pb-4">
-                  <div><div className="mb-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-zinc-500">Section {String(sectionIndex + 1).padStart(2, '0')}</div><h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">{section.title}</h2></div>
-                  <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500"><span>{section.timeSignature?.join('/') ?? '4/4'}</span>{section.capo > 0 && <span>{concert ? `不夾 Capo（原 Capo ${section.capo}）` : `Capo ${section.capo}`}</span>}</div>
+                  <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-zinc-500">第 {sectionIndex + 1} 段</div><h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">{section.title}</h2></div>
+                  <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500"><span>{section.timeSignature?.join('/') ?? '4/4'}</span>{section.capo > 0 && <span>{concert ? `不夾 Capo（原 Capo ${section.capo}）` : `Capo ${section.capo}`}</span>}</div>
                 </header>
 
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-zinc-800 dark:bg-zinc-900/45">
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-4" data-testid="songbook-section">
                   {section.measures.map((_, measureIndex) => {
                     const playbackActive = playState?.sectionIdx === sectionIndex && playState.measureIdx === measureIndex;
-                    return <div key={measureIndex} id={`preview-measure-${sectionIndex}-${measureIndex}`} className="scroll-mt-40">
-                    <LeadSheetMeasure
-                      measureNumber={measureIndex + 1}
-                      chords={section.chords[measureIndex] ?? []}
-                      displayChords={section.displayChords[measureIndex] ?? []}
-                      lyrics={section.lyrics[measureIndex] ?? []}
-                      selectedChord={selectedChord}
-                      fontScale={fontScale}
-                      onSelectChord={chooseChord}
-                      activeColumn={playbackActive ? playState?.colIdx : null}
-                      playbackActive={playbackActive}
-                    />
-                    </div>;
+                    return (
+                      <div key={measureIndex} id={`preview-measure-${sectionIndex}-${measureIndex}`} className="scroll-mt-40">
+                        <LeadSheetMeasure
+                          measureNumber={measureIndex + 1}
+                          chords={section.chords[measureIndex] ?? []}
+                          displayChords={section.displayChords[measureIndex] ?? []}
+                          lyrics={section.lyrics[measureIndex] ?? []}
+                          selectedChord={selectedChord}
+                          fontScale={fontScale}
+                          onSelectChord={chooseChord}
+                          activeColumn={playbackActive ? playState?.colIdx : null}
+                          playbackActive={playbackActive}
+                        />
+                      </div>
+                    );
                   })}
+                  {/* Fill the last row so the bar lines stay a clean grid. */}
+                  {Array.from({ length: (4 - (section.measures.length % 4)) % 4 }, (_, index) => (
+                    <div key={`filler-${index}`} className="bg-white dark:bg-zinc-900" aria-hidden="true" />
+                  ))}
                 </div>
               </section>
             ))}
@@ -378,20 +383,6 @@ const SongPreview: React.FC<SongPreviewProps> = ({
             <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord && !concert ? voicingPlan[selectedChord] : undefined} onPreferenceChange={canEditVoicings ? updateSelectedPreference : undefined} />
           </div>
         </aside>}
-      </div>
-
-      <div className="fixed bottom-[148px] left-3 right-3 z-40 flex items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-900/95 sm:hidden print:hidden">
-        <button type="button" onClick={toggleAutoScroll} aria-label={autoScroll ? '暫停自動捲動' : '開始自動捲動'} className="flex h-9 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-zinc-200">
-          {autoScroll ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-          {autoScroll ? '暫停自動捲動' : '自動捲動'}
-        </button>
-        {autoScroll && (
-          <div className="flex shrink-0 items-center gap-1 border-l border-slate-200 pl-2 dark:border-zinc-800">
-            <button type="button" onClick={() => setScrollSpeed(speed => Math.max(0.5, speed - 0.25))} className="grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800" aria-label="Slower auto scroll"><Minus size={13} /></button>
-            <span className="w-8 text-center font-mono text-[10px] font-semibold">{scrollSpeed}x</span>
-            <button type="button" onClick={() => setScrollSpeed(speed => Math.min(2, speed + 0.25))} className="grid h-7 w-7 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800" aria-label="Faster auto scroll"><Plus size={13} /></button>
-          </div>
-        )}
       </div>
 
       {mobilePanelOpen && selectedDisplayChord && (

@@ -22,7 +22,7 @@ const TrackSelector: React.FC<TrackSelectorProps> = ({
   return (
     <div className="px-6 py-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50/80 dark:bg-zinc-950/50">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500 shrink-0">
+        <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-slate-400 dark:text-zinc-500 shrink-0">
           <Layers size={14} />
           Tracks
         </div>
@@ -43,7 +43,7 @@ const TrackSelector: React.FC<TrackSelectorProps> = ({
               >
                 {track.shortName || track.name}
                 {track.isPercussion && (
-                  <span className="ml-1.5 text-[9px] font-semibold uppercase opacity-60">Drums</span>
+                  <span className="ml-1.5 text-[11px] font-semibold uppercase opacity-60">鼓組</span>
                 )}
               </button>
             );
@@ -53,14 +53,14 @@ const TrackSelector: React.FC<TrackSelectorProps> = ({
           <button
             type="button"
             onClick={onSelectGuitar}
-            className="px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-indigo-300 dark:hover:border-violet-700 hover:text-indigo-600 dark:hover:text-violet-400 transition-all"
+            className="px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-indigo-300 dark:hover:border-violet-700 hover:text-indigo-600 dark:hover:text-violet-400 transition-all"
           >
             Guitar
           </button>
           <button
             type="button"
             onClick={onSelectAll}
-            className="px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-indigo-300 dark:hover:border-violet-700 hover:text-indigo-600 dark:hover:text-violet-400 transition-all"
+            className="px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wider border border-slate-200 dark:border-zinc-800 text-slate-500 dark:text-zinc-400 hover:border-indigo-300 dark:hover:border-violet-700 hover:text-indigo-600 dark:hover:text-violet-400 transition-all"
           >
             All
           </button>

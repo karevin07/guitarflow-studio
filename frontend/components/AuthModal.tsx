@@ -59,6 +59,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
           <button
             type="button"
             onClick={onClose}
+            aria-label="關閉"
             className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800"
           >
             <X size={20} />
@@ -73,8 +74,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
           )}
 
           <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
-              Username
+            <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+              帳號
             </span>
             <input
               value={username}
@@ -87,8 +88,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
           </label>
 
           <label className="block space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
-              Password
+            <span className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest">
+              密碼
             </span>
             <input
               type="password"

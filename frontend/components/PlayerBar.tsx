@@ -73,8 +73,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
         )}
 
         <div className="min-w-0 flex-1">
-          <div className="mb-1.5 flex items-center justify-between gap-3 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500">
-            <span>{isPlaying ? 'Playing' : isPaused ? 'Paused' : 'Ready'}</span>
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500">
+            <span>{isPlaying ? '播放中' : isPaused ? '已暫停' : '準備好了'}</span>
             <span className="font-mono tracking-normal">{seekLabel}</span>
           </div>
           <input type="range" min={0} max={safeMax} value={Math.min(playIndex, safeMax)} disabled={totalCols <= 1} onChange={event => onSeek(Number(event.target.value))} className="block h-1 w-full cursor-pointer accent-indigo-600 disabled:opacity-30 dark:accent-violet-500" aria-label="Playback position" />
@@ -84,12 +84,12 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           <button type="button" onClick={() => nudgeTempo(-5)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-700" aria-label="Decrease tempo"><Minus size={13} /></button>
           <div className="min-w-16 px-2 text-center">
             <div className="font-mono text-xs font-bold text-slate-800 dark:text-zinc-100">{playBpm}</div>
-            <div className="text-[7px] font-semibold uppercase tracking-wider text-slate-400">{isAlphaTab ? 'speed %' : 'bpm'}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{isAlphaTab ? '速度 %' : 'BPM'}</div>
           </div>
           <button type="button" onClick={() => nudgeTempo(5)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-700" aria-label="Increase tempo"><Plus size={13} /></button>
         </div>
 
-        <button type="button" onClick={() => setControlsOpen(value => !value)} className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-colors ${controlsOpen ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`} aria-label="Playback controls" aria-expanded={controlsOpen}>
+        <button type="button" onClick={() => setControlsOpen(value => !value)} className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl transition-colors ${controlsOpen ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800'}`} aria-label="Playback controls" aria-expanded={controlsOpen}>
           {controlsOpen ? <ChevronDown size={17} /> : <SlidersHorizontal size={17} />}
         </button>
       </div>
@@ -103,12 +103,12 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           </div>
 
           <div className="flex items-center gap-1 overflow-x-auto">
-            <button type="button" onClick={onSetLoopA} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${abLoop.start !== null ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Flag size={13} /> A</button>
-            <button type="button" onClick={onSetLoopB} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${abLoop.end !== null ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Flag size={13} /> B</button>
-            <button type="button" onClick={onToggleAbLoop} disabled={!canAb} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider disabled:opacity-30 ${abLoop.enabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Repeat size={13} /> A–B</button>
+            <button type="button" onClick={onSetLoopA} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold uppercase tracking-wider ${abLoop.start !== null ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Flag size={13} /> A</button>
+            <button type="button" onClick={onSetLoopB} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold uppercase tracking-wider ${abLoop.end !== null ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Flag size={13} /> B</button>
+            <button type="button" onClick={onToggleAbLoop} disabled={!canAb} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold uppercase tracking-wider disabled:opacity-30 ${abLoop.enabled ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Repeat size={13} /> A–B</button>
             <button type="button" onClick={onClearAbLoop} className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-500 dark:hover:bg-zinc-800" aria-label="Clear A-B loop"><FlagOff size={13} /></button>
-            <button type="button" onClick={onToggleLoop} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${isLooping ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Repeat size={13} /> Loop</button>
-            <button type="button" onClick={onToggleMetronome} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold uppercase tracking-wider ${isMetronomeOn ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Activity size={13} /> Click</button>
+            <button type="button" onClick={onToggleLoop} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold uppercase tracking-wider ${isLooping ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Repeat size={13} /> 循環</button>
+            <button type="button" onClick={onToggleMetronome} className={`flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-semibold uppercase tracking-wider ${isMetronomeOn ? 'bg-indigo-50 text-indigo-700 dark:bg-violet-950/50 dark:text-violet-300' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}><Activity size={13} /> 節拍器</button>
           </div>
 
           <label className="flex min-w-32 items-center gap-2">

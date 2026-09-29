@@ -83,21 +83,21 @@ const ExportMenu: React.FC<ExportMenuProps> = ({
       aria-expanded={open}
     >
       <Download size={16} />
-      {!compact && <span>Export</span>}
+      {!compact && <span>匯出</span>}
       <ChevronDown size={13} />
     </button>
     {open && (
       <div className="absolute right-0 top-12 z-[80] w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
         {[
-          { label: 'GuitarFlow project', detail: '.gflow', icon: FileText, action: onGflow },
-          { label: 'MIDI performance', detail: '.mid', icon: Music2, action: onMidi },
-          { label: 'Printable score', detail: '.pdf', icon: Eye, action: onPdf },
+          { label: 'GuitarFlow 樂譜檔', detail: '.gflow', icon: FileText, action: onGflow },
+          { label: 'MIDI 演奏檔', detail: '.mid', icon: Music2, action: onMidi },
+          { label: '列印樂譜', detail: '.pdf', icon: Eye, action: onPdf },
           { label: 'MusicXML', detail: '.xml', icon: FileMusic, action: onMusicXml },
         ].map(item => (
           <button key={item.label} type="button" onClick={item.action} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-slate-100 dark:hover:bg-zinc-800">
             <item.icon size={16} className="text-slate-400 dark:text-zinc-500" />
             <span className="text-xs font-semibold text-slate-700 dark:text-zinc-200">{item.label}</span>
-            <span className="ml-auto font-mono text-[9px] text-slate-400 dark:text-zinc-500">{item.detail}</span>
+            <span className="ml-auto font-mono text-[11px] text-slate-400 dark:text-zinc-500">{item.detail}</span>
           </button>
         ))}
       </div>
@@ -147,13 +147,15 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
         { mode: 'arrange' as const, label: '編曲', icon: Guitar },
       ];
 
-  const activeDestination: AppDestination = viewMode === 'arrange' ? 'create' : viewMode;
+  const activeDestination: AppDestination = viewMode;
+  const saveLabel = saveStatus === 'saving' ? '儲存中' : saveStatus === 'saved' ? '已儲存' : '儲存';
 
   const navigateRail = (destination: AppDestination) => {
     if (destination === 'library') return onBack();
-    if (destination === 'practice') return onViewModeChange('practice');
     if (destination === 'chords') return onOpenChordLibrary();
-    if (!isImported) onViewModeChange('create');
+    // Imported scores only have a practice view.
+    if (isImported || destination === 'practice') return onViewModeChange('practice');
+    onViewModeChange(destination);
   };
 
   return (
@@ -167,8 +169,8 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
 
         <div className="min-w-0 flex-1">
           <input value={title} onChange={event => onTitleChange(event.target.value)} onBlur={onTitleBlur} className="w-full truncate border-0 bg-transparent p-0 text-base font-bold tracking-[-0.02em] text-[#171a18] outline-none dark:text-zinc-50 sm:text-lg" aria-label="歌曲名稱" />
-          <div className="mt-0.5 flex items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-[#85877f] dark:text-zinc-500">
-            <span>GuitarFlow Original</span>
+          <div className="mt-0.5 flex items-center gap-2 text-[11px] font-semibold text-[#85877f] dark:text-zinc-500">
+            <span>GuitarFlow 樂譜</span>
             {isImported && importedSong && <><span>·</span><span>{importedSong.importFormat}</span></>}
             {!isImported && <><span>·</span><button type="button" onClick={onToggleAutosave} className={autosaveEnabled ? 'text-[#2b6c59] dark:text-emerald-400' : ''}>自動儲存 {autosaveEnabled ? '開啟' : '關閉'}</button></>}
           </div>
@@ -176,33 +178,33 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
 
         <div className="hidden items-center rounded-xl bg-[#efede7] p-1 dark:bg-zinc-900 md:flex">
           {modes.map(item => (
-            <button key={item.mode} type="button" onClick={() => onViewModeChange(item.mode)} className={`h-9 rounded-lg px-3 text-[10px] font-semibold transition-colors ${viewMode === item.mode ? item.mode === 'practice' ? 'bg-[#2b6c59] text-white shadow-sm' : 'bg-[#fffefa] text-[#171a18] shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-[#777a73] hover:text-[#171a18] dark:text-zinc-500 dark:hover:text-zinc-100'}`}>{item.label}</button>
+            <button key={item.mode} type="button" onClick={() => onViewModeChange(item.mode)} className={`h-9 rounded-lg px-4 text-sm font-bold transition-colors ${viewMode === item.mode ? item.mode === 'practice' ? 'bg-[#2b6c59] text-white shadow-sm' : 'bg-[#fffefa] text-[#171a18] shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-[#777a73] hover:text-[#171a18] dark:text-zinc-500 dark:hover:text-zinc-100'}`}>{item.label}</button>
           ))}
         </div>
 
         {isImported && onConvertToGflow && (
           <button type="button" onClick={onConvertToGflow} disabled={convertToGflowDisabled} className="hidden rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-40 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 sm:block">
-            Make editable
+            轉成可編輯
           </button>
         )}
 
         {!isImported && (
           <div className="hidden items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-zinc-900 sm:flex">
-            <button type="button" onClick={onUndo} disabled={!canUndo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="Undo"><Undo2 size={15} /></button>
-            <button type="button" onClick={onRedo} disabled={!canRedo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="Redo"><Redo2 size={15} /></button>
+            <button type="button" onClick={onUndo} disabled={!canUndo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="復原" aria-label="復原"><Undo2 size={15} /></button>
+            <button type="button" onClick={onRedo} disabled={!canRedo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="重做" aria-label="重做"><Redo2 size={15} /></button>
           </div>
         )}
 
         {!isImported && (
-          <button type="button" onClick={onSave} className={`${viewMode === 'practice' ? 'hidden sm:flex' : 'flex'} h-10 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-3 text-xs font-semibold text-[#5f625c] hover:border-[#bfc2e8] hover:text-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200`}>
+          <button type="button" onClick={onSave} aria-label={saveLabel} className={`${viewMode === 'practice' ? 'hidden sm:flex' : 'flex'} h-11 sm:h-10 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-3 text-xs font-semibold text-[#5f625c] hover:border-[#bfc2e8] hover:text-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200`}>
             {saveStatus === 'saved' ? <Check size={16} className="text-emerald-500" /> : <Save size={16} />}
-            <span className="hidden md:inline">{saveStatus === 'saving' ? 'Saving' : saveStatus === 'saved' ? 'Saved' : 'Save'}</span>
+            <span className="hidden md:inline">{saveLabel}</span>
           </button>
         )}
 
         {!isImported && viewMode === 'practice' && (
           <div className="relative sm:hidden">
-            <button type="button" onClick={onToggleExport} aria-label="更多歌曲操作" aria-expanded={isExportOpen} className="grid h-10 w-10 place-items-center rounded-xl border border-[#dedcd4] bg-[#fffefa] text-[#5f625c] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"><MoreHorizontal size={20} /></button>
+            <button type="button" onClick={onToggleExport} aria-label="更多歌曲操作" aria-expanded={isExportOpen} className="grid h-11 w-11 place-items-center rounded-xl border border-[#dedcd4] bg-[#fffefa] text-[#5f625c] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"><MoreHorizontal size={20} /></button>
             {isExportOpen && <div className="absolute right-0 top-12 z-[80] w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
               <button type="button" onClick={() => { onSave(); onToggleExport(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold hover:bg-slate-100 dark:hover:bg-zinc-800"><Save size={16} />儲存歌曲</button>
               <div className="my-1 border-t border-slate-100 dark:border-zinc-800" />
@@ -220,14 +222,14 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
       </header>
 
       <nav className="fixed bottom-0 left-0 right-0 z-[65] grid border-t border-[#dedcd4] bg-[#fffefa]/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl dark:border-zinc-800 dark:bg-[#171818]/95 lg:hidden print:hidden" style={{ gridTemplateColumns: `repeat(${modes.length + 2}, minmax(0, 1fr))` }}>
-        <button type="button" onClick={onBack} className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold text-[#85877f]"><FileMusic size={18} /><span>歌曲庫</span></button>
+        <button type="button" onClick={onBack} className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[11px] font-semibold text-[#85877f]"><FileMusic size={18} /><span>歌曲庫</span></button>
         {modes.map(item => (
-          <button key={item.mode} type="button" onClick={() => onViewModeChange(item.mode)} className={`flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold ${viewMode === item.mode ? item.mode === 'practice' ? 'text-[#2b6c59]' : 'text-[#4d5bd2]' : 'text-[#85877f] dark:text-zinc-500'}`}>
+          <button key={item.mode} type="button" onClick={() => onViewModeChange(item.mode)} className={`flex flex-col items-center gap-1 rounded-xl py-1.5 text-[11px] font-semibold ${viewMode === item.mode ? item.mode === 'practice' ? 'text-[#2b6c59]' : 'text-[#4d5bd2]' : 'text-[#85877f] dark:text-zinc-500'}`}>
             <item.icon size={18} strokeWidth={viewMode === item.mode ? 2.5 : 1.8} />
             {item.label}
           </button>
         ))}
-        <button type="button" onClick={onOpenChordLibrary} className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[9px] font-semibold text-[#85877f] dark:text-zinc-500"><Shapes size={18} /><span>和弦庫</span></button>
+        <button type="button" onClick={onOpenChordLibrary} className="flex flex-col items-center gap-1 rounded-xl py-1.5 text-[11px] font-semibold text-[#85877f] dark:text-zinc-500"><Shapes size={18} /><span>和弦庫</span></button>
       </nav>
 
       <div className="h-16 shrink-0 lg:h-[72px]" aria-hidden="true" />

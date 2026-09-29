@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Edit3,
+  Guitar,
   Library,
   Moon,
   Music2,
@@ -9,7 +10,7 @@ import {
   TimerReset,
 } from 'lucide-react';
 
-export type AppDestination = 'library' | 'create' | 'practice' | 'chords';
+export type AppDestination = 'library' | 'create' | 'practice' | 'arrange' | 'chords';
 
 interface AppRailProps {
   active: AppDestination;
@@ -23,6 +24,7 @@ const destinations = [
   { id: 'library' as const, label: '歌曲庫', icon: Library },
   { id: 'create' as const, label: '創作', icon: Edit3 },
   { id: 'practice' as const, label: '練習', icon: TimerReset },
+  { id: 'arrange' as const, label: '編曲', icon: Guitar },
   { id: 'chords' as const, label: '和弦庫', icon: Shapes },
 ];
 
@@ -38,7 +40,7 @@ const AppRail: React.FC<AppRailProps> = ({
       type="button"
       onClick={() => onNavigate('library')}
       className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-[#171a18] text-sm font-bold tracking-[-0.08em] text-white transition-colors hover:bg-[#4d5bd2] dark:bg-zinc-100 dark:text-zinc-950"
-      aria-label="GuitarFlow home"
+      aria-label="回到歌曲庫"
     >
       GF
     </button>
@@ -53,7 +55,7 @@ const AppRail: React.FC<AppRailProps> = ({
             key={item.id}
             type="button"
             onClick={() => onNavigate(item.id)}
-            className={`relative flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-[9px] font-semibold transition-colors ${selected
+            className={`relative flex min-h-[58px] flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold transition-colors ${selected
               ? practice
                 ? 'bg-[#e8f0eb] text-[#2b6c59] dark:bg-emerald-950/40 dark:text-emerald-300'
                 : 'bg-[#eceefa] text-[#4d5bd2] dark:bg-indigo-950/45 dark:text-indigo-300'
@@ -70,10 +72,10 @@ const AppRail: React.FC<AppRailProps> = ({
     </nav>
 
     <div className="mt-auto flex flex-col items-center gap-2">
-      <button type="button" onClick={onToggleTheme} className="grid h-10 w-10 place-items-center rounded-xl text-[#85877f] hover:bg-[#f3f1eb] hover:text-[#171a18] dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100" aria-label="Toggle theme">
+      <button type="button" onClick={onToggleTheme} className="grid h-10 w-10 place-items-center rounded-xl text-[#85877f] hover:bg-[#f3f1eb] hover:text-[#171a18] dark:text-zinc-500 dark:hover:bg-zinc-900 dark:hover:text-zinc-100" aria-label="切換深色模式">
         {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
       </button>
-      <div className="grid h-9 w-9 place-items-center rounded-full border border-[#dedcd4] bg-white text-[10px] font-bold text-[#4d5bd2] dark:border-zinc-700 dark:bg-zinc-900 dark:text-indigo-300" title={username ?? 'Guest'}>
+      <div className="grid h-9 w-9 place-items-center rounded-full border border-[#dedcd4] bg-white text-[11px] font-bold text-[#4d5bd2] dark:border-zinc-700 dark:bg-zinc-900 dark:text-indigo-300" title={username ?? 'Guest'}>
         {username ? username.slice(0, 1).toUpperCase() : <Music2 size={15} />}
       </div>
     </div>

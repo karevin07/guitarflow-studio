@@ -28,7 +28,7 @@ const ChordCandidatePicker: React.FC<ChordCandidatePickerProps> = ({
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 dark:text-violet-300"><Sparkles size={14} /> 和弦辨識建議</div>
         <span className="text-[11px] text-slate-500 dark:text-zinc-400">音：{result.notes.join(' · ') || '—'}</span>
-        {!currentName && <span className="text-[10px] text-slate-400 dark:text-zinc-500">尚未寫入譜面</span>}
+        {!currentName && <span className="text-[11px] text-slate-400 dark:text-zinc-500">尚未寫入譜面</span>}
       </div>
       {result.candidates.length > 0 ? (
         <div className={`mt-2 flex gap-2 overflow-x-auto pb-1 ${compact ? 'flex-wrap' : ''}`}>
@@ -46,9 +46,9 @@ const ChordCandidatePicker: React.FC<ChordCandidatePickerProps> = ({
                 <span className="flex w-full items-center gap-1.5">
                   {selected && <Check size={13} />}
                   <span className="font-mono text-sm font-bold">{candidate.name}</span>
-                  <span className="ml-auto text-[9px] font-semibold opacity-65">{candidate.exactShape ? '指法相同' : confidenceLabel[candidate.confidence]}</span>
+                  <span className="ml-auto text-[11px] font-semibold opacity-65">{candidate.exactShape ? '指法相同' : confidenceLabel[candidate.confidence]}</span>
                 </span>
-                <span className="text-[10px] leading-4 opacity-70">{candidate.reason}</span>
+                <span className="text-[11px] leading-4 opacity-70">{candidate.reason}</span>
               </button>
             );
           })}
@@ -56,7 +56,7 @@ const ChordCandidatePicker: React.FC<ChordCandidatePickerProps> = ({
       ) : (
         <p className="mt-2 text-xs text-slate-500 dark:text-zinc-400">目前音符不足以判讀和弦；可繼續輸入，或自行填寫名稱。</p>
       )}
-      {result.candidates.length > 1 && <p className="mt-1 text-[10px] text-slate-400 dark:text-zinc-500">同一組音可能對應不同和弦；點選候選名稱確認，不會改動原本的指法。</p>}
+      {result.candidates.length > 1 && <p className="mt-1 text-[11px] text-slate-400 dark:text-zinc-500">同一組音可能對應不同和弦；點選候選名稱確認，不會改動原本的指法。</p>}
     </section>
   );
 };

@@ -78,7 +78,7 @@ const VoicingPlanReview: React.FC<VoicingPlanReviewProps> = ({
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-t-[28px] border border-slate-200 bg-[#f7f7f4] shadow-2xl dark:border-zinc-800 dark:bg-zinc-950 sm:rounded-[28px]">
         <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5 dark:border-zinc-800 sm:px-7">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-violet-400">
+            <div className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-indigo-600 dark:text-violet-400">
               <Sparkles size={14} /> Phase 2 · Smart voicing
             </div>
             <h2 id="voicing-plan-title" className="text-xl font-bold tracking-tight text-slate-950 dark:text-zinc-50 sm:text-2xl">整首歌指法配置</h2>
@@ -128,7 +128,7 @@ const VoicingPlanReview: React.FC<VoicingPlanReviewProps> = ({
                   </div>
                 </div>
                 <div className="shrink-0 text-right">
-                  <div className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">預估切換成本</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">預估切換成本</div>
                   <div className="font-mono text-sm font-bold text-slate-800 dark:text-zinc-100">{result.transitionCost.toFixed(1)}</div>
                 </div>
               </div>
@@ -150,12 +150,12 @@ const VoicingPlanReview: React.FC<VoicingPlanReviewProps> = ({
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="font-mono text-lg font-bold text-slate-950 dark:text-zinc-50">{suggestion.effectiveSymbol}</div>
-                            {suggestion.effectiveSymbol !== suggestion.sourceSymbol && <div className="text-[10px] text-slate-400">原譜 {suggestion.sourceSymbol}</div>}
+                            {suggestion.effectiveSymbol !== suggestion.sourceSymbol && <div className="text-[11px] text-slate-400">原譜 {suggestion.sourceSymbol}</div>}
                           </div>
-                          {suggestion.locked && <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><LockKeyhole size={10} /> 已固定</span>}
+                          {suggestion.locked && <span className="flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-[11px] font-bold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"><LockKeyhole size={10} /> 已固定</span>}
                         </div>
                         <div className="mt-4 font-mono text-xs font-semibold tracking-wide text-slate-600 dark:text-zinc-300">{fretLabel(suggestion.shape.frets)}</div>
-                        <div className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                        <div className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                           {positionLabels[getVoicingPosition(suggestion.shape.frets)]} · 出現 {suggestion.occurrences} 次
                         </div>
                       </div>

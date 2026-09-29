@@ -33,7 +33,9 @@ import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
 import { useAuth } from './hooks/useAuth';
 import { DEFAULT_BPM, DEFAULT_TIME_SIGNATURE } from './constants/practice';
 import { appPaths, parseAppRoute } from './services/routes';
-import { recordPlaybackPosition, recordSongOpened } from './services/sessionHistory';
+import { loadSessions, recordPlaybackPosition, recordSongOpened, sortByRecent } from './services/sessionHistory';
+import { AppDestination } from './components/AppRail';
+import { EditMode, loadEditMode, saveEditMode } from './services/lyricsEditor';
 
 const App: React.FC = () => {
   const location = useLocation();
@@ -166,6 +168,22 @@ const App: React.FC = () => {
 
     if (library.currentSongId !== song.id || activeImportedSong) library.openSong(song);
   }, [activeImportedSong, auth.loading, auth.user, imported, library, libraryReady, librarySongs, navigate, route, toast]);
+
+  // Lead sheets open in the lyrics-and-chords editor; the choice is remembered per song.
+  const [editMode, setEditMode] = useState<EditMode>('tab');
+  const editModeSongRef = useRef<string | null>(null);
+  useEffect(() => {
+    const songId = library.currentSongId;
+    if (!songId || editModeSongRef.current === songId || editor.sections.length === 0) return;
+    editModeSongRef.current = songId;
+    setEditMode(loadEditMode(songId, editor.sections));
+  }, [library.currentSongId, editor.sections]);
+  const changeEditMode = useCallback((mode: EditMode) => {
+    setEditMode(mode);
+    saveEditMode(library.currentSongId, mode);
+    // Tab shortcuts act on the selected cell, so drop it when the grid is hidden.
+    if (mode === 'lyrics') editor.setSelection(null);
+  }, [editor, library.currentSongId]);
 
   // Remember where playback stopped so the library can offer to continue from there.
   const lastRecordedMeasureRef = useRef<string | null>(null);
@@ -485,6 +503,19 @@ const App: React.FC = () => {
     : null;
 
   // ─── Home view ─────────────────────────────────────────────────────────────
+  // Rail buttons for a workspace open the song you used last in that workspace.
+  const openRailDestination = (destination: AppDestination) => {
+    if (destination === 'library') return navigate(appPaths.songs);
+    if (destination === 'chords') return navigate(appPaths.chords());
+    const song = sortByRecent(librarySongs, loadSessions())[0];
+    if (!song) {
+      if (destination === 'create' && auth.user) void createNewSong();
+      else navigate(appPaths.songs);
+      return;
+    }
+    navigate(isImportedSong(song) ? appPaths.practice(song.id) : appPaths[destination](song.id));
+  };
+
   if (viewMode === 'home' || (isSongWorkspace && !auth.user)) {
     if (route.name === 'chords') {
       return (
@@ -492,6 +523,7 @@ const App: React.FC = () => {
           globalChords={editor.globalChords}
           theme={theme}
           onBack={() => navigate(appPaths.songs)}
+          onRailNavigate={openRailDestination}
           onToggleTheme={toggleTheme}
           initialChord={route.symbol}
         />
@@ -518,6 +550,7 @@ const App: React.FC = () => {
           }}
           onClaimSong={handleClaimSong}
           onClaimAllLegacy={handleClaimAllLegacy}
+          onRailNavigate={openRailDestination}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
@@ -654,6 +687,9 @@ const App: React.FC = () => {
             onUndo={editor.undo}
             onRedo={editor.redo}
             onOpenHelp={() => setShortcutsOpen(true)}
+            editMode={editMode}
+            onEditModeChange={changeEditMode}
+            onSetChordName={(mIdx, cIdx, name) => editor.setChordName(editor.activeSectionId, mIdx, cIdx, name)}
           />
         )}
 
@@ -671,9 +707,6 @@ const App: React.FC = () => {
               onTransposeChange={editor.setTransposeOffset}
               theme={theme}
               playState={playback.playState}
-              isPlaying={playback.isPlaying}
-              isPaused={playback.isPaused}
-              onTogglePlayPause={playback.togglePlayPause}
             />
           </div>
         )}

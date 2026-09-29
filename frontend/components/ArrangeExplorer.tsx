@@ -108,7 +108,7 @@ const ArrangeExplorer: React.FC<ArrangeExplorerProps> = ({ steps, nextSectionSte
                 : 'border-[#dedcd4] bg-[#fffefa] hover:border-[#bfc2e8] dark:border-zinc-800 dark:bg-zinc-900'} disabled:opacity-50`}
             >
               <span className="font-mono text-sm font-bold">{step.chord ? chordName(step.chord) : step.effectiveSymbol}</span>
-              <span className={`text-[10px] font-semibold ${fn && !fn.diatonic ? 'text-[#8a5a12] dark:text-amber-300' : 'text-[#85877f]'}`}>
+              <span className={`text-[11px] font-semibold ${fn && !fn.diatonic ? 'text-[#8a5a12] dark:text-amber-300' : 'text-[#85877f]'}`}>
                 {fn ? fn.secondaryDominant ?? fn.numeral : '無法分析'}
               </span>
             </button>
@@ -188,7 +188,7 @@ const ArrangeExplorer: React.FC<ArrangeExplorerProps> = ({ steps, nextSectionSte
                 <button key={`${scale.root}:${scale.type}`} type="button" onClick={() => { setSafeScaleIdx(index); setBox(null); }} className={`rounded-xl border px-3 py-2 text-left text-xs ${index === safeScaleIdx ? 'border-[#4d5bd2] bg-[#eef0fd] dark:border-violet-500 dark:bg-violet-950/40' : 'border-[#dedcd4] dark:border-zinc-700'}`}>
                   <span className="font-bold">{formatScale(scale.root, scale.type, keyPreference)}</span>
                   <span className="ml-2 font-mono text-[#85877f]">{getScalePitchClasses(scale.root, scale.type).map(pitch => formatPitch(pitch, scaleAccidentalPreference(scale))).join(' ')}</span>
-                  {scale.reason && <span className="mt-0.5 block text-[10px] text-[#85877f]">{scale.reason}</span>}
+                  {scale.reason && <span className="mt-0.5 block text-[11px] text-[#85877f]">{scale.reason}</span>}
                 </button>
               ))}
             </div>

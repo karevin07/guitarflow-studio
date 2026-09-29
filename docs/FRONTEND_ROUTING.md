@@ -25,7 +25,7 @@ Route construction and parsing are centralized in `frontend/services/routes.ts`.
 
 - **`BrowserRouter`**: Owns browser history and enables back/forward navigation.
 - **`App.tsx`**: Resolves the current route, loads the requested song, and connects route state to existing application hooks.
-- **`AppRail`**: Provides the four user-facing destinations: Song Library, Create, Practice, and Chord Library.
+- **`AppRail`**: Provides the five user-facing destinations: Song Library, Create, Practice, Arrange, and Chord Library. Outside a song, Create, Practice, and Arrange open the most recently opened song in that workspace.
 - **`SongShellHeader`**: Switches between Create, Practice, and Arrange for the currently loaded song.
 - **Route helpers**: Parse, encode, and test application URLs without coupling components to URL syntax.
 
