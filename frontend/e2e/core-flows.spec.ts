@@ -204,6 +204,35 @@ test('generate a solo and add it to the song', async ({ page, request }) => {
   expect(solo.measures.flat(2).filter((cell: string) => cell !== '-').length).toBeGreaterThan(0);
 });
 
+test('an import started before sign-in is confirmed waits instead of asking to log in', async ({ page, request }) => {
+  const token = await register(request);
+  await authenticatePage(page, token);
+  await page.route('**/auth/me/', async route => {
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    await route.continue();
+  });
+  await page.goto('/songs');
+
+  await page.locator('input[type="file"][accept*=".musicxml"]').setInputFiles(path.join(fixtureDir, 'simple-score.musicxml'));
+  await expect(page.getByRole('dialog', { name: 'Import Preview' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '登入', exact: true })).toHaveCount(0);
+});
+
+test('a file picked while signed out is imported after logging in', async ({ page, request }) => {
+  const username = `e2e_${randomUUID().replaceAll('-', '').slice(0, 16)}`;
+  const response = await request.post(`${apiBase}/auth/register/`, { data: { username, password: 'E2e-test-pass-2026' } });
+  expect(response.ok()).toBeTruthy();
+  await page.goto('/songs');
+  await expect(page.getByRole('button', { name: '登入或註冊' }).first()).toBeVisible();
+
+  await page.locator('input[type="file"][accept*=".musicxml"]').setInputFiles(path.join(fixtureDir, 'simple-score.musicxml'));
+  await expect(page.getByRole('heading', { name: '登入', exact: true })).toBeVisible();
+  await page.getByRole('textbox', { name: '帳號' }).fill(username);
+  await page.getByLabel('密碼').fill('E2e-test-pass-2026');
+  await page.getByRole('button', { name: '登入', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Import Preview' })).toBeVisible();
+});
+
 test('preview and persist an imported MusicXML score', async ({ page, request }) => {
   const token = await register(request);
   await authenticatePage(page, token);

@@ -97,7 +97,8 @@ const Home: React.FC<HomeProps> = ({
   }), [filter, search, songs]);
 
   const openPicker = (ref: React.RefObject<HTMLInputElement | null>) => {
-    if (!user) return onOpenAuth();
+    // While sign-in is still being checked, let the picker open; the import waits for the result.
+    if (!user && !authLoading) return onOpenAuth();
     ref.current?.click();
   };
 

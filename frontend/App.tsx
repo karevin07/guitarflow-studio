@@ -262,11 +262,33 @@ const App: React.FC = () => {
     Promise.all([library.fetchSongs(), imported.refresh()]).finally(() => setLibraryReady(true));
   }, [auth.user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const requireAuth = useCallback(() => {
-    if (auth.user) return true;
-    setAuthOpen(true);
-    return false;
-  }, [auth.user]);
+  // Actions started before /auth/me answers wait for it instead of treating the user as signed out.
+  // Signed-out users see the login dialog, and the action (e.g. a picked file) continues after login.
+  const pendingAuthActionRef = useRef<(() => void) | null>(null);
+  const runWhenSignedIn = useCallback((action: () => void) => {
+    if (auth.user) {
+      action();
+      return;
+    }
+    pendingAuthActionRef.current = action;
+    if (!auth.loading) setAuthOpen(true);
+  }, [auth.user, auth.loading]);
+
+  useEffect(() => {
+    const action = pendingAuthActionRef.current;
+    if (!action || auth.loading) return;
+    if (auth.user) {
+      pendingAuthActionRef.current = null;
+      action();
+    } else {
+      setAuthOpen(true);
+    }
+  }, [auth.loading, auth.user]);
+
+  const closeAuthDialog = useCallback(() => {
+    pendingAuthActionRef.current = null;
+    setAuthOpen(false);
+  }, []);
 
   const handleLogout = useCallback(async () => {
     playback.stop();
@@ -317,8 +339,8 @@ const App: React.FC = () => {
   });
 
   // ─── Create new song ───────────────────────────────────────────────────────
-  const createNewSong = async () => {
-    if (!requireAuth()) return;
+  const createNewSong = () => runWhenSignedIn(() => { void createSongNow(); });
+  const createSongNow = async () => {
     const initialSection = {
       id: Math.random().toString(36).slice(2, 11),
       title: 'Intro',
@@ -426,8 +448,7 @@ const App: React.FC = () => {
     }
   }, [library, imported, toast]);
 
-  const handleImportFile = useCallback(async (file: File) => {
-    if (!requireAuth()) return;
+  const handleImportFile = useCallback((file: File) => runWhenSignedIn(async () => {
     const result = await readGflowFile(file);
     if (result.ok === false) {
       toast.error(result.error);
@@ -435,7 +456,7 @@ const App: React.FC = () => {
     }
     const song = await library.importSong(result.data);
     if (song) navigate(appPaths.create(song.id));
-  }, [library, navigate, toast, requireAuth]);
+  }), [library, navigate, toast, runWhenSignedIn]);
 
   const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
@@ -544,10 +565,7 @@ const App: React.FC = () => {
           onOpenPractice={song => handleOpenLibrarySongInMode(song, 'practice')}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
-          onImportGp={file => {
-            if (!requireAuth()) return;
-            setGpPreviewFile(file);
-          }}
+          onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
           onClaimSong={handleClaimSong}
           onClaimAllLegacy={handleClaimAllLegacy}
           onRailNavigate={openRailDestination}
@@ -557,6 +575,7 @@ const App: React.FC = () => {
         <AuthModal
           open={authOpen}
           onClose={() => setAuthOpen(false)}
+          onCancel={closeAuthDialog}
           onLogin={auth.login}
           onRegister={auth.register}
         />

@@ -4,12 +4,15 @@ import { ApiError } from '../services/apiClient';
 
 interface AuthModalProps {
   open: boolean;
+  /** Called after a successful login or registration. */
   onClose: () => void;
+  /** Called when the user dismisses the dialog without signing in; defaults to onClose. */
+  onCancel?: () => void;
   onLogin: (username: string, password: string) => Promise<void>;
   onRegister: (username: string, password: string) => Promise<void>;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegister }) => {
+const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onCancel, onLogin, onRegister }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +20,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
   const [submitting, setSubmitting] = useState(false);
 
   if (!open) return null;
+  const cancel = onCancel ?? onClose;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +36,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
       setPassword('');
       onClose();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Authentication failed');
+      setError(err instanceof ApiError ? err.message : '登入失敗，請再試一次');
     } finally {
       setSubmitting(false);
     }
@@ -41,7 +45,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={cancel}
     >
       <div
         className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
@@ -58,7 +62,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ open, onClose, onLogin, onRegiste
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={cancel}
             aria-label="關閉"
             className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-zinc-200 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-800"
           >
