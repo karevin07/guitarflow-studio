@@ -1,5 +1,3 @@
-import { TechniqueKind } from './tabNotation';
-
 export type NotationAction = 'mute' | 'hammer' | 'pull' | 'bend' | 'slide-up' | 'slide-down';
 
 const SLIDE_CHARS = { 'slide-up': 's', 'slide-down': '/' } as const;
@@ -40,18 +38,6 @@ const applySlide = (currentVal: string, key: 's' | '/'): string => {
 export const canApplyNotationAction = (currentVal: string, action: NotationAction): boolean =>
   applyNotationAction(currentVal, action) !== null;
 
-export const notationActionToTechniqueKind = (action: NotationAction): TechniqueKind | null => {
-  switch (action) {
-    case 'hammer':
-      return 'hammer';
-    case 'pull':
-      return 'pull';
-    case 'bend':
-      return 'bend';
-    default:
-      return null;
-  }
-};
 
 export type CellNoteKind =
   | 'empty'

@@ -28,14 +28,3 @@ export interface PlayerBarBindings {
   playbackVolume: number;
   onVolumeChange: (volume: number) => void;
 }
-
-const noop = () => {};
-
-/** No-op AB loop bindings for engines that don't support A-B markers. */
-export const emptyAbLoopBindings = {
-  abLoop: { enabled: false, start: null, end: null } as const,
-  onSetLoopA: noop,
-  onSetLoopB: noop,
-  onToggleAbLoop: noop,
-  onClearAbLoop: noop,
-};

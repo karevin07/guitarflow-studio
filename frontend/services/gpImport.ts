@@ -15,8 +15,3 @@ export const detectImportFormat = (fileName: string): string => {
   }
   return 'unknown';
 };
-
-export const titleFromFileName = (fileName: string): string => {
-  const base = fileName.replace(/\.[^.]+$/, '');
-  return base.replace(/[_-]+/g, ' ').trim() || 'Imported Score';
-};

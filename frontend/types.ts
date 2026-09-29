@@ -1,6 +1,3 @@
-
-export type TabLine = string[]; // 6 strings
-
 export interface TabSection {
   id: string;
   title: string;
@@ -10,8 +7,6 @@ export interface TabSection {
   chords: (string | null)[][]; // [measureIndex][columnIdx]
   lyrics: (string | null)[][]; // [measureIndex][columnIdx]
 }
-
-export type SongSource = 'gflow' | 'imported';
 
 export interface GuitarSong {
   id: string;

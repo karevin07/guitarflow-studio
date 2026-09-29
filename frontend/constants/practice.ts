@@ -1,9 +1,3 @@
-export const PRACTICE_ZOOM_LEVELS = [80, 100, 125, 150] as const;
-export type PracticeZoom = (typeof PRACTICE_ZOOM_LEVELS)[number];
-
-export const DEFAULT_PRACTICE_ZOOM: PracticeZoom = 100;
-export const PRACTICE_ZOOM_STORAGE_KEY = 'guitarflow-practice-zoom';
-
 export const TIME_SIGNATURE_OPTIONS: [number, number][] = [
   [4, 4],
   [3, 4],

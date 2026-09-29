@@ -79,6 +79,3 @@ export const scoreChordShape = (
   score -= new Set(pressed).size > 4 ? 8 : 0;
   return Math.round(score * 10) / 10;
 };
-
-export const rankChordShapes = (shapes: ChordShape[]): ChordShape[] =>
-  [...shapes].sort((a, b) => b.score - a.score || a.frets.join(',').localeCompare(b.frets.join(',')));
