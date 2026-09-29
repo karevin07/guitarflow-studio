@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { apiBase, authenticatePage, getSong, register, seedSong } from './support';
+import { apiBase, authenticatePage, getSong, register, seedSong, waitForSignedIn } from './support';
 
 const fixtureDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
@@ -208,6 +208,7 @@ test('preview and persist an imported MusicXML score', async ({ page, request })
   const token = await register(request);
   await authenticatePage(page, token);
   await page.goto('/songs');
+  await waitForSignedIn(page);
 
   await page.locator('input[type="file"][accept*=".musicxml"]').setInputFiles(path.join(fixtureDir, 'simple-score.musicxml'));
   const dialog = page.getByRole('dialog', { name: 'Import Preview' });
@@ -230,6 +231,7 @@ test('import, reopen and play a Guitar Pro score', async ({ page, request }) => 
   const token = await register(request);
   await authenticatePage(page, token);
   await page.goto('/songs');
+  await waitForSignedIn(page);
 
   const fixture = path.join(fixtureDir, 'simple-score.gp');
   await page.locator('input[type="file"][accept*=".gp"]').setInputFiles(fixture);

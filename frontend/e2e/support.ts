@@ -54,3 +54,8 @@ export const getSong = async (request: APIRequestContext, token: string, songId:
   expect(response.ok()).toBeTruthy();
   return response.json();
 };
+
+/** The library greets guests as 吉他手 until /auth/me resolves; uploads before that open the login prompt. */
+export const waitForSignedIn = async (page: Page) => {
+  await expect(page.getByRole('heading', { level: 1 })).not.toContainText('吉他手');
+};
