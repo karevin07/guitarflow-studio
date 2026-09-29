@@ -71,9 +71,11 @@ sudo systemctl enable tailscaled
 APP_BIND_HOST=100.64.0.10
 DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,100.64.0.10,guitarflow-dev
 DJANGO_CORS_ORIGINS=http://localhost:3003,http://127.0.0.1:3003,http://100.64.0.10:3003,http://guitarflow-dev:3003
-VITE_API_URL=http://100.64.0.10:8000/api
+VITE_API_URL=/api
 VITE_ALLOWED_HOSTS=localhost,guitarflow-dev
 ```
+
+`VITE_API_URL=/api` 讓瀏覽器把 API 請求送到開啟頁面的同一個位址，由 Vite 轉給 backend 容器。因此用 Tailscale、SSH tunnel 或本機開啟都能正常使用，只需要能連到 frontend 的 `3003`。
 
 此檔案符合 `.gitignore` 的 `*.local` 規則，不應提交到 Git。
 
@@ -184,7 +186,7 @@ tailscale status
 
 確認 `.env.tailscale.local`：
 
-- `VITE_API_URL` 指向 `http://<TAILSCALE_IP>:8000/api`
+- `VITE_API_URL=/api`（由 Vite 轉給 backend；舊設定 `http://<TAILSCALE_IP>:8000/api` 只在 Tailscale 內可用）
 - `DJANGO_ALLOWED_HOSTS` 包含 Tailscale IP 和節點名稱
 - `DJANGO_CORS_ORIGINS` 包含 UI 的完整 origin，例如 `http://100.64.0.10:3003`
 
@@ -209,3 +211,18 @@ tailscale ip -4
 ```
 
 更新 `.env.tailscale.local` 中所有舊 IP，然後重新建立容器。
+
+## 用 SSH tunnel 臨時查看
+
+沒有 Tailscale 的機器，也可以透過 SSH 轉送 frontend 的 port 來查看。因為 API 由 Vite 轉送，只需要轉一個 port：
+
+```bash
+ssh -N -L 3003:100.64.0.10:3003 ubuntu@<伺服器 IP 或主機名稱>
+```
+
+接著在該機器的瀏覽器開啟 <http://localhost:3003>。
+
+- 轉送目標要寫 Tailscale IP，因為容器綁在 `APP_BIND_HOST`，不是伺服器的 `localhost`。
+- 本機的 `3003` 若已被佔用，可改成其他 port，例如 `-L 8080:100.64.0.10:3003`，再開 <http://localhost:8080>。
+- `-N` 只建立通道，不開遠端 shell；按 `Ctrl+C` 結束。
+- `VITE_ALLOWED_HOSTS` 與 `DJANGO_ALLOWED_HOSTS` 需包含 `localhost`（上面的範例已包含）。

@@ -23,7 +23,7 @@ guitar-flow/
 │   ├── tsconfig.json
 │   ├── vite.config.ts     # Dev server on port 3000 (5173 when run locally)
 │   ├── Dockerfile
-│   ├── .env               # VITE_API_URL for backend API
+│   ├── .env               # optional: VITE_API_URL to bypass the /api proxy
 │   ├── components/        # UI (Home, TabMeasure, ChordDiagram, Fretboard, etc.)
 │   ├── hooks/             # useEditorState, useSongLibrary, useKeyboardShortcuts
 │   └── services/          # api.ts (REST client), midiHelper.ts
@@ -116,7 +116,7 @@ make dev-frontend   # Terminal 2 — http://localhost:5173
 make test           # Run backend API tests
 ```
 
-Frontend API URL is configured via `frontend/.env`:
+The frontend calls `/api` on the page's own origin and the Vite dev server proxies it to Django (`API_PROXY_TARGET`, default `http://localhost:8000`; Docker sets `http://backend:8000`). To call a backend directly instead, set in `frontend/.env`:
 
 ```
 VITE_API_URL=http://localhost:8000/api

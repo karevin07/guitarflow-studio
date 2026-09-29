@@ -73,7 +73,7 @@ jobs:
       - name: Start isolated test stack
         run: docker compose --env-file .env.e2e.example -p guitarflow-ci-e2e up -d --build --wait --wait-timeout 180
       - name: Wait for frontend
-        run: curl --retry 30 --retry-delay 2 --retry-connrefused -fsS http://127.0.0.1:3303/
+        run: curl --retry 30 --retry-delay 2 --retry-all-errors -fsS http://127.0.0.1:3303/
       - name: Run browser tests
         run: npm run test:e2e
         working-directory: frontend

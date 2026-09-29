@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+// Relative by default: the Vite dev server proxies /api to Django. Set VITE_API_URL to call a backend directly.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 const TOKEN_KEY = 'guitarflow-auth-token';
 
 export interface AuthUser {

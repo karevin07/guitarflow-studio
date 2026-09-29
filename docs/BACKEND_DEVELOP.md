@@ -160,7 +160,7 @@ cd backend && .venv/bin/python manage.py createsuperuser
 The frontend communicates via `frontend/services/api.ts`:
 
 ```typescript
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'; // proxied to Django by the Vite dev server
 ```
 
 Song library state is managed by `hooks/useSongLibrary.ts`, which calls the REST API for CRUD operations. Theme preference is still stored in `localStorage` (`guitarflow-theme`).

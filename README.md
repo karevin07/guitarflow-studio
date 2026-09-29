@@ -68,7 +68,7 @@ make dev-backend     # http://localhost:8000
 make dev-frontend    # http://localhost:5173
 ```
 
-For local frontend, set `VITE_API_URL=http://localhost:8000/api` in `frontend/.env`.
+The frontend calls the relative path `/api`, and the Vite dev server proxies it to Django (`API_PROXY_TARGET`, default `http://localhost:8000`), so no `frontend/.env` is needed locally. Set `VITE_API_URL` only to call a backend directly.
 
 Run database migrations after first install:
 
