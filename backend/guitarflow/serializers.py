@@ -108,6 +108,16 @@ def validate_form(value):
     return form
 
 
+def validate_melody_range(value):
+    if value is None:
+        return None
+    low = value.get('low') if isinstance(value, dict) else None
+    high = value.get('high') if isinstance(value, dict) else None
+    if not all(isinstance(note, int) and not isinstance(note, bool) and 24 <= note <= 96 for note in (low, high)) or low >= high:
+        raise serializers.ValidationError('Expected {"low": <MIDI note>, "high": <higher MIDI note>}.')
+    return {'low': low, 'high': high}
+
+
 def clean_pattern(value):
     return value.strip()[:120] if isinstance(value, str) else ''
 
@@ -154,6 +164,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     originalKey = serializers.CharField(source='original_key', required=False, allow_blank=True, max_length=12)
     tags = serializers.JSONField(required=False)
     favorite = serializers.BooleanField(required=False)
+    melodyRange = serializers.JSONField(source='melody_range', required=False, allow_null=True)
     form = serializers.JSONField(required=False)
     importFormat = serializers.CharField(source='import_format', read_only=True)
     fileName = serializers.CharField(source='import_file_name', read_only=True)
@@ -174,6 +185,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'originalKey',
             'tags',
             'favorite',
+            'melodyRange',
             'form',
             'source',
             'importFormat',
@@ -198,6 +210,9 @@ class GuitarSongSerializer(serializers.ModelSerializer):
 
     def validate_form(self, value):
         return validate_form(value)
+
+    def validate_melodyRange(self, value):
+        return validate_melody_range(value)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -332,10 +347,11 @@ class SongInfoSerializer(serializers.ModelSerializer):
     """Library-level details that can change without sending the whole song."""
     originalKey = serializers.CharField(source='original_key', required=False, allow_blank=True, max_length=12)
     tags = serializers.JSONField(required=False)
+    melodyRange = serializers.JSONField(source='melody_range', required=False, allow_null=True)
 
     class Meta:
         model = GuitarSong
-        fields = ('title', 'artist', 'originalKey', 'tags', 'favorite')
+        fields = ('title', 'artist', 'originalKey', 'tags', 'favorite', 'melodyRange')
         extra_kwargs = {'title': {'required': False}, 'artist': {'required': False}}
 
     def validate_title(self, value):
@@ -346,6 +362,9 @@ class SongInfoSerializer(serializers.ModelSerializer):
 
     def validate_tags(self, value):
         return clean_tags(value)
+
+    def validate_melodyRange(self, value):
+        return validate_melody_range(value)
 
 
 class SetlistSerializer(serializers.ModelSerializer):

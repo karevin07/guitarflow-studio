@@ -31,6 +31,7 @@ const pickSongInfo = (song: SongInfo): SongInfo => ({
   originalKey: song.originalKey ?? '',
   tags: song.tags ?? [],
   favorite: song.favorite ?? false,
+  melodyRange: song.melodyRange ?? null,
 });
 
 export const api = {

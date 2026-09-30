@@ -69,6 +69,10 @@ export const previewChordVoicing = async (
   volume,
 );
 
+/** Play one pitch given as a MIDI number, e.g. to hear a vocal range limit. */
+export const previewPitch = async (midi: number, volume = 0.7): Promise<void> =>
+  playPluckedNotes([{ midi, offset: 0 }], volume);
+
 /** Play one fretted note; `fret` is relative to the capo. */
 export const previewSingleNote = async (
   stringIndex: number,

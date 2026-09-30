@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Anchor, ArrowLeftRight, Check, ChevronDown, ChevronsDown, Layers3, Minus, PanelRight, Pause, Play, Plus, Repeat, RotateCcw, Sparkles, Type } from 'lucide-react';
-import { TabSection, ChordDefinition, SongVoicingPlan, SongVoicingPreference } from '../types';
+import { Anchor, ArrowLeftRight, AudioLines, Check, ChevronDown, ChevronsDown, Layers3, Minus, PanelRight, Pause, Play, Plus, Repeat, RotateCcw, Sparkles, Type } from 'lucide-react';
+import { TabSection, ChordDefinition, SongVoicingPlan, SongVoicingPreference, VocalRange } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import { formatPitch, parseChord, transposePitch } from '../music-theory';
 import {
@@ -18,6 +18,7 @@ import ChordWorkspacePanel from './ChordWorkspacePanel';
 import ChordSwitchTrainer from './ChordSwitchTrainer';
 import PatternPicker from './PatternPicker';
 import SongFormBar from './SongFormBar';
+import KeySuggestModal from './KeySuggestModal';
 import { SongFormEntry } from '../services/songForm';
 import LeadSheetMeasure from './LeadSheetMeasure';
 import VoicingPlanReview from './VoicingPlanReview';
@@ -44,6 +45,12 @@ interface SongPreviewProps {
   onFormChange?: (form: SongFormEntry[]) => void;
   /** Jump playback to a step of the play order. */
   onJumpToStep?: (step: number) => void;
+  /** Song info used to suggest a key for the singer. */
+  songOriginalKey?: string;
+  melodyRange?: VocalRange | null;
+  onSaveMelodyRange?: (range: VocalRange | null) => void;
+  /** Apply a suggested key: transpose the chords and set every section's capo. */
+  onApplyKey?: (transpose: number, capo: number, assumedOriginalKey?: string) => void;
 }
 
 const sectionAnchor = (id: string): string => `preview-section-${id}`;
@@ -60,6 +67,10 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   form = [],
   onFormChange,
   onJumpToStep,
+  songOriginalKey,
+  melodyRange = null,
+  onSaveMelodyRange,
+  onApplyKey,
   songId = null,
   customChords = [],
   globalChords = [],
@@ -79,6 +90,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   const [showChordPanel, setShowChordPanel] = useState(true);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [switchTrainerOpen, setSwitchTrainerOpen] = useState(false);
+  const [keySuggestOpen, setKeySuggestOpen] = useState(false);
   const [autoScroll, setAutoScroll] = useState(false);
   const [fontScale, setFontScale] = useState(() => {
     const stored = Number(localStorage.getItem(SCORE_FONT_SCALE_KEY));
@@ -267,7 +279,10 @@ const SongPreview: React.FC<SongPreviewProps> = ({
                 <button type="button" onClick={() => setScrollSpeed(speed => Math.min(2, speed + 0.25))} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 dark:text-zinc-400 dark:hover:bg-zinc-800" aria-label="Faster auto scroll"><Plus size={13} /></button>
               </div>
             ) : (
-              <span className="shrink-0 text-[11px] font-medium text-slate-500 dark:text-zinc-400">{transposeLabel}</span>
+              <span className="flex shrink-0 items-center gap-1">
+                {onApplyKey && <button type="button" onClick={() => setKeySuggestOpen(true)} className="flex h-8 items-center gap-1 rounded-lg px-2 text-[11px] font-semibold text-indigo-600 dark:text-violet-400"><AudioLines size={13} />找適合的調</button>}
+                <span className="text-[11px] font-medium text-slate-500 dark:text-zinc-400">{transposeLabel}</span>
+              </span>
             )}
           </div>
 
@@ -286,6 +301,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
             </div>
 
             <div className={`shrink-0 text-xs leading-5 ${transpose === 0 ? 'text-slate-500 dark:text-zinc-400' : 'font-semibold text-indigo-600 dark:text-violet-400'}`}>{transposeLabel}</div>
+            {onApplyKey && <button type="button" onClick={() => setKeySuggestOpen(true)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-violet-400 dark:hover:bg-violet-950/40"><AudioLines size={14} />找適合的調</button>}
             <div className="h-7 w-px shrink-0 bg-slate-200 dark:bg-zinc-800" />
             {hasCapo ? (
               <div className="flex shrink-0 items-center rounded-xl border border-slate-200 bg-white p-1 dark:border-zinc-800 dark:bg-zinc-900" role="group" aria-label="Capo 顯示">
@@ -428,6 +444,22 @@ const SongPreview: React.FC<SongPreviewProps> = ({
           voicingPlan={voicingPlan}
           theme={theme}
           onClose={() => setSwitchTrainerOpen(false)}
+        />
+      )}
+
+      {keySuggestOpen && onApplyKey && (
+        <KeySuggestModal
+          sections={sections}
+          transposeOffset={transpose}
+          chordLibrary={chordLibrary}
+          originalKey={songOriginalKey}
+          melodyRange={melodyRange}
+          onSaveMelodyRange={onSaveMelodyRange}
+          onApply={(nextTranspose, capo, assumedOriginalKey) => {
+            onApplyKey(nextTranspose, capo, assumedOriginalKey);
+            setKeySuggestOpen(false);
+          }}
+          onClose={() => setKeySuggestOpen(false)}
         />
       )}
 

@@ -832,6 +832,15 @@ const App: React.FC = () => {
               form={editor.form}
               onFormChange={editor.setForm}
               onJumpToStep={playback.seekStep}
+              songOriginalKey={currentLibrarySong?.originalKey}
+              melodyRange={currentLibrarySong?.melodyRange ?? null}
+              onSaveMelodyRange={range => { if (currentLibrarySong) void saveSongInfo(currentLibrarySong, { melodyRange: range }); }}
+              onApplyKey={(transpose, capo, assumedOriginalKey) => {
+                editor.setTransposeOffset(transpose);
+                editor.setCapo(null, capo);
+                if (assumedOriginalKey && currentLibrarySong) void saveSongInfo(currentLibrarySong, { originalKey: assumedOriginalKey });
+                toast.success(capo === 0 ? '已改調，不用夾 Capo' : `已改調，Capo 夾第 ${capo} 格`);
+              }}
               loopedSectionIdx={playback.loopedSectionIdx}
               customChords={editor.customChords}
               globalChords={editor.globalChords}

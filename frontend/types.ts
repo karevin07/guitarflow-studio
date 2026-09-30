@@ -17,6 +17,13 @@ export interface SongInfo {
   originalKey?: string;
   tags?: string[];
   favorite?: boolean;
+  /** Lowest and highest sung note of the original recording (MIDI). */
+  melodyRange?: VocalRange | null;
+}
+
+export interface VocalRange {
+  low: number;
+  high: number;
 }
 
 export interface Setlist {

@@ -19,6 +19,8 @@ class GuitarSong(models.Model):
     original_key = models.CharField(max_length=12, blank=True, default='', help_text="Key of the original recording, e.g. 'E' or 'C#m'")
     tags = models.JSONField(default=list, blank=True, help_text="Short labels such as '民謠' or '表演'")
     favorite = models.BooleanField(default=False)
+    # Lowest and highest sung note of the original recording as MIDI numbers: {"low": 50, "high": 66}.
+    melody_range = models.JSONField(null=True, blank=True)
     # Play order: [{"section": <index into sections>, "repeat": 1-8}, ...]; empty plays sections as written.
     form = models.JSONField(default=list, blank=True)
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_GFLOW)

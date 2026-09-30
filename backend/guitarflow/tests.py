@@ -205,6 +205,18 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         response = self.client.patch(info_url, {'tags': 'oops'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_melody_range_is_saved_through_info(self):
+        response = self.client.post(self.song_url, {'title': 'Range', 'sections': [], 'customChords': []}, format='json')
+        self.assertIsNone(response.data['melodyRange'])
+        info_url = reverse('song-info', args=[response.data['id']])
+        response = self.client.patch(info_url, {'melodyRange': {'low': 50, 'high': 66}}, format='json')
+        self.assertEqual(response.data['melodyRange'], {'low': 50, 'high': 66})
+        for bad in ({'low': 66, 'high': 50}, {'low': 10, 'high': 60}, {'low': 50}, 'x'):
+            response = self.client.patch(info_url, {'melodyRange': bad}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, bad)
+        response = self.client.patch(info_url, {'melodyRange': None}, format='json')
+        self.assertIsNone(response.data['melodyRange'])
+
     def test_search_matches_artist(self):
         self.client.post(self.song_url, {'title': '小幸運', 'artist': '田馥甄', 'sections': [], 'customChords': []}, format='json')
         self.client.post(self.song_url, {'title': '晴天', 'artist': '周杰倫', 'sections': [], 'customChords': []}, format='json')

@@ -127,10 +127,11 @@ export const useEditorState = () => {
     });
   }, [history]);
 
-  const setCapo = useCallback((sectionId: string, fret: number) => {
+  /** Set one section's capo, or every section's when sectionId is null. */
+  const setCapo = useCallback((sectionId: string | null, fret: number) => {
     setSections(prev => {
       const next = prev.map(sec =>
-        sec.id === sectionId ? { ...sec, capo: fret } : sec
+        sectionId === null || sec.id === sectionId ? { ...sec, capo: fret } : sec
       );
       setHistoryIndex(prevIdx => {
         const nextHistory = history.slice(0, prevIdx + 1);
