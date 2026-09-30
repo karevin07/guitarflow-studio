@@ -43,6 +43,11 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   onToggleMetronome,
   playbackVolume,
   onVolumeChange,
+  countInBeat = null,
+  countInBars,
+  onCountInBarsChange,
+  tempoTrainer,
+  onTempoTrainerChange,
 }) => {
   const [controlsOpen, setControlsOpen] = useState(false);
   const isAlphaTab = mode === 'alphatab';
@@ -74,7 +79,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
 
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex items-center justify-between gap-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-zinc-500">
-            <span>{isPlaying ? '播放中' : isPaused ? '已暫停' : '準備好了'}</span>
+            <span className={countInBeat !== null ? 'font-bold text-[#2b6c59] dark:text-emerald-400' : ''} aria-live="polite">{countInBeat !== null ? `預備 ${countInBeat}` : isPlaying ? '播放中' : isPaused ? '已暫停' : '準備好了'}</span>
             <span className="font-mono tracking-normal">{seekLabel}</span>
           </div>
           <input type="range" min={0} max={safeMax} value={Math.min(playIndex, safeMax)} disabled={totalCols <= 1} onChange={event => onSeek(Number(event.target.value))} className="block h-1 w-full cursor-pointer accent-indigo-600 disabled:opacity-30 dark:accent-violet-500" aria-label="Playback position" />
@@ -115,6 +120,35 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
             <Volume2 size={14} className="shrink-0 text-slate-400" />
             <input type="range" min="0" max="1" step="0.05" value={playbackVolume} onChange={event => onVolumeChange(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-indigo-600 dark:accent-violet-500" aria-label="Playback volume" />
           </label>
+
+          {countInBars !== undefined && onCountInBarsChange && (
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300 md:col-span-3">
+              <span className="w-16 shrink-0">預備拍</span>
+              <div className="flex rounded-lg bg-slate-100 p-0.5 dark:bg-zinc-800" role="radiogroup" aria-label="預備拍">
+                {[0, 1, 2].map(bars => (
+                  <button key={bars} type="button" role="radio" aria-checked={countInBars === bars} onClick={() => onCountInBarsChange(bars)} className={`h-8 rounded-md px-3 ${countInBars === bars ? 'bg-white text-slate-900 shadow-sm dark:bg-zinc-700 dark:text-zinc-100' : 'text-slate-500 dark:text-zinc-400'}`}>
+                    {bars === 0 ? '不用' : `${bars} 小節`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {tempoTrainer && onTempoTrainerChange && (
+            <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300 md:col-span-3">
+              <label className="flex w-16 shrink-0 items-center gap-1.5">
+                <input type="checkbox" checked={tempoTrainer.enabled} onChange={event => onTempoTrainerChange({ ...tempoTrainer, enabled: event.target.checked, target: Math.max(tempoTrainer.target, playBpm) })} className="accent-[#2b6c59]" aria-label="漸進加速" />
+                加速
+              </label>
+              <span className="text-slate-500 dark:text-zinc-400">每循環一次</span>
+              <select value={tempoTrainer.step} onChange={event => onTempoTrainerChange({ ...tempoTrainer, step: Number(event.target.value) })} className="h-8 rounded-md bg-slate-100 px-2 dark:bg-zinc-800" aria-label="每次加快">
+                {[2, 5, 10].map(step => <option key={step} value={step}>+{step}</option>)}
+              </select>
+              <span className="text-slate-500 dark:text-zinc-400">BPM，到</span>
+              <input type="number" min={minimumTempo} max={maximumTempo} value={tempoTrainer.target} onChange={event => onTempoTrainerChange({ ...tempoTrainer, target: Math.max(minimumTempo, Math.min(maximumTempo, Number(event.target.value) || tempoTrainer.target)) })} className="h-8 w-16 rounded-md bg-slate-100 px-2 font-mono dark:bg-zinc-800" aria-label="目標速度" />
+              <span className="text-slate-500 dark:text-zinc-400">為止{!isLooping && !abLoop.enabled ? '（要開啟循環才會加速）' : ''}</span>
+            </div>
+          )}
         </div>
       )}
     </div>

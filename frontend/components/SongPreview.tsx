@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Anchor, Check, ChevronDown, ChevronsDown, Layers3, Minus, PanelRight, Pause, Play, Plus, RotateCcw, Sparkles, Type } from 'lucide-react';
+import { Anchor, ArrowLeftRight, Check, ChevronDown, ChevronsDown, Layers3, Minus, PanelRight, Pause, Play, Plus, Repeat, RotateCcw, Sparkles, Type } from 'lucide-react';
 import { TabSection, ChordDefinition, SongVoicingPlan, SongVoicingPreference } from '../types';
 import { PlaybackPosition } from '../types/playback';
 import { formatPitch, parseChord, transposePitch } from '../music-theory';
@@ -15,6 +15,8 @@ import {
   shiftedSongKey,
 } from '../services/capoView';
 import ChordWorkspacePanel from './ChordWorkspacePanel';
+import ChordSwitchTrainer from './ChordSwitchTrainer';
+import PatternPicker from './PatternPicker';
 import LeadSheetMeasure from './LeadSheetMeasure';
 import VoicingPlanReview from './VoicingPlanReview';
 
@@ -30,6 +32,11 @@ interface SongPreviewProps {
   playState?: PlaybackPosition | null;
   voicingPlan?: SongVoicingPlan;
   onVoicingPlanChange?: (plan: SongVoicingPlan) => void;
+  /** Loop a section in the player; called again on the same section to stop. */
+  onLoopSection?: (sectionIdx: number) => void;
+  loopedSectionIdx?: number;
+  /** Change one section's accompaniment, or every section's when sectionId is null. */
+  onSectionPatternChange?: (sectionId: string | null, pattern: string) => void;
 }
 
 const sectionAnchor = (id: string): string => `preview-section-${id}`;
@@ -40,6 +47,9 @@ const AUTO_SCROLL_PX_PER_SECOND = 12;
 
 const SongPreview: React.FC<SongPreviewProps> = ({
   sections,
+  onLoopSection,
+  loopedSectionIdx = -1,
+  onSectionPatternChange,
   songId = null,
   customChords = [],
   globalChords = [],
@@ -58,6 +68,7 @@ const SongPreview: React.FC<SongPreviewProps> = ({
   const [mobileOverviewOpen, setMobileOverviewOpen] = useState(false);
   const [showChordPanel, setShowChordPanel] = useState(true);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  const [switchTrainerOpen, setSwitchTrainerOpen] = useState(false);
   const [autoScroll, setAutoScroll] = useState(false);
   const [fontScale, setFontScale] = useState(() => {
     const stored = Number(localStorage.getItem(SCORE_FONT_SCALE_KEY));
@@ -320,6 +331,9 @@ const SongPreview: React.FC<SongPreviewProps> = ({
               <div className="flex items-center justify-between gap-3 sm:mb-4">
                 <button type="button" onClick={() => setMobileOverviewOpen(open => !open)} aria-expanded={mobileOverviewOpen} aria-label="本曲和弦" className="flex min-h-9 items-center gap-2 text-xs font-semibold text-slate-600 dark:text-zinc-300 sm:hidden"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" />本曲和弦 · {chordNames.length}<ChevronDown size={14} className={mobileOverviewOpen ? 'rotate-180' : ''} /></button>
                 <div className="hidden items-center gap-2 sm:flex"><Layers3 size={15} className="text-indigo-500 dark:text-violet-400" /><h2 className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-zinc-400">本曲和弦</h2></div>
+                <button type="button" onClick={() => setSwitchTrainerOpen(true)} disabled={chordNames.length < 2} className="ml-auto flex h-11 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-[#2b6c59] transition-colors hover:border-emerald-300 disabled:opacity-40 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300 sm:ml-0 sm:h-auto sm:py-2">
+                  <ArrowLeftRight size={14} /> 換和弦練習
+                </button>
                 {canEditVoicings && (
                   <button type="button" onClick={() => setPlannerOpen(true)} className="hidden items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:border-violet-800 dark:hover:bg-violet-950/70 sm:flex">
                     <Sparkles size={14} /> 自動配置
@@ -344,9 +358,9 @@ const SongPreview: React.FC<SongPreviewProps> = ({
           <div className="space-y-10 sm:space-y-16">
             {renderedSections.map((section, sectionIndex) => (
               <section key={section.id} id={sectionAnchor(section.id)} className="scroll-mt-36">
-                <header className="mb-4 flex items-end justify-between gap-4 border-b border-slate-200 pb-3 dark:border-zinc-800 sm:mb-6 sm:pb-4">
+                <header className="mb-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-slate-200 pb-3 dark:border-zinc-800 sm:mb-6 sm:pb-4">
                   <div><div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400 dark:text-zinc-500">第 {sectionIndex + 1} 段</div><h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-zinc-50">{section.title}</h2></div>
-                  <div className="flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500"><span>{section.timeSignature?.join('/') ?? '4/4'}</span>{section.capo > 0 && <span>{concert ? `不夾 Capo（原 Capo ${section.capo}）` : `Capo ${section.capo}`}</span>}</div>
+                  <div className="flex flex-wrap items-center justify-end gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-zinc-500 sm:gap-3">{onSectionPatternChange && <PatternPicker sectionTitle={section.title} value={section.pattern ?? ''} onChange={pattern => onSectionPatternChange(section.id, pattern)} onApplyToAll={pattern => onSectionPatternChange(null, pattern)} />}{onLoopSection && <button type="button" onClick={() => onLoopSection(sectionIndex)} aria-pressed={loopedSectionIdx === sectionIndex} className={`flex h-11 items-center gap-1.5 rounded-xl px-3 normal-case tracking-normal transition-colors sm:h-9 print:hidden ${loopedSectionIdx === sectionIndex ? 'bg-[#2b6c59] text-white' : 'border border-slate-200 text-slate-600 hover:border-[#2b6c59] hover:text-[#2b6c59] dark:border-zinc-700 dark:text-zinc-300'}`}><Repeat size={13} />{loopedSectionIdx === sectionIndex ? '循環中' : '循環這段'}</button>}<span>{section.timeSignature?.join('/') ?? '4/4'}</span>{section.capo > 0 && <span>{concert ? `不夾 Capo（原 Capo ${section.capo}）` : `Capo ${section.capo}`}</span>}</div>
                 </header>
 
                 <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-4" data-testid="songbook-section">
@@ -392,6 +406,17 @@ const SongPreview: React.FC<SongPreviewProps> = ({
             <ChordWorkspacePanel sourceSymbol={selectedChord} symbol={selectedDisplayChord} chordLibrary={chordLibrary} theme={theme} preference={selectedChord && !concert ? voicingPlan[selectedChord] : undefined} onPreferenceChange={canEditVoicings ? updateSelectedPreference : undefined} compact onClose={() => setMobilePanelOpen(false)} />
           </div>
         </div>
+      )}
+
+      {switchTrainerOpen && (
+        <ChordSwitchTrainer
+          chords={chordNames}
+          displayChord={name => displayChord(name) ?? name}
+          chordLibrary={chordLibrary}
+          voicingPlan={voicingPlan}
+          theme={theme}
+          onClose={() => setSwitchTrainerOpen(false)}
+        />
       )}
 
       {plannerOpen && onVoicingPlanChange && canEditVoicings && (

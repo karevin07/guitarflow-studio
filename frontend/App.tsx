@@ -718,6 +718,9 @@ const App: React.FC = () => {
             <SongPreview
               sections={editor.sections}
               songId={library.currentSongId}
+              onLoopSection={playback.loopSection}
+              onSectionPatternChange={editor.setSectionPattern}
+              loopedSectionIdx={playback.loopedSectionIdx}
               customChords={editor.customChords}
               globalChords={editor.globalChords}
               voicingPlan={editor.voicingPlan}
@@ -754,10 +757,15 @@ const App: React.FC = () => {
         ) : (
         <PlayerBar
           mode="gflow"
-          isPlaying={playback.isPlaying}
+          isPlaying={playback.isPlaying || playback.isCountingIn}
           isPaused={playback.isPaused}
+          countInBeat={playback.countInBeat}
+          countInBars={playback.countInBars}
+          onCountInBarsChange={playback.setCountInBars}
+          tempoTrainer={playback.tempoTrainer}
+          onTempoTrainerChange={playback.setTempoTrainer}
           onTogglePlayPause={() => {
-            if (!playback.isPlaying && (selectionPosition || playback.isPaused)) {
+            if (!playback.isPlaying && !playback.isCountingIn && (selectionPosition || playback.isPaused)) {
               playback.play(selectionPosition ?? undefined);
               return;
             }

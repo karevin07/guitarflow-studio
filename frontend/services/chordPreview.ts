@@ -79,3 +79,18 @@ export const previewSingleNote = async (
   const frets = Array.from({ length: 6 }, (_, index) => (index === stringIndex ? fret : null));
   return playPluckedNotes(voicingToMidiNotes(frets, capo).map(({ midi }) => ({ midi, offset: 0 })), volume);
 };
+
+/** A short metronome click; the accent marks the first beat of a bar. */
+export const playClick = async (accent: boolean, volume = 0.6): Promise<void> => {
+  const context = await getAudioContext();
+  const oscillator = context.createOscillator();
+  const gain = context.createGain();
+  const start = context.currentTime;
+  oscillator.frequency.setValueAtTime(accent ? 1200 : 800, start);
+  gain.gain.setValueAtTime(0.18 * volume, start);
+  gain.gain.exponentialRampToValueAtTime(0.001, start + 0.05);
+  oscillator.connect(gain);
+  gain.connect(context.destination);
+  oscillator.start(start);
+  oscillator.stop(start + 0.06);
+};

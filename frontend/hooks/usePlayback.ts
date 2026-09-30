@@ -6,6 +6,17 @@ import { isMutedCell, parseTabCellPitches } from '../services/tabNotation';
 import { transposeChordSymbol } from '../music-theory';
 import { resolvePlannedVoicing } from '../services/voicingPlan';
 import { DEFAULT_BPM } from '../constants/practice';
+import { RhythmPattern, beatSteps, chordAtOrBefore, parsePattern, scheduleBeat } from '../services/accompaniment';
+import {
+  DEFAULT_TEMPO_TRAINER,
+  TempoTrainer,
+  countInBeats,
+  isRangeLooped,
+  loadCountInBars,
+  nextTrainedBpm,
+  saveCountInBars,
+  sectionRange,
+} from '../services/practiceTools';
 
 export type { PlaybackPosition };
 
@@ -19,7 +30,11 @@ interface UsePlaybackOptions {
 }
 
 export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voicingPlan = {} }: UsePlaybackOptions) => {
-  const [status, setStatus] = useState<'stopped' | 'playing' | 'paused'>('stopped');
+  // 'countIn' clicks the metronome for a bar or two before 'playing' starts.
+  const [status, setStatus] = useState<'stopped' | 'countIn' | 'playing' | 'paused'>('stopped');
+  const [countInBars, setCountInBarsState] = useState(loadCountInBars);
+  const [countInBeat, setCountInBeat] = useState<number | null>(null);
+  const [tempoTrainer, setTempoTrainer] = useState<TempoTrainer>(DEFAULT_TEMPO_TRAINER);
   const [playState, setPlayState] = useState<PlaybackPosition | null>(null);
   const [playBpm, setPlayBpm] = useState(DEFAULT_BPM);
   const [isLooping, setIsLooping] = useState(false);
@@ -37,6 +52,13 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
   const instrumentRef = useRef<Soundfont.Player | null>(null);
   const loadingInstrumentRef = useRef<Promise<Soundfont.Player> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Parsed accompaniment per section; null when a section has no (valid) pattern.
+  const sectionPatterns = useMemo<Array<RhythmPattern | null>>(() => sections.map(section => {
+    if (!section.pattern?.trim()) return null;
+    const result = parsePattern(section.pattern);
+    return result.ok ? result.pattern : null;
+  }), [sections]);
 
   const totalCols = useMemo(() => {
     let total = 0;
@@ -102,8 +124,14 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     return loadingInstrumentRef.current;
   }, [ensureAudioContext]);
 
+  const setCountInBars = useCallback((bars: number) => {
+    setCountInBarsState(bars);
+    saveCountInBars(bars);
+  }, []);
+
   const stop = useCallback(() => {
     clearIntervalRef();
+    setCountInBeat(null);
     if (audioCtxRef.current) {
       audioCtxRef.current.close().catch(() => {});
       audioCtxRef.current = null;
@@ -117,6 +145,7 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
 
   const pause = useCallback(() => {
     clearIntervalRef();
+    setCountInBeat(null);
     setStatus('paused');
   }, [clearIntervalRef]);
 
@@ -137,8 +166,8 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
       positionRef.current = { sectionIdx: 0, measureIdx: 0, colIdx: 0 };
       setPlayState({ sectionIdx: 0, measureIdx: 0, colIdx: 0 });
     }
-    setStatus('playing');
-  }, [ensureAudioContext, status]);
+    setStatus(countInBars > 0 ? 'countIn' : 'playing');
+  }, [ensureAudioContext, status, countInBars]);
 
   const seek = useCallback(
     (index: number) => {
@@ -168,8 +197,63 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     setAbLoop({ enabled: false, start: null, end: null });
   }, []);
 
+  /** Loop one section and play it from the top; calling it again on that section turns the loop off. */
+  const loopSection = useCallback((sectionIdx: number) => {
+    const range = sectionRange(sections, sectionIdx);
+    if (!range) return;
+    if (isRangeLooped(abLoop, range)) {
+      setAbLoop({ enabled: false, start: null, end: null });
+      return;
+    }
+    setAbLoop({ enabled: true, start: range.start, end: range.end });
+    clearIntervalRef();
+    play(indexToPosition(range.start));
+  }, [sections, abLoop, clearIntervalRef, play, indexToPosition]);
+
+  const loopedSectionIdx = useMemo(
+    () => sections.findIndex((_, index) => isRangeLooped(abLoop, sectionRange(sections, index))),
+    [sections, abLoop]
+  );
+
+  // Count-in: click each beat, accenting the first, then start playing.
+  useEffect(() => {
+    if (status !== 'countIn') return;
+    let context: AudioContext;
+    try {
+      context = ensureAudioContext();
+    } catch {
+      setStatus('playing');
+      return;
+    }
+    const beats = countInBeats(countInBars, sections[positionRef.current.sectionIdx]?.timeSignature);
+    const msPerBeat = 60000 / playBpm;
+    let beat = 0;
+    const click = () => {
+      if (beat >= beats) {
+        clearIntervalRef();
+        setCountInBeat(null);
+        setStatus('playing');
+        return;
+      }
+      const osc = context.createOscillator();
+      const gain = context.createGain();
+      osc.connect(gain);
+      gain.connect(context.destination);
+      osc.frequency.setValueAtTime(beat === 0 ? 1200 : 800, context.currentTime);
+      gain.gain.setValueAtTime(0.18 * Math.max(0.3, playbackVolume), context.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.05);
+      osc.start();
+      osc.stop(context.currentTime + 0.05);
+      setCountInBeat(beats - beat);
+      beat += 1;
+    };
+    click();
+    intervalRef.current = setInterval(click, msPerBeat);
+    return () => clearIntervalRef();
+  }, [status, countInBars, playBpm, playbackVolume, sections, ensureAudioContext, clearIntervalRef]);
+
   const togglePlayPause = useCallback(() => {
-    if (status === 'playing') {
+    if (status === 'playing' || status === 'countIn') {
       pause();
     } else {
       play();
@@ -213,13 +297,13 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
 
       const capo = section.capo || 0;
 
-      const playPitchAt = (sIdx: number, fret: number, when: number, duration = 0.45, applyTranspose = true) => {
+      const playPitchAt = (sIdx: number, fret: number, when: number, duration = 0.45, applyTranspose = true, velocity = 1) => {
         const pitch = TUNING_PITCHES[sIdx] + fret + capo + (applyTranspose ? transposeOffset : 0);
         const inst = instrumentRef.current;
         if (inst) {
           // The player's types only list note names, but it reads numeric strings as MIDI numbers.
           inst.play(String(pitch), when, {
-            gain: Math.max(0, Math.min(1, playbackVolume)) * 0.9,
+            gain: Math.max(0, Math.min(1, playbackVolume)) * 0.9 * velocity,
             duration,
           });
         } else {
@@ -229,7 +313,7 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
           const gain = audioCtx.createGain();
           osc.type = 'triangle';
           osc.frequency.setValueAtTime(frequency, when);
-          gain.gain.setValueAtTime(0.12 * playbackVolume, when);
+          gain.gain.setValueAtTime(0.12 * playbackVolume * velocity, when);
           gain.gain.exponentialRampToValueAtTime(0.001, when + duration);
           osc.connect(gain);
           gain.connect(audioCtx.destination);
@@ -282,12 +366,36 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
         }
       }
 
+      const voicingFor = (symbol: string) => {
+        const effectiveSymbol = transposeChordSymbol(symbol, transposeOffset) ?? symbol;
+        return resolvePlannedVoicing(symbol, effectiveSymbol, voicingPlan, chordLibrary);
+      };
+
+      // Accompaniment: on each beat, play the section's rhythm pattern on the current chord.
+      const pattern = sectionPatterns[secIdx];
+      if (pattern) {
+        if (cIdx % 4 === 0) {
+          let symbol = chordAtOrBefore(section, measIdx, cIdx);
+          for (let previous = secIdx - 1; !symbol && previous >= 0; previous -= 1) {
+            const earlier = sections[previous];
+            symbol = earlier ? chordAtOrBefore(earlier, earlier.chords.length - 1, 15) : null;
+          }
+          const voicing = symbol ? voicingFor(symbol) : null;
+          if (voicing) {
+            const now = audioCtx.currentTime;
+            const beat = scheduleBeat(beatSteps(pattern, cIdx / 4), voicing.frets, 60 / playBpm);
+            beat.notes.forEach(note => playPitchAt(note.stringIndex, note.fret, now + note.offset, note.duration, false, note.volume));
+            beat.mutes.forEach(offset => playMuted(now + offset));
+          }
+        }
+        return;
+      }
+
       // Read mode is chord/lyric-first and may not contain tablature notes.
       // In that case, voice the chord at this column so Play remains audible.
       const chordSymbol = section.chords[measIdx]?.[cIdx];
       if (!hasTabEvent && chordSymbol) {
-        const effectiveSymbol = transposeChordSymbol(chordSymbol, transposeOffset) ?? chordSymbol;
-        const voicing = resolvePlannedVoicing(chordSymbol, effectiveSymbol, voicingPlan, chordLibrary);
+        const voicing = voicingFor(chordSymbol);
         voicing?.frets.forEach((fret, stringIndex) => {
           if (fret !== null) playPitchAt(stringIndex, fret, audioCtx.currentTime, 0.72, false);
         });
@@ -306,17 +414,34 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     intervalRef.current = setInterval(() => {
       let nextIndex = currentIndex + 1;
 
+      let wrapped = false;
       // A-B loop has priority when enabled and valid.
       if (abLoop.enabled && abLoop.start !== null && abLoop.end !== null) {
         const start = Math.min(abLoop.start, abLoop.end);
         const end = Math.max(abLoop.start, abLoop.end);
-        if (nextIndex > end) nextIndex = start;
+        if (nextIndex > end) {
+          nextIndex = start;
+          wrapped = true;
+        }
       } else if (nextIndex >= totalCols) {
         // Whole-score looping fallback
         if (isLooping && totalCols > 0) {
           nextIndex = 0;
+          wrapped = true;
         } else {
           stop();
+          return;
+        }
+      }
+
+      // Tempo trainer: each pass of the loop is a little faster. Changing the BPM restarts this
+      // effect from positionRef, which then plays the loop's first column itself.
+      if (wrapped) {
+        const trainedBpm = nextTrainedBpm(playBpm, tempoTrainer);
+        if (trainedBpm !== playBpm) {
+          clearIntervalRef();
+          positionRef.current = indexToPosition(nextIndex);
+          setPlayBpm(trainedBpm);
           return;
         }
       }
@@ -328,11 +453,19 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     return () => {
       clearIntervalRef();
     };
-  }, [status, playBpm, isLooping, abLoop, totalCols, isMetronomeOn, playbackVolume, sections, transposeOffset, chordLibrary, voicingPlan, revision, clearIntervalRef, stop, ensureAudioContext, ensureInstrument, indexToPosition, positionToIndex]);
+  }, [status, playBpm, isLooping, abLoop, tempoTrainer, sectionPatterns, totalCols, isMetronomeOn, playbackVolume, sections, transposeOffset, chordLibrary, voicingPlan, revision, clearIntervalRef, stop, ensureAudioContext, ensureInstrument, indexToPosition, positionToIndex]);
 
   return {
     status,
     isPlaying: status === 'playing',
+    isCountingIn: status === 'countIn',
+    countInBeat,
+    countInBars,
+    setCountInBars,
+    tempoTrainer,
+    setTempoTrainer,
+    loopSection,
+    loopedSectionIdx,
     isPaused: status === 'paused',
     playState,
     playIndex: playState ? positionToIndex(playState) : 0,

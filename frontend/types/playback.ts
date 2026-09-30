@@ -1,3 +1,5 @@
+import type { TempoTrainer } from '../services/practiceTools';
+
 export interface PlaybackPosition {
   sectionIdx: number;
   measureIdx: number;
@@ -27,4 +29,10 @@ export interface PlayerBarBindings {
   onToggleMetronome: () => void;
   playbackVolume: number;
   onVolumeChange: (volume: number) => void;
+  /** Beats left in the count-in, or null when not counting in (GuitarFlow songs only). */
+  countInBeat?: number | null;
+  countInBars?: number;
+  onCountInBarsChange?: (bars: number) => void;
+  tempoTrainer?: TempoTrainer;
+  onTempoTrainerChange?: (trainer: TempoTrainer) => void;
 }
