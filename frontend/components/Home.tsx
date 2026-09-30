@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight, BookOpenText, Clock3, FileMusic, FileUp, Guitar, Import, PenLine,
+  ArrowRight, BookOpenText, ClipboardPaste, Clock3, FileMusic, FileUp, Guitar, Import, PenLine,
   LogIn, LogOut, Play, Plus, Search, Shapes, Sparkles, Trash2,
 } from 'lucide-react';
 import { LibrarySong, isImportedSong } from '../types';
@@ -26,6 +26,7 @@ interface HomeProps {
   onDelete: (song: LibrarySong) => void;
   onImportGflow: (file: File) => void;
   onImportGp: (file: File) => void;
+  onPasteChordSheet: () => void;
   onClaimSong: (song: LibrarySong) => void;
   onClaimAllLegacy: () => void;
   onRailNavigate: (destination: AppDestination) => void;
@@ -59,7 +60,7 @@ const songMeta = (song: LibrarySong) => {
 
 const Home: React.FC<HomeProps> = ({
   songs, user, authLoading, onOpenAuth, onLogout, onCreateNew, onOpenChordLab,
-  onOpen, onOpenRead, onOpenPractice, onDelete, onImportGflow, onImportGp,
+  onOpen, onOpenRead, onOpenPractice, onDelete, onImportGflow, onImportGp, onPasteChordSheet,
   onClaimSong, onClaimAllLegacy, onRailNavigate, theme, onToggleTheme,
 }) => {
   const [search, setSearch] = useState('');
@@ -146,6 +147,7 @@ const Home: React.FC<HomeProps> = ({
           </label>
           <div className="flex gap-2">
             <button type="button" onClick={() => openPicker(gpInput)} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><Import size={16} />匯入樂譜</button>
+            <button type="button" onClick={onPasteChordSheet} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><ClipboardPaste size={16} />貼上和弦譜</button>
             <button type="button" onClick={onCreateNew} className="flex h-12 items-center gap-2 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white hover:bg-[#3f4cc0]"><Plus size={17} />新增歌曲</button>
           </div>
         </section>
@@ -184,7 +186,7 @@ const Home: React.FC<HomeProps> = ({
             <div><div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#85877f]">全部歌曲</div><h2 className="mt-1 text-xl font-bold">我的歌曲庫</h2></div>
             <div className="flex gap-1 rounded-xl bg-[#eceae4] p-1 dark:bg-zinc-900">{([['all', '全部'], ['gflow', '我的樂譜'], ['imported', '匯入']] as const).map(([value, label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-lg px-3 py-2 text-[11px] font-semibold ${filter === value ? 'bg-[#fffefa] text-[#171a18] shadow-sm dark:bg-zinc-800 dark:text-zinc-100' : 'text-[#777a73]'}`}>{label}</button>)}</div>
           </div>
-          {filteredSongs.length > 0 ? <SongTable songs={filteredSongs} onOpen={onOpen} onRead={onOpenRead} onPractice={onOpenPractice} onDelete={onDelete} /> : <EmptyLibrary search={search} onCreate={onCreateNew} onImport={() => openPicker(gflowInput)} />}
+          {filteredSongs.length > 0 ? <SongTable songs={filteredSongs} onOpen={onOpen} onRead={onOpenRead} onPractice={onOpenPractice} onDelete={onDelete} /> : <EmptyLibrary search={search} onCreate={onCreateNew} onImport={() => openPicker(gflowInput)} onPaste={onPasteChordSheet} />}
         </section>
       </main>
 
@@ -207,6 +209,6 @@ const RecentSong: React.FC<{ song: LibrarySong; session?: SongSession; onOpen: (
 
 const SongTable: React.FC<{ songs: LibrarySong[]; onOpen: (song: LibrarySong) => void; onRead: (song: LibrarySong) => void; onPractice: (song: LibrarySong) => void; onDelete: (song: LibrarySong) => void }> = ({ songs, onOpen, onRead, onPractice, onDelete }) => <div className="overflow-x-auto"><div className="min-w-[780px]"><div className="grid grid-cols-[minmax(230px,1.4fr)_180px_minmax(210px,1fr)_130px_128px] gap-4 border-b border-[#dedcd4] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#979990] dark:border-zinc-800"><span>歌曲</span><span>音樂設定</span><span>主要和弦</span><span>上次彈奏</span><span className="text-right">操作</span></div>{songs.map(song => { const meta = songMeta(song); return <article key={`${song.source}-${song.id}`} className="group grid grid-cols-[minmax(230px,1.4fr)_180px_minmax(210px,1fr)_130px_128px] items-center gap-4 border-b border-[#e7e5de] px-3 py-4 transition-colors hover:bg-[#fffefa] dark:border-zinc-800 dark:hover:bg-zinc-900/70"><button type="button" onClick={() => onOpen(song)} className="min-w-0 text-left"><div className="truncate text-sm font-semibold group-hover:text-[#4d5bd2]">{song.title}</div><div className="mt-1 flex items-center gap-2 text-[11px] text-[#85877f]"><span>{isImportedSong(song) ? song.fileName : 'GuitarFlow 樂譜'}</span>{song.isLegacy && <span className="text-[#a66d22]">待認領</span>}</div></button><div className="font-mono text-[11px] text-[#5f625c] dark:text-zinc-400">{meta.key} 調 · Capo {meta.capo}<div className="mt-1 font-sans text-[#979990]">{meta.detail}</div></div><div className="flex flex-wrap gap-x-3 gap-y-1">{meta.chords.map(chord => <span key={chord} className="font-mono text-[11px] font-semibold text-[#4d5bd2]">{chord}</span>)}</div><div className="text-[11px] text-[#777a73]">{timeAgo(song.lastModified)}</div><div className="flex justify-end gap-1"><button type="button" onClick={() => onRead(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#4d5bd2] sm:h-9 sm:w-9 hover:bg-[#eceefa]" aria-label={`閱讀 ${song.title}`}><BookOpenText size={14} /></button><button type="button" onClick={() => onPractice(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#2b6c59] sm:h-9 sm:w-9 hover:bg-[#e8f0eb]" aria-label={`練習 ${song.title}`}><Play size={14} /></button><button type="button" onClick={() => onDelete(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#aaa9a2] opacity-100 sm:h-9 sm:w-9 sm:opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label={`刪除 ${song.title}`}><Trash2 size={14} /></button></div></article>; })}</div></div>;
 
-const EmptyLibrary: React.FC<{ search: string; onCreate: () => void; onImport: () => void }> = ({ search, onCreate, onImport }) => <div className="flex min-h-56 flex-col items-center justify-center border-b border-[#dedcd4] text-center dark:border-zinc-800"><FileMusic size={22} className="text-[#a3a59d]" /><h3 className="mt-3 text-sm font-semibold">{search ? '找不到符合的歌曲' : '開始建立你的曲目'}</h3><p className="mt-1 text-xs text-[#85877f]">{search ? '試試其他關鍵字。' : '新增歌曲或匯入現有樂譜。'}</p><div className="mt-4 flex gap-2"><button type="button" onClick={onCreate} className="h-10 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white"><Plus size={14} className="mr-1 inline" />新增歌曲</button><button type="button" onClick={onImport} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><FileUp size={14} className="mr-1 inline" />匯入 .gflow</button></div></div>;
+const EmptyLibrary: React.FC<{ search: string; onCreate: () => void; onImport: () => void; onPaste: () => void }> = ({ search, onCreate, onImport, onPaste }) => <div className="flex min-h-56 flex-col items-center justify-center border-b border-[#dedcd4] text-center dark:border-zinc-800"><FileMusic size={22} className="text-[#a3a59d]" /><h3 className="mt-3 text-sm font-semibold">{search ? '找不到符合的歌曲' : '開始建立你的曲目'}</h3><p className="mt-1 text-xs text-[#85877f]">{search ? '試試其他關鍵字。' : '新增歌曲或匯入現有樂譜。'}</p><div className="mt-4 flex flex-wrap justify-center gap-2"><button type="button" onClick={onCreate} className="h-10 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white"><Plus size={14} className="mr-1 inline" />新增歌曲</button><button type="button" onClick={onImport} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><FileUp size={14} className="mr-1 inline" />匯入 .gflow</button><button type="button" onClick={onPaste} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><ClipboardPaste size={14} className="mr-1 inline" />貼上和弦譜</button></div></div>;
 
 export default Home;

@@ -11,6 +11,7 @@ import ImportedScorePanel from './components/ImportedScorePanel';
 import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import ImportPreviewModal from './components/ImportPreviewModal';
+import ChordSheetImportModal from './components/ChordSheetImportModal';
 import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
 import { ImportedSong, LibrarySong, TabSection, isImportedSong } from './types';
@@ -46,6 +47,7 @@ const App: React.FC = () => {
   const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
   const [importedTitle, setImportedTitle] = useState('');
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
+  const [chordSheetOpen, setChordSheetOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('guitarflow-theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'light';
@@ -566,6 +568,7 @@ const App: React.FC = () => {
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
           onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
+          onPasteChordSheet={() => runWhenSignedIn(() => setChordSheetOpen(true))}
           onClaimSong={handleClaimSong}
           onClaimAllLegacy={handleClaimAllLegacy}
           onRailNavigate={openRailDestination}
@@ -589,6 +592,17 @@ const App: React.FC = () => {
             }}
             onCancel={() => setGpPreviewFile(null)}
             onError={toast.error}
+          />
+        )}
+        {chordSheetOpen && (
+          <ChordSheetImportModal
+            onClose={() => setChordSheetOpen(false)}
+            onCreate={async data => {
+              const song = await library.importSong(data);
+              if (!song) return;
+              setChordSheetOpen(false);
+              navigate(appPaths.create(song.id));
+            }}
           />
         )}
         <ToastContainer toasts={toasts} onDismiss={dismiss} />
