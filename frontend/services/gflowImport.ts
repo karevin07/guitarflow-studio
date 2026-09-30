@@ -32,6 +32,7 @@ const parseSection = (v: unknown, index: number): TabSection | null => {
   const title = typeof obj.title === 'string' ? obj.title : `Section ${index + 1}`;
   const capo = typeof obj.capo === 'number' ? Math.max(0, Math.min(12, obj.capo)) : 0;
   const id = typeof obj.id === 'string' ? obj.id : Math.random().toString(36).slice(2, 11);
+  const pattern = typeof obj.pattern === 'string' ? obj.pattern.trim().slice(0, 120) : '';
 
   let timeSignature: [number, number] | undefined;
   if (Array.isArray(obj.timeSignature) && obj.timeSignature.length === 2) {
@@ -48,6 +49,7 @@ const parseSection = (v: unknown, index: number): TabSection | null => {
       title,
       capo,
       timeSignature: timeSignature ?? [...DEFAULT_TIME_SIGNATURE],
+      pattern,
       measures: [createEmptyMeasure()],
       chords: [Array(16).fill(null)],
       lyrics: [Array(16).fill(null)],
@@ -91,6 +93,7 @@ const parseSection = (v: unknown, index: number): TabSection | null => {
     title,
     capo,
     timeSignature: timeSignature ?? [...DEFAULT_TIME_SIGNATURE],
+    pattern,
     measures,
     chords,
     lyrics,

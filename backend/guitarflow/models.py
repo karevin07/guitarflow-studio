@@ -36,6 +36,8 @@ class TabSection(models.Model):
     capo = models.IntegerField(default=0)
     time_signature = models.JSONField(default=list, blank=True, help_text="[numerator, denominator], default 4/4")
     order = models.PositiveIntegerField(default=0)
+    # Accompaniment rhythm, e.g. "↓ ↓↑ -↑ ↓↑" or "T1 21 31 21"; empty means no pattern.
+    pattern = models.CharField(max_length=120, blank=True, default='')
     
     # Store measures, chords, and lyrics as JSON arrays
     measures = models.JSONField(help_text="3D array [measureIndex][stringIndex][column]")

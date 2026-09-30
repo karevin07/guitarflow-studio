@@ -405,6 +405,21 @@ export const useEditorState = () => {
     [history, chordLibrary]
   );
 
+  /** Set the accompaniment pattern of one section, or of every section when sectionId is null. */
+  const setSectionPattern = useCallback((sectionId: string | null, pattern: string) => {
+    setSections(prev => {
+      const next = prev.map(sec => (sectionId === null || sec.id === sectionId ? { ...sec, pattern } : sec));
+      setHistoryIndex(prevIdx => {
+        const nextHistory = history.slice(0, prevIdx + 1);
+        nextHistory.push(JSON.parse(JSON.stringify(next)));
+        if (nextHistory.length > 50) nextHistory.shift();
+        setHistory(nextHistory);
+        return nextHistory.length - 1;
+      });
+      return next;
+    });
+  }, [history]);
+
   /** Set only the chord symbol at a column; unlike handleChordNameChange it never writes tab frets. */
   const setChordName = useCallback(
     (sectionId: string, mIdx: number, cIdx: number, name: string | null) => {
@@ -509,7 +524,7 @@ export const useEditorState = () => {
     loadSong,
     commitToHistory,
     undo, redo,
-    updateLyric, setCapo, setTimeSignature,
+    updateLyric, setCapo, setTimeSignature, setSectionPattern,
     addMeasure, deleteMeasure, copyMeasure, clearColumn,
     addSection, insertSectionAfter, updateSectionTitle, deleteSection, moveSection,
     applyChordToColumn,

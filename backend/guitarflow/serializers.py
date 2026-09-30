@@ -76,13 +76,17 @@ def validate_voicing_plan(value):
     return normalized
 
 
+def clean_pattern(value):
+    return value.strip()[:120] if isinstance(value, str) else ''
+
+
 class TabSectionSerializer(serializers.ModelSerializer):
     id = serializers.SerializerMethodField()
     timeSignature = serializers.JSONField(source='time_signature', required=False)
 
     class Meta:
         model = TabSection
-        fields = ('id', 'title', 'capo', 'timeSignature', 'measures', 'chords', 'lyrics')
+        fields = ('id', 'title', 'capo', 'timeSignature', 'pattern', 'measures', 'chords', 'lyrics')
 
     def get_id(self, obj):
         return str(obj.pk)
@@ -173,6 +177,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
                 measures=sec_data.get('measures', []),
                 chords=sec_data.get('chords', []),
                 lyrics=sec_data.get('lyrics', []),
+                pattern=clean_pattern(sec_data.get('pattern')),
             )
 
         for chord_data in custom_chords_data:
@@ -222,6 +227,8 @@ class GuitarSongSerializer(serializers.ModelSerializer):
                 sec.measures = sec_data.get('measures', sec.measures)
                 sec.chords = sec_data.get('chords', sec.chords)
                 sec.lyrics = sec_data.get('lyrics', sec.lyrics)
+                if 'pattern' in sec_data:
+                    sec.pattern = clean_pattern(sec_data.get('pattern'))
                 sec.save()
                 incoming_ids.add(sec_id)
             else:
@@ -234,6 +241,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
                     measures=sec_data.get('measures', []),
                     chords=sec_data.get('chords', []),
                     lyrics=sec_data.get('lyrics', []),
+                    pattern=clean_pattern(sec_data.get('pattern')),
                 )
                 incoming_ids.add(str(new_sec.pk))
 

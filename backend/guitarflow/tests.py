@@ -160,6 +160,23 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         response = self.client.post(self.song_url, {'title': 'No tempo', 'sections': [], 'customChords': []}, format='json')
         self.assertIsNone(response.data['bpm'])
 
+    def test_section_pattern_is_saved_and_kept(self):
+        section = {'title': 'Verse', 'measures': [], 'chords': [], 'lyrics': [], 'pattern': '  ↓ ↓↑ -↑ ↓↑  '}
+        response = self.client.post(self.song_url, {'title': 'Groove', 'sections': [section], 'customChords': []}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['sections'][0]['pattern'], '↓ ↓↑ -↑ ↓↑')
+        detail_url = reverse('song-detail', args=[response.data['id']])
+        section_id = response.data['sections'][0]['id']
+
+        # Saving without a pattern keeps the stored one.
+        kept = {'id': section_id, 'title': 'Verse', 'measures': [], 'chords': [], 'lyrics': []}
+        response = self.client.put(detail_url, {'title': 'Groove', 'sections': [kept], 'customChords': []}, format='json')
+        self.assertEqual(response.data['sections'][0]['pattern'], '↓ ↓↑ -↑ ↓↑')
+
+        changed = {**kept, 'pattern': 'T1 21 31 21'}
+        response = self.client.put(detail_url, {'title': 'Groove', 'sections': [changed], 'customChords': []}, format='json')
+        self.assertEqual(response.data['sections'][0]['pattern'], 'T1 21 31 21')
+
     def test_create_song_persists_time_signature(self):
         data = {
             'title': 'Time Sig Song',

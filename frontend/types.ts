@@ -3,6 +3,8 @@ export interface TabSection {
   title: string;
   capo: number;
   timeSignature?: [number, number];
+  /** Accompaniment rhythm notation (see services/accompaniment.ts); empty or missing means none. */
+  pattern?: string;
   measures: string[][][]; // [measureIndex][stringIndex][column]
   chords: (string | null)[][]; // [measureIndex][columnIdx]
   lyrics: (string | null)[][]; // [measureIndex][columnIdx]
