@@ -1,4 +1,5 @@
 import { parseChord } from '../music-theory';
+import { parsePattern } from './accompaniment';
 import { GuitarSong, TabSection } from '../types';
 
 /**
@@ -17,17 +18,25 @@ export interface ImportedBar {
 
 export interface ImportedSection {
   title: string;
+  /** Strum or picking pattern from a 刷法 / 指法 line; empty when the sheet has none. */
+  pattern: string;
   bars: ImportedBar[];
 }
 
 export interface ChordSheetResult {
   title: string;
+  artist: string;
+  originalKey: string;
   bpm: number | null;
   capo: number;
   format: 'chords-over-lyrics' | 'chordpro';
   sections: ImportedSection[];
   /** Chord-like tokens the chord parser does not know; they are kept as written. */
   unknownChords: string[];
+  /** 刷法 / 指法 lines that could not be read as a pattern. */
+  unknownPatterns: string[];
+  /** Play order over `sections` when the sheet repeats or revisits sections; empty means as written. */
+  form: Array<{ section: number; repeat: number }>;
 }
 
 const WIDE = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦　]/;
@@ -99,12 +108,33 @@ const splitHeader = (line: string): { header: string; rest: string } | null => {
   return null;
 };
 
-const META_KEYS = /^(拍速|速度|tempo|bpm|capo|key|play|原調|男調|女調|拍號|指法|刷法|歌手|演唱|作詞|作曲|詞|曲|編曲|詞\/曲|artist|title)/i;
+const META_KEYS = /^(拍速|速度|tempo|bpm|capo|key|play|原調|男調|女調|拍號|指法|刷法|歌手|演唱|原唱|作詞|作曲|詞|曲|編曲|詞\/曲|artist|singer|title)/i;
 
 interface Meta {
   bpm?: number;
   capo?: number;
+  artist?: string;
+  originalKey?: string;
 }
+
+const ARTIST = /(?:歌手|演唱|原唱|artist|singer)\s*[:：]\s*(.+)$/i;
+
+/** The value after "歌手：", up to a wide gap or the next "作詞：" style field. */
+const readArtist = (line: string): string | undefined => {
+  const match = line.match(ARTIST);
+  if (!match) return undefined;
+  const value = match[1].split(/\s{2,}|\s*[|｜/]\s*|\s+(?=[^\s:：]{1,6}\s*[:：])/)[0].trim();
+  return value || undefined;
+};
+
+const PATTERN_LINE = /(刷法|指法|節奏|rhythm|strum(?:ming)?|pattern)\s*[:：]\s*(.+)$/i;
+
+/** "副歌 刷法：↓ ↓↑ -↑ ↓↑" → { prefix: '副歌', text: '↓ ↓↑ -↑ ↓↑' }. */
+const splitPatternLine = (line: string): { prefix: string; text: string } | null => {
+  const match = line.match(PATTERN_LINE);
+  if (!match || match.index === undefined) return null;
+  return { prefix: line.slice(0, match.index).trim(), text: match[2].trim() };
+};
 
 /** Tempo and capo lines; other metadata lines (key, singer, writers) are recognised and skipped. */
 const readMeta = (line: string): Meta | null => {
@@ -115,7 +145,40 @@ const readMeta = (line: string): Meta | null => {
   if (bpm) meta.bpm = Number(bpm[1]);
   const capo = trimmed.match(/capo\s*[:：=]?\s*(\d{1,2})/i);
   if (capo) meta.capo = Number(capo[1]);
+  const key = trimmed.match(/(?:原調|key)\s*[:：=]?\s*([A-G][#b]?m?)(?![a-z])/i);
+  if (key) meta.originalKey = key[1];
+  const artist = readArtist(trimmed);
+  if (artist) meta.artist = artist;
   return meta;
+};
+
+/** "副歌 x2" → { text: '副歌', repeat: 2 }. */
+const splitRepeat = (text: string): { text: string; repeat: number } => {
+  const match = text.match(/^(.*?)\s*[xX×＊*]\s*(\d)\s*$/);
+  return match && match[1].trim() ? { text: match[1].trim(), repeat: Math.max(1, Math.min(8, Number(match[2]))) } : { text: text.trim(), repeat: 1 };
+};
+
+/** "回副歌", "(重複副歌)", "Repeat Chorus x2" → the section name to play again. */
+const JUMP = /^[(（]?\s*(?:回到?|重複|反覆|repeat)\s*[:：]?\s*([^()（）▲★☆●◆]+?)\s*[)）]?$/i;
+
+interface Play {
+  section: ImportedSection;
+  repeat: number;
+}
+
+const findSection = (sections: ImportedSection[], name: string): ImportedSection | undefined => {
+  const wanted = name.trim().toLowerCase();
+  return sections.find(section => section.title.toLowerCase() === wanted)
+    ?? sections.find(section => section.title.toLowerCase().startsWith(wanted) || wanted.startsWith(section.title.toLowerCase()));
+};
+
+/** The play order over the kept sections, or [] when it is just each section once, in order. */
+const formFor = (plays: Play[], kept: ImportedSection[]): Array<{ section: number; repeat: number }> => {
+  const form = plays
+    .map(play => ({ section: kept.indexOf(play.section), repeat: play.repeat }))
+    .filter(entry => entry.section >= 0);
+  const plain = form.length === kept.length && form.every((entry, index) => entry.section === index && entry.repeat === 1);
+  return plain ? [] : form;
 };
 
 const cleanLyric = (text: string) => text
@@ -233,15 +296,42 @@ const isChordPro = (text: string) =>
   /\{\s*(title|t|soc|start_of_chorus|sov|start_of_verse|c|comment)\s*[:}]/i.test(text)
   || text.split('\n').filter(line => /\[[A-G][^\]\s]{0,8}\]/.test(line)).length >= 2;
 
-const parseChordPro = (text: string, unknown: Set<string>): Omit<ChordSheetResult, 'unknownChords' | 'format'> => {
+/** Reads 刷法 / 指法 lines and remembers the pattern so later sections keep it. */
+const patternTracker = (unknownPatterns: Set<string>) => {
+  let active = '';
+  return {
+    get active() { return active; },
+    /** Returns true when the text was a readable pattern. */
+    apply(text: string, section: ImportedSection | null) {
+      const parsed = parsePattern(text);
+      if (!parsed.ok) {
+        unknownPatterns.add(text);
+        return false;
+      }
+      active = text.trim().split(/\s+/).join(' ');
+      if (section) section.pattern = active;
+      return true;
+    },
+  };
+};
+
+type ParsedBody = Omit<ChordSheetResult, 'unknownChords' | 'unknownPatterns' | 'format'>;
+
+const parseChordPro = (text: string, unknown: Set<string>, unknownPatterns: Set<string>): ParsedBody => {
   let title = '';
+  let artist = '';
+  let originalKey = '';
   let bpm: number | null = null;
   let capo = 0;
   const sections: ImportedSection[] = [];
+  const plays: Play[] = [];
   let current: ImportedSection | null = null;
+  let lastChorus: ImportedSection | null = null;
+  const patterns = patternTracker(unknownPatterns);
   const open = (name: string) => {
-    current = { title: name, bars: [] };
+    current = { title: name, pattern: patterns.active, bars: [] };
     sections.push(current);
+    plays.push({ section: current, repeat: 1 });
   };
 
   text.split('\n').forEach(raw => {
@@ -251,15 +341,34 @@ const parseChordPro = (text: string, unknown: Set<string>): Omit<ChordSheetResul
       const [, name, value = ''] = directive;
       const key = name.toLowerCase();
       if (key === 'title' || key === 't') title = value;
+      else if (key === 'artist' || key === 'a') artist = value;
+      else if (key === 'key') originalKey = value;
+      else if (key === 'x_pattern' || key === 'x_strum') patterns.apply(value, current);
       else if (key === 'tempo') bpm = Number(value) || bpm;
       else if (key === 'capo') capo = Number(value) || 0;
-      else if (key === 'soc' || key === 'start_of_chorus') open(value || 'Chorus');
+      else if (key === 'soc' || key === 'start_of_chorus') {
+        open(value || 'Chorus');
+        lastChorus = current;
+      } else if (key === 'chorus') {
+        // {chorus} plays the last chorus again.
+        const target = (value && findSection(sections, value)) || lastChorus;
+        if (target) {
+          plays.push({ section: target, repeat: 1 });
+          current = null;
+        }
+      }
       else if (key === 'sov' || key === 'start_of_verse') open(value || 'Verse');
       else if (key === 'sob' || key === 'start_of_bridge') open(value || 'Bridge');
       else if (key === 'c' || key === 'comment' || key === 'ci') open(value || '段落');
       return;
     }
     if (!line) return;
+    const patternLine = !/\[/.test(line) ? splitPatternLine(line) : null;
+    if (patternLine) {
+      if (patternLine.prefix) open(patternLine.prefix);
+      patterns.apply(patternLine.text, current);
+      return;
+    }
     const header = splitHeader(line);
     if (header && !/\[/.test(line)) {
       open(header.header);
@@ -288,28 +397,52 @@ const parseChordPro = (text: string, unknown: Set<string>): Omit<ChordSheetResul
       pending.lyrics[0] = pending.lyrics[0] ? `${pending.lyrics[0]}${lyric}` : lyric;
     });
   });
-  return { title, bpm, capo, sections };
+  return { title, artist, originalKey, bpm, capo, sections, form: formFor(plays, sections.filter(section => section.bars.length > 0)) };
 };
 
 export const parseChordSheet = (text: string): ChordSheetResult => {
   const unknown = new Set<string>();
+  const unknownPatterns = new Set<string>();
   if (isChordPro(text)) {
-    const result = parseChordPro(text, unknown);
-    return { ...result, format: 'chordpro', sections: result.sections.filter(section => section.bars.length > 0), unknownChords: [...unknown] };
+    const result = parseChordPro(text, unknown, unknownPatterns);
+    return {
+      ...result,
+      format: 'chordpro',
+      sections: result.sections.filter(section => section.bars.length > 0),
+      unknownChords: [...unknown],
+      unknownPatterns: [...unknownPatterns],
+    };
   }
 
   const lines = text.replace(/\t/g, '    ').split('\n').map(line => line.replace(/\s+$/, ''));
   let title = '';
+  let artist = '';
+  let originalKey = '';
   let bpm: number | null = null;
   let capo = 0;
   const sections: ImportedSection[] = [];
   let current: ImportedSection | null = null;
   let sawChords = false;
   let pendingBlank = false;
-  const open = (name: string) => {
-    current = { title: name, bars: [] };
+  const plays: Play[] = [];
+  const patterns = patternTracker(unknownPatterns);
+  const open = (name: string, repeat = 1) => {
+    current = { title: name, pattern: patterns.active, bars: [] };
     sections.push(current);
+    plays.push({ section: current, repeat });
     pendingBlank = false;
+  };
+  const replay = (section: ImportedSection, repeat: number) => {
+    plays.push({ section, repeat });
+    current = null;
+    pendingBlank = false;
+  };
+  const nextContent = (from: number) => lines.slice(from).find(item => item.trim()) ?? '';
+  // Whether a line starts written-out bars (chords, possibly after a header).
+  const startsBars = (text: string) => {
+    if (isChordLine(text)) return true;
+    const header = splitHeader(text);
+    return Boolean(header?.rest.trim() && isChordLine(header.rest));
   };
   // A blank line after some bars starts a new section, so a verse after an intro line is not merged into it.
   const ensure = () => {
@@ -324,16 +457,59 @@ export const parseChordSheet = (text: string): ChordSheetResult => {
       pendingBlank = true;
       continue;
     }
+    const patternLine = splitPatternLine(line);
+    if (patternLine && !isChordLine(line)) {
+      const header = patternLine.prefix ? splitHeader(patternLine.prefix) : null;
+      if (header || (patternLine.prefix && SECTION_WORDS.test(patternLine.prefix))) {
+        open(header?.header ?? patternLine.prefix);
+      } else if (current && pendingBlank && current.bars.length > 0) {
+        // The pattern starts the next block of the song.
+        open(`段落 ${sections.length + 1}`);
+      }
+      patterns.apply(patternLine.text, current);
+      continue;
+    }
     const meta = readMeta(line);
     if (meta && !isChordLine(line)) {
       if (meta.bpm) bpm = meta.bpm;
       if (meta.capo !== undefined) capo = meta.capo;
+      if (meta.artist) artist = meta.artist;
+      if (meta.originalKey) originalKey = meta.originalKey;
       continue;
     }
-    const header = splitHeader(line);
+    if (sawChords) {
+      const jump = line.trim().match(JUMP);
+      const target = jump ? splitRepeat(jump[1]) : null;
+      const found = target ? findSection(sections, target.text) : undefined;
+      if (found && target) {
+        replay(found, target.repeat);
+        continue;
+      }
+    }
+    let header = splitHeader(line);
+    let headerRepeat = 1;
+    if (header && REPEAT.test(header.rest.trim())) {
+      headerRepeat = Number(header.rest.trim().match(REPEAT)![1]);
+      header = { header: header.header, rest: '' };
+    } else if (!header) {
+      const stripped = splitRepeat(line.trim());
+      const candidate = stripped.repeat > 1 ? splitHeader(stripped.text) : null;
+      if (candidate && !candidate.rest.trim()) {
+        header = candidate;
+        headerRepeat = stripped.repeat;
+      }
+    }
     let body = line;
     if (header) {
-      open(header.header);
+      const { text: name, repeat: nameRepeat } = splitRepeat(header.header);
+      const repeat = Math.max(headerRepeat, nameRepeat);
+      const earlier = !header.rest.trim() ? findSection(sections, name) : undefined;
+      // A bare header naming an earlier section, with no bars under it, means "play that again".
+      if (earlier && !startsBars(nextContent(index + 1))) {
+        replay(earlier, repeat);
+        continue;
+      }
+      open(name, repeat);
       if (!header.rest.trim()) continue;
       body = header.rest;
     }
@@ -358,13 +534,18 @@ export const parseChordSheet = (text: string): ChordSheetResult => {
     if (lyric) ensure().bars.push({ chords: emptyRow(), lyrics: [lyric, ...emptyRow().slice(1)] });
   }
 
+  const kept = sections.filter(section => section.bars.length > 0);
   return {
     title,
+    artist,
+    originalKey,
     bpm,
     capo,
     format: 'chords-over-lyrics',
-    sections: sections.filter(section => section.bars.length > 0),
+    sections: kept,
     unknownChords: [...unknown],
+    unknownPatterns: [...unknownPatterns],
+    form: formFor(plays, kept),
   };
 };
 
@@ -374,6 +555,10 @@ export const chordSheetToSong = (
   title: string
 ): Omit<GuitarSong, 'id' | 'lastModified'> => ({
   title: title.trim() || '未命名歌曲',
+  artist: result.artist,
+  originalKey: result.originalKey,
+  tags: [],
+  form: result.form,
   bpm: result.bpm,
   transposeOffset: 0,
   voicingPlan: {},
@@ -383,7 +568,7 @@ export const chordSheetToSong = (
     title: section.title,
     capo: result.capo,
     timeSignature: [4, 4],
-    pattern: '',
+    pattern: section.pattern,
     measures: section.bars.map(() => Array.from({ length: 6 }, () => Array(COLS).fill('-'))),
     chords: section.bars.map(bar => bar.chords),
     lyrics: section.bars.map(bar => bar.lyrics),

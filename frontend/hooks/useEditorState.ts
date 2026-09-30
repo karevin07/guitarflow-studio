@@ -3,6 +3,7 @@ import { TabSection, ChordDefinition, SongVoicingPlan } from '../types';
 import { api } from '../services/api';
 import { detectChordFromColumn, labelChordColumn } from '../services/chordDetector';
 import { DEFAULT_TIME_SIGNATURE } from '../constants/practice';
+import { SongFormEntry, formFromStored } from '../services/songForm';
 
 export const createEmptyMeasure = (): string[][] =>
   Array.from({ length: 6 }, () => Array(16).fill('-'));
@@ -15,6 +16,8 @@ export const useEditorState = () => {
   const [transposeOffset, setTransposeOffset] = useState(0);
   const [voicingPlan, setVoicingPlan] = useState<SongVoicingPlan>({});
   const [bpm, setBpm] = useState<number | null>(null);
+  // Play order by section id; entries for deleted sections are kept (undo may bring them back) and skipped when used.
+  const [form, setForm] = useState<SongFormEntry[]>([]);
 
   const [activeSectionId, setActiveSectionId] = useState<string>('');
   const [selection, setSelectionRaw] = useState<{
@@ -47,13 +50,14 @@ export const useEditorState = () => {
 
   /** Load a song's data into the editor (called when opening a song) */
   const loadSong = useCallback(
-    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number, plan: SongVoicingPlan = {}, songBpm: number | null = null) => {
+    (title: string, newSections: TabSection[], chords: ChordDefinition[], transpose: number, plan: SongVoicingPlan = {}, songBpm: number | null = null, storedForm: unknown = []) => {
       setSongTitle(title);
       setSections(newSections);
       setCustomChords(chords);
       setTransposeOffset(transpose);
       setVoicingPlan(plan);
       setBpm(songBpm);
+      setForm(formFromStored(storedForm, newSections));
       setActiveSectionId(newSections[0]?.id || '');
       setHistory([newSections]);
       setHistoryIndex(0);
@@ -515,6 +519,7 @@ export const useEditorState = () => {
     transposeOffset, setTransposeOffset,
     voicingPlan, setVoicingPlan,
     bpm, setBpm,
+    form, setForm,
     activeSectionId, setActiveSectionId,
     selection, setSelection,
     previewChord, setPreviewChord,

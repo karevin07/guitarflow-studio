@@ -7,10 +7,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .import_utils import detect_import_format, is_allowed_import_file, title_from_file_name
-from .models import GuitarSong, GlobalChord
+from .models import GuitarSong, GlobalChord, Setlist
 from .pagination import SongListPagination
 from .permissions import IsSongOwner
-from .serializers import GuitarSongSerializer, GlobalChordSerializer
+from .serializers import GuitarSongSerializer, GlobalChordSerializer, SetlistSerializer, SongInfoSerializer
 
 
 class GuitarSongViewSet(viewsets.ModelViewSet):
@@ -26,7 +26,7 @@ class GuitarSongViewSet(viewsets.ModelViewSet):
             qs = qs.filter(source=source)
         search = (self.request.query_params.get('search') or '').strip()
         if search:
-            qs = qs.filter(title__icontains=search)
+            qs = qs.filter(Q(title__icontains=search) | Q(artist__icontains=search))
         return qs
 
     def perform_create(self, serializer):
@@ -41,6 +41,14 @@ class GuitarSongViewSet(viewsets.ModelViewSet):
         song.save(update_fields=['owner'])
         serializer = self.get_serializer(song)
         return Response(serializer.data)
+
+    @action(detail=True, methods=['patch'], url_path='info')
+    def info(self, request, pk=None):
+        song = self.get_object()
+        serializer = SongInfoSerializer(song, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(self.get_serializer(song).data)
 
     @action(detail=False, methods=['post'], url_path='claim-legacy')
     def claim_legacy(self, request):
@@ -91,6 +99,18 @@ class GuitarSongViewSet(viewsets.ModelViewSet):
         if song.import_file_name:
             response['Content-Disposition'] = f'inline; filename="{song.import_file_name}"'
         return response
+
+
+class SetlistViewSet(viewsets.ModelViewSet):
+    serializer_class = SetlistSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class = None
+
+    def get_queryset(self):
+        return Setlist.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class GlobalChordViewSet(viewsets.ReadOnlyModelViewSet):

@@ -12,9 +12,15 @@ import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
 import ImportPreviewModal from './components/ImportPreviewModal';
 import ChordSheetImportModal from './components/ChordSheetImportModal';
+import SongInfoModal from './components/SongInfoModal';
+import SetlistModal from './components/SetlistModal';
+import SetlistBar from './components/SetlistBar';
+import { useSetlists } from './hooks/useSetlists';
+import { libraryTags, setlistPosition, setlistSongs } from './services/songInfo';
+import { formToStored, playOrder } from './services/songForm';
 import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
-import { ImportedSong, LibrarySong, TabSection, isImportedSong } from './types';
+import { GuitarSong, ImportedSong, LibrarySong, Setlist, SongInfo, TabSection, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { readGflowFile } from './services/gflowImport';
 import { downloadMusicXml } from './services/musicXmlExport';
@@ -48,6 +54,9 @@ const App: React.FC = () => {
   const [importedTitle, setImportedTitle] = useState('');
   const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
   const [chordSheetOpen, setChordSheetOpen] = useState(false);
+  const [infoSong, setInfoSong] = useState<LibrarySong | null>(null);
+  // undefined: closed; null: creating a new setlist.
+  const [editingSetlist, setEditingSetlist] = useState<Setlist | null | undefined>(undefined);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     const saved = localStorage.getItem('guitarflow-theme');
     return (saved === 'light' || saved === 'dark') ? saved : 'light';
@@ -81,18 +90,20 @@ const App: React.FC = () => {
   // ─── Editor state ──────────────────────────────────────────────────────────
   const editor = useEditorState();
 
+  const order = useMemo(() => playOrder(editor.form, editor.sections), [editor.form, editor.sections]);
   const playback = usePlayback({
     sections: editor.sections,
     transposeOffset: editor.transposeOffset,
     chordLibrary: editor.chordLibrary,
     voicingPlan: editor.voicingPlan,
+    order,
   });
 
   // ─── Song library ──────────────────────────────────────────────────────────
   const library = useSongLibrary({
-    onSongOpened: (title, sections, chords, transpose, voicingPlan, bpm) => {
-      editor.loadSong(title, sections, chords, transpose, voicingPlan, bpm);
-      playback.setPlayBpm(bpm ?? DEFAULT_BPM);
+    onSongOpened: song => {
+      editor.loadSong(song.title, song.sections, song.customChords || [], song.transposeOffset || 0, song.voicingPlan || {}, song.bpm ?? null, song.form);
+      playback.setPlayBpm(song.bpm ?? DEFAULT_BPM);
       skipDirtyRef.current = true;
       setIsDirty(false);
       setActiveImportedSong(null);
@@ -208,8 +219,9 @@ const App: React.FC = () => {
       voicingPlan: editor.voicingPlan,
       transposeOffset: editor.transposeOffset,
       bpm: editor.bpm,
+      form: formToStored(editor.form, editor.sections),
     });
-  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.voicingPlan, editor.transposeOffset, editor.bpm]);
+  }, [library, editor.songTitle, editor.sections, editor.customChords, editor.voicingPlan, editor.transposeOffset, editor.bpm, editor.form]);
 
   useEffect(() => {
     if (viewMode === 'home' || !library.currentSongId) return;
@@ -218,7 +230,7 @@ const App: React.FC = () => {
       return;
     }
     setIsDirty(true);
-  }, [editor.sections, editor.songTitle, editor.customChords, editor.voicingPlan, editor.transposeOffset, editor.bpm, viewMode, library.currentSongId]);
+  }, [editor.sections, editor.songTitle, editor.customChords, editor.voicingPlan, editor.transposeOffset, editor.bpm, editor.form, viewMode, library.currentSongId]);
 
   useEffect(() => {
     if (library.saveStatus === 'saved') {
@@ -368,15 +380,20 @@ const App: React.FC = () => {
   };
 
   // ─── Export ────────────────────────────────────────────────────────────────
+  const currentLibrarySong = library.songs.find(song => song.id === library.currentSongId);
   const exportAsFile = () => {
     const blob = new Blob(
       [JSON.stringify({
         title: editor.songTitle,
+        artist: currentLibrarySong?.artist ?? '',
+        originalKey: currentLibrarySong?.originalKey ?? '',
+        tags: currentLibrarySong?.tags ?? [],
         sections: editor.sections,
         customChords: editor.customChords,
         voicingPlan: editor.voicingPlan,
         transposeOffset: editor.transposeOffset,
         bpm: editor.bpm,
+        form: formToStored(editor.form, editor.sections),
       }, null, 2)],
       { type: 'application/json' }
     );
@@ -487,6 +504,47 @@ const App: React.FC = () => {
     library.deleteSong(song.id);
   }, [activeImportedSong?.id, imported, library]);
 
+  // ─── Song info, favourites and setlists ────────────────────────────────────
+  const setlists = useSetlists(Boolean(auth.user), toast.error);
+  const activeSetlistId = new URLSearchParams(location.search).get('setlist');
+  const activeSetlist = setlists.setlists.find(item => item.id === activeSetlistId) ?? null;
+
+  const applySongInfo = useCallback((id: string, info: Partial<LibrarySong>) => {
+    library.setSongs(prev => prev.map(song => (song.id === id ? { ...song, ...info } as GuitarSong : song)));
+    imported.setSongs(prev => prev.map(song => (song.id === id ? { ...song, ...info } as ImportedSong : song)));
+  }, [imported, library]);
+
+  const saveSongInfo = useCallback(async (song: LibrarySong, info: SongInfo & { title?: string }) => {
+    try {
+      const saved = await songApi.updateSongInfo(song.id, info);
+      applySongInfo(song.id, saved);
+      // Keep the open copy's title in step so its next autosave does not rename the song back.
+      if (library.currentSongId === song.id && saved.title !== editor.songTitle) editor.setSongTitle(saved.title);
+      if (activeImportedSong?.id === song.id) setActiveImportedSong(prev => (prev ? { ...prev, ...saved } : prev));
+      return true;
+    } catch {
+      toast.error('儲存歌曲資訊失敗，請稍後再試。');
+      return false;
+    }
+  }, [activeImportedSong?.id, applySongInfo, editor, library.currentSongId, toast]);
+
+  const toggleFavorite = useCallback(async (song: LibrarySong) => {
+    const favorite = !song.favorite;
+    applySongInfo(song.id, { favorite });
+    try {
+      await songApi.updateSongInfo(song.id, { favorite });
+    } catch {
+      applySongInfo(song.id, { favorite: !favorite });
+      toast.error('收藏失敗，請稍後再試。');
+    }
+  }, [applySongInfo, toast]);
+
+  const openInSetlist = useCallback((song: LibrarySong, setlistId: string) => {
+    if (isImportedSong(song)) imported.openSong(song);
+    else library.openSong(song);
+    navigate(`${appPaths.practice(song.id)}?setlist=${encodeURIComponent(setlistId)}`);
+  }, [imported, library, navigate]);
+
   const handleImportedTitleChange = useCallback(async (title: string) => {
     if (!activeImportedSong) return;
     const trimmed = title.trim() || activeImportedSong.title;
@@ -569,6 +627,14 @@ const App: React.FC = () => {
           onImportGflow={handleImportFile}
           onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
           onPasteChordSheet={() => runWhenSignedIn(() => setChordSheetOpen(true))}
+          setlists={setlists.setlists}
+          onEditSetlist={setlist => setEditingSetlist(setlist)}
+          onPlaySetlist={setlist => {
+            const first = setlistSongs(setlist, librarySongs)[0];
+            if (first) openInSetlist(first, setlist.id);
+          }}
+          onToggleFavorite={toggleFavorite}
+          onEditInfo={song => setInfoSong(song)}
           onClaimSong={handleClaimSong}
           onClaimAllLegacy={handleClaimAllLegacy}
           onRailNavigate={openRailDestination}
@@ -592,6 +658,23 @@ const App: React.FC = () => {
             }}
             onCancel={() => setGpPreviewFile(null)}
             onError={toast.error}
+          />
+        )}
+        {infoSong && (
+          <SongInfoModal
+            song={infoSong}
+            knownTags={libraryTags(librarySongs)}
+            onSave={info => saveSongInfo(infoSong, info)}
+            onClose={() => setInfoSong(null)}
+          />
+        )}
+        {editingSetlist !== undefined && (
+          <SetlistModal
+            setlist={editingSetlist}
+            songs={librarySongs}
+            onSave={async changes => Boolean(await setlists.save(editingSetlist?.id ?? null, changes))}
+            onDelete={async () => (editingSetlist ? setlists.remove(editingSetlist.id) : false)}
+            onClose={() => setEditingSetlist(undefined)}
           />
         )}
         {chordSheetOpen && (
@@ -619,7 +702,7 @@ const App: React.FC = () => {
         viewMode={route.name === 'create' || route.name === 'arrange' ? route.name : 'practice'}
         onViewModeChange={mode => {
           if (route.name !== 'create' && route.name !== 'practice' && route.name !== 'arrange') return;
-          navigate(appPaths[mode](route.songId));
+          navigate(`${appPaths[mode](route.songId)}${location.search}`);
         }}
         onOpenChordLibrary={() => navigate(appPaths.chords())}
         onBack={goHome}
@@ -654,6 +737,18 @@ const App: React.FC = () => {
         user={auth.user}
         onLogout={handleLogout}
       />
+
+      {activeSetlist && 'songId' in route && (() => {
+        const position = setlistPosition(activeSetlist, librarySongs, route.songId);
+        return position && (
+          <SetlistBar
+            name={activeSetlist.name}
+            position={position}
+            onGo={song => { playback.stop(); alphaPlayback.onStop(); openInSetlist(song, activeSetlist.id); }}
+            onClose={() => navigate(location.pathname, { replace: true })}
+          />
+        );
+      })()}
 
       {/* ─ Main ───────────────────────────────────────────────────────────── */}
       <main className="flex-1 flex overflow-hidden pb-16 lg:pb-0">
@@ -734,6 +829,9 @@ const App: React.FC = () => {
               songId={library.currentSongId}
               onLoopSection={playback.loopSection}
               onSectionPatternChange={editor.setSectionPattern}
+              form={editor.form}
+              onFormChange={editor.setForm}
+              onJumpToStep={playback.seekStep}
               loopedSectionIdx={playback.loopedSectionIdx}
               customChords={editor.customChords}
               globalChords={editor.globalChords}

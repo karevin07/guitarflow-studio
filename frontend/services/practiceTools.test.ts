@@ -1,22 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TabSection } from '../types';
-import { countInBeats, isRangeLooped, loadCountInBars, nextTrainedBpm, saveCountInBars, sectionRange } from './practiceTools';
+import { countInBeats, isRangeLooped, loadCountInBars, nextTrainedBpm, saveCountInBars } from './practiceTools';
 
-const section = (measures: number): TabSection => ({
-  id: `s${measures}`, title: 'S', capo: 0,
-  measures: Array.from({ length: measures }, () => []), chords: [], lyrics: [],
-});
-
-describe('sectionRange', () => {
-  const sections = [section(2), section(0), section(3)];
-  it('maps sections to whole-song columns', () => {
-    expect(sectionRange(sections, 0)).toEqual({ start: 0, end: 31 });
-    expect(sectionRange(sections, 2)).toEqual({ start: 32, end: 79 });
-    expect(sectionRange(sections, 1)).toBeNull();
-  });
-
+describe('isRangeLooped', () => {
   it('knows when a section is the active loop', () => {
-    const range = sectionRange(sections, 2);
+    const range = { start: 32, end: 79 };
     expect(isRangeLooped({ enabled: true, start: 32, end: 79 }, range)).toBe(true);
     expect(isRangeLooped({ enabled: false, start: 32, end: 79 }, range)).toBe(false);
     expect(isRangeLooped({ enabled: true, start: 0, end: 31 }, range)).toBe(false);

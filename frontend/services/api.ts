@@ -1,4 +1,4 @@
-import { GuitarSong, ImportedSong } from '../types';
+import { GuitarSong, ImportedSong, Setlist, SongInfo } from '../types';
 import { apiFetch, authStorage, getApiBaseUrl } from './apiClient';
 
 interface PaginatedResponse<T> {
@@ -26,6 +26,13 @@ const fetchAllPages = async <T>(path: string): Promise<T[]> => {
   return items;
 };
 
+const pickSongInfo = (song: SongInfo): SongInfo => ({
+  artist: song.artist ?? '',
+  originalKey: song.originalKey ?? '',
+  tags: song.tags ?? [],
+  favorite: song.favorite ?? false,
+});
+
 export const api = {
   async fetchSongs(search?: string): Promise<GuitarSong[]> {
     const query = new URLSearchParams({ source: 'gflow', page_size: '200' });
@@ -41,6 +48,7 @@ export const api = {
       `/songs/?${query.toString()}`
     );
     return songs.map(song => ({
+      ...pickSongInfo(song),
       id: song.id,
       title: song.title,
       lastModified: song.lastModified,
@@ -87,6 +95,31 @@ export const api = {
       importFormat: song.importFormat ?? 'unknown',
       fileName: song.fileName ?? 'imported-score',
     };
+  },
+
+  /** Change library details (title, artist, key, tags, favorite) without sending the whole song. */
+  async updateSongInfo(id: string, info: SongInfo & { title?: string }): Promise<SongInfo & { title: string; lastModified: number }> {
+    const song = await apiFetch<GuitarSong>(`/songs/${id}/info/`, {
+      method: 'PATCH',
+      body: JSON.stringify(info),
+    });
+    return { ...pickSongInfo(song), title: song.title, lastModified: song.lastModified };
+  },
+
+  async fetchSetlists(): Promise<Setlist[]> {
+    return apiFetch('/setlists/');
+  },
+
+  async createSetlist(setlist: Pick<Setlist, 'name' | 'songIds'>): Promise<Setlist> {
+    return apiFetch('/setlists/', { method: 'POST', body: JSON.stringify(setlist) });
+  },
+
+  async updateSetlist(id: string, changes: Partial<Pick<Setlist, 'name' | 'songIds'>>): Promise<Setlist> {
+    return apiFetch(`/setlists/${id}/`, { method: 'PATCH', body: JSON.stringify(changes) });
+  },
+
+  async deleteSetlist(id: string): Promise<void> {
+    await apiFetch(`/setlists/${id}/`, { method: 'DELETE' });
   },
 
   async deleteSong(id: string): Promise<void> {

@@ -10,8 +10,10 @@ interface ChordSheetImportModalProps {
 }
 
 const EXAMPLE = `我的歌
+歌手：某某某
+原調：D  Capo: 2
 拍速：80
-Capo: 2
+刷法：↓ ↓↑ -↑ ↓↑
 
 [前奏] |C  |G  |Am  |F  |
 
@@ -20,7 +22,7 @@ Capo: 2
 |Am         |F    G     |
  用 | 分小節  一小節可以有兩個和弦
 
-副歌：
+副歌 指法：T1 21 31 21
 |F          |G          |C     Am    |
  空一行或寫段落名稱  就會開新段落`;
 
@@ -28,15 +30,17 @@ Capo: 2
 const ChordSheetImportModal: React.FC<ChordSheetImportModalProps> = ({ onClose, onCreate }) => {
   const [text, setText] = useState('');
   const [titleOverride, setTitleOverride] = useState<string | null>(null);
+  const [artistOverride, setArtistOverride] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const result = useMemo(() => parseChordSheet(text), [text]);
   const title = titleOverride ?? result.title;
+  const artist = artistOverride ?? result.artist;
   const barCount = result.sections.reduce((total, section) => total + section.bars.length, 0);
 
   const create = async () => {
     setCreating(true);
     try {
-      await onCreate(chordSheetToSong(result, title));
+      await onCreate({ ...chordSheetToSong(result, title), artist: artist.trim() });
     } finally {
       setCreating(false);
     }
@@ -70,22 +74,46 @@ const ChordSheetImportModal: React.FC<ChordSheetImportModalProps> = ({ onClose, 
           </div>
 
           <div className="flex min-h-0 flex-col p-4 sm:p-5" data-testid="sheet-preview">
-            <label className="text-[11px] font-semibold text-slate-500">
-              歌名
-              <input
-                value={title}
-                onChange={event => setTitleOverride(event.target.value)}
-                placeholder="未命名歌曲"
-                aria-label="歌名"
-                className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold outline-none focus:border-indigo-400 dark:border-zinc-700 dark:bg-zinc-800"
-              />
-            </label>
+            <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+              <label className="text-[11px] font-semibold text-slate-500">
+                歌名
+                <input
+                  value={title}
+                  onChange={event => setTitleOverride(event.target.value)}
+                  placeholder="未命名歌曲"
+                  aria-label="歌名"
+                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold outline-none focus:border-indigo-400 dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </label>
+              <label className="text-[11px] font-semibold text-slate-500">
+                歌手
+                <input
+                  value={artist}
+                  onChange={event => setArtistOverride(event.target.value)}
+                  placeholder="選填"
+                  aria-label="歌手"
+                  className="mt-1 h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none focus:border-indigo-400 dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </label>
+            </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-600 dark:text-zinc-300">
               <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-zinc-800">{result.format === 'chordpro' ? 'ChordPro' : '和弦 + 歌詞'}</span>
               <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-zinc-800">{result.sections.length} 段 · {barCount} 小節</span>
+              {result.originalKey && <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-zinc-800">原曲 {result.originalKey} 調</span>}
               {result.bpm && <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-zinc-800">{result.bpm} BPM</span>}
               {result.capo > 0 && <span className="rounded-md bg-slate-100 px-2 py-1 dark:bg-zinc-800">Capo {result.capo}</span>}
             </div>
+            {result.form.length > 0 && (
+              <p className="mt-2 text-xs text-slate-600 dark:text-zinc-300" data-testid="sheet-form">
+                <span className="font-semibold text-slate-500">演奏順序：</span>
+                {result.form.map(entry => `${result.sections[entry.section].title}${entry.repeat > 1 ? ` ×${entry.repeat}` : ''}`).join(' → ')}
+              </p>
+            )}
+            {result.unknownPatterns.length > 0 && (
+              <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                看不懂的刷法（不會套用，建立後可以在練習頁設定）：<span className="font-mono">{result.unknownPatterns.join('、')}</span>
+              </p>
+            )}
             {result.unknownChords.length > 0 && (
               <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
                 看不懂的和弦（會照原樣保留）：<span className="font-mono">{result.unknownChords.join('、')}</span>
@@ -97,7 +125,10 @@ const ChordSheetImportModal: React.FC<ChordSheetImportModalProps> = ({ onClose, 
                 <p className="py-10 text-center text-sm text-slate-400">貼上後，這裡會顯示辨識出的段落和小節。</p>
               ) : result.sections.map((section, sectionIndex) => (
                 <section key={`${section.title}-${sectionIndex}`}>
-                  <h3 className="mb-1.5 text-sm font-bold">{section.title}</h3>
+                  <h3 className="mb-1.5 flex flex-wrap items-baseline gap-x-3 text-sm font-bold">
+                    {section.title}
+                    {section.pattern && <span className="font-mono text-xs font-semibold text-[#2b6c59] dark:text-emerald-400" aria-label={`${section.title} 伴奏`}>{section.pattern}</span>}
+                  </h3>
                   <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-slate-200 bg-slate-200 dark:border-zinc-800 dark:bg-zinc-800 md:grid-cols-4">
                     {section.bars.map((bar, barIndex) => (
                       <LeadSheetMeasure

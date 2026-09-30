@@ -10,7 +10,24 @@ export interface TabSection {
   lyrics: (string | null)[][]; // [measureIndex][columnIdx]
 }
 
-export interface GuitarSong {
+/** Library details shared by every kind of song. Changed through the song info endpoint only. */
+export interface SongInfo {
+  artist?: string;
+  /** Key of the original recording, e.g. 'E' or 'C#m'. */
+  originalKey?: string;
+  tags?: string[];
+  favorite?: boolean;
+}
+
+export interface Setlist {
+  id: string;
+  name: string;
+  /** Song ids in play order; ids of deleted songs are skipped when shown. */
+  songIds: string[];
+  lastModified: number;
+}
+
+export interface GuitarSong extends SongInfo {
   id: string;
   title: string;
   lastModified: number;
@@ -20,11 +37,13 @@ export interface GuitarSong {
   transposeOffset: number;
   /** Saved tempo; null or missing uses the player default. */
   bpm?: number | null;
+  /** Play order as section positions with repeat counts; empty plays sections as written. */
+  form?: Array<{ section: number; repeat: number }>;
   source?: 'gflow';
   isLegacy?: boolean;
 }
 
-export interface ImportedSong {
+export interface ImportedSong extends SongInfo {
   id: string;
   title: string;
   lastModified: number;

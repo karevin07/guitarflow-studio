@@ -81,6 +81,7 @@ export const useImportedSongs = ({ onSongOpened, onError, onSuccess }: UseImport
 
   return {
     songs,
+    setSongs,
     currentSongId,
     refresh,
     importFile,

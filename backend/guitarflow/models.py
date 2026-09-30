@@ -15,6 +15,12 @@ class GuitarSong(models.Model):
     transpose_offset = models.IntegerField(default=0)
     voicing_plan = models.JSONField(default=dict, blank=True)
     bpm = models.PositiveSmallIntegerField(null=True, blank=True, help_text="Song tempo; null uses the player default")
+    artist = models.CharField(max_length=120, blank=True, default='')
+    original_key = models.CharField(max_length=12, blank=True, default='', help_text="Key of the original recording, e.g. 'E' or 'C#m'")
+    tags = models.JSONField(default=list, blank=True, help_text="Short labels such as '民謠' or '表演'")
+    favorite = models.BooleanField(default=False)
+    # Play order: [{"section": <index into sections>, "repeat": 1-8}, ...]; empty plays sections as written.
+    form = models.JSONField(default=list, blank=True)
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_GFLOW)
     import_format = models.CharField(max_length=20, null=True, blank=True)
     import_file_name = models.CharField(max_length=255, null=True, blank=True)
@@ -49,6 +55,21 @@ class TabSection(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.song.title})"
+
+class Setlist(models.Model):
+    """An ordered list of songs to play through, e.g. for a gig."""
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='setlists')
+    name = models.CharField(max_length=120)
+    song_ids = models.JSONField(default=list, blank=True, help_text="Song ids in play order")
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-last_modified']
+
+    def __str__(self):
+        return self.name
+
 
 class CustomChord(models.Model):
     song = models.ForeignKey(GuitarSong, on_delete=models.CASCADE, related_name='custom_chords')

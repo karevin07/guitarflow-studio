@@ -36,10 +36,10 @@ test('read and play a chord sheet on a phone viewport', async ({ page, request }
   await page.getByRole('button', { name: '本曲和弦' }).click();
 
   await page.getByRole('button', { name: '選擇段落' }).click();
-  await page.getByRole('button', { name: 'Chorus', exact: true }).click();
+  await page.getByRole('group', { name: '段落清單' }).getByRole('button', { name: 'Chorus', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Chorus' })).toBeInViewport();
   await page.getByRole('button', { name: '選擇段落' }).click();
-  await page.getByRole('button', { name: 'Verse', exact: true }).click();
+  await page.getByRole('group', { name: '段落清單' }).getByRole('button', { name: 'Verse', exact: true }).click();
 
   await page.getByRole('button', { name: 'C', exact: true }).first().click();
   await expect(page.getByRole('dialog', { name: 'C 和弦按法' })).toBeVisible();

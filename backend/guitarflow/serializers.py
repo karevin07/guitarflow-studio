@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import GuitarSong, TabSection, CustomChord, GlobalChord
+from .models import GuitarSong, TabSection, CustomChord, GlobalChord, Setlist
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -76,6 +76,38 @@ def validate_voicing_plan(value):
     return normalized
 
 
+def clean_tags(value):
+    if not isinstance(value, list):
+        raise serializers.ValidationError('Expected a list of tags.')
+    tags = []
+    for tag in value:
+        if not isinstance(tag, str):
+            raise serializers.ValidationError('Tags must be strings.')
+        cleaned = tag.strip()[:24]
+        if cleaned and cleaned not in tags:
+            tags.append(cleaned)
+    return tags[:12]
+
+
+MAX_FORM_ENTRIES = 64
+MAX_REPEAT = 8
+
+
+def validate_form(value):
+    if not isinstance(value, list) or len(value) > MAX_FORM_ENTRIES:
+        raise serializers.ValidationError(f'Expected a list of up to {MAX_FORM_ENTRIES} entries.')
+    form = []
+    for entry in value:
+        section = entry.get('section') if isinstance(entry, dict) else None
+        repeat = entry.get('repeat', 1) if isinstance(entry, dict) else None
+        if not isinstance(section, int) or isinstance(section, bool) or section < 0:
+            raise serializers.ValidationError('Each entry needs a section index.')
+        if not isinstance(repeat, int) or isinstance(repeat, bool) or not 1 <= repeat <= MAX_REPEAT:
+            raise serializers.ValidationError(f'Repeat must be between 1 and {MAX_REPEAT}.')
+        form.append({'section': section, 'repeat': repeat})
+    return form
+
+
 def clean_pattern(value):
     return value.strip()[:120] if isinstance(value, str) else ''
 
@@ -118,6 +150,11 @@ class GuitarSongSerializer(serializers.ModelSerializer):
         required=False,
         default=GuitarSong.SOURCE_GFLOW,
     )
+    artist = serializers.CharField(required=False, allow_blank=True, max_length=120)
+    originalKey = serializers.CharField(source='original_key', required=False, allow_blank=True, max_length=12)
+    tags = serializers.JSONField(required=False)
+    favorite = serializers.BooleanField(required=False)
+    form = serializers.JSONField(required=False)
     importFormat = serializers.CharField(source='import_format', read_only=True)
     fileName = serializers.CharField(source='import_file_name', read_only=True)
     isLegacy = serializers.SerializerMethodField()
@@ -133,6 +170,11 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'voicingPlan',
             'transposeOffset',
             'bpm',
+            'artist',
+            'originalKey',
+            'tags',
+            'favorite',
+            'form',
             'source',
             'importFormat',
             'fileName',
@@ -151,12 +193,19 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     def validate_voicingPlan(self, value):
         return validate_voicing_plan(value)
 
+    def validate_tags(self, value):
+        return clean_tags(value)
+
+    def validate_form(self, value):
+        return validate_form(value)
+
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if instance.source == GuitarSong.SOURCE_IMPORTED:
             data['sections'] = []
             data['customChords'] = []
             data['voicingPlan'] = {}
+            data['form'] = []
         return data
 
     def create(self, validated_data):
@@ -190,6 +239,8 @@ class GuitarSongSerializer(serializers.ModelSerializer):
         return song
 
     def update(self, instance, validated_data):
+        # Song info (artist, key, tags, favorite) changes only through SongInfoSerializer,
+        # so an editor autosave holding an older copy cannot undo a change made in the library.
         validated_data.pop('source', None)
 
         if instance.source == GuitarSong.SOURCE_IMPORTED:
@@ -202,6 +253,8 @@ class GuitarSongSerializer(serializers.ModelSerializer):
         instance.voicing_plan = validated_data.get('voicing_plan', instance.voicing_plan)
         if 'bpm' in validated_data:
             instance.bpm = validated_data['bpm']
+        if 'form' in validated_data:
+            instance.form = validated_data['form']
         instance.save()
 
         request = self.context.get('request')
@@ -273,6 +326,53 @@ class GuitarSongSerializer(serializers.ModelSerializer):
                 chord.delete()
 
         return instance
+
+
+class SongInfoSerializer(serializers.ModelSerializer):
+    """Library-level details that can change without sending the whole song."""
+    originalKey = serializers.CharField(source='original_key', required=False, allow_blank=True, max_length=12)
+    tags = serializers.JSONField(required=False)
+
+    class Meta:
+        model = GuitarSong
+        fields = ('title', 'artist', 'originalKey', 'tags', 'favorite')
+        extra_kwargs = {'title': {'required': False}, 'artist': {'required': False}}
+
+    def validate_title(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Title cannot be empty.')
+        return value
+
+    def validate_tags(self, value):
+        return clean_tags(value)
+
+
+class SetlistSerializer(serializers.ModelSerializer):
+    id = serializers.SerializerMethodField()
+    songIds = serializers.JSONField(source='song_ids', required=False)
+    lastModified = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Setlist
+        fields = ('id', 'name', 'songIds', 'lastModified')
+
+    def get_id(self, obj):
+        return str(obj.pk)
+
+    def get_lastModified(self, obj):
+        return int(obj.last_modified.timestamp() * 1000)
+
+    def validate_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError('Name cannot be empty.')
+        return value
+
+    def validate_songIds(self, value):
+        if not isinstance(value, list) or len(value) > 200:
+            raise serializers.ValidationError('Expected a list of up to 200 song ids.')
+        return [str(song_id) for song_id in value if isinstance(song_id, (str, int)) and str(song_id).strip()]
 
 
 class GlobalChordSerializer(serializers.ModelSerializer):

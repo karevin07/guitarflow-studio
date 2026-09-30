@@ -118,3 +118,109 @@ describe('chordSheetToSong', () => {
     expect(song.sections[0].measures[0].flat().every(cell => cell === '-')).toBe(true);
   });
 });
+
+describe('song info and patterns in chord sheets', () => {
+  it('reads artist, original key and strum patterns per section', () => {
+    const result = parseChordSheet(`小幸運
+歌手：田馥甄  作詞：徐世珍
+原調：E  Capo：4  Play：C
+刷法：↓ ↓↑ -↑ ↓↑
+
+[主歌]
+|C          |G          |
+ 我聽見雨滴  落在青青草地
+
+副歌 指法：T1 21 31 21
+|F          |G          |
+ 原來你是    我最想留住的幸運
+
+|Am         |F          |
+ 原來我們    和愛情曾經靠得那麼近`);
+    expect(result.artist).toBe('田馥甄');
+    expect(result.originalKey).toBe('E');
+    expect(result.capo).toBe(4);
+    expect(result.sections.map(section => [section.title, section.pattern])).toEqual([
+      ['主歌', '↓ ↓↑ -↑ ↓↑'],
+      ['副歌', 'T1 21 31 21'],
+      // A new block after a blank line keeps the pattern in use.
+      ['段落 3', 'T1 21 31 21'],
+    ]);
+    expect(result.unknownPatterns).toEqual([]);
+
+    const song = chordSheetToSong(result, result.title);
+    expect(song.artist).toBe('田馥甄');
+    expect(song.originalKey).toBe('E');
+    expect(song.sections[1].pattern).toBe('T1 21 31 21');
+  });
+
+  it('lists pattern lines it cannot read', () => {
+    const result = parseChordSheet(`刷法：↓↓↑↑↓↑V
+|C |G |`);
+    expect(result.unknownPatterns).toEqual(['↓↓↑↑↓↑V']);
+    expect(result.sections[0].pattern).toBe('');
+  });
+
+  it('reads ChordPro artist and key', () => {
+    const result = parseChordSheet(`{title: Song}
+{artist: Someone}
+{key: G}
+{x_strum: D DU -U DU}
+{sov}
+[G]Hello [C]world`);
+    expect(result.artist).toBe('Someone');
+    expect(result.originalKey).toBe('G');
+    expect(result.sections[0].pattern).toBe('D DU -U DU');
+  });
+});
+
+describe('play order from chord sheets', () => {
+  const sheet = `歌
+[前奏] |C |G |
+
+主歌
+|C          |G          |
+ 第一句      第二句
+
+副歌 x2
+|F          |G          |
+ 副歌一      副歌二
+
+回主歌
+
+[副歌]
+
+尾奏
+|C |`;
+
+  it('writes repeated sections once and records the order', () => {
+    const result = parseChordSheet(sheet);
+    expect(result.sections.map(section => section.title)).toEqual(['前奏', '主歌', '副歌', '尾奏']);
+    expect(result.form).toEqual([
+      { section: 0, repeat: 1 },
+      { section: 1, repeat: 1 },
+      { section: 2, repeat: 2 },
+      { section: 1, repeat: 1 },
+      { section: 2, repeat: 1 },
+      { section: 3, repeat: 1 },
+    ]);
+    expect(chordSheetToSong(result, 'x').form).toEqual(result.form);
+  });
+
+  it('leaves the order empty when sections play once each', () => {
+    expect(parseChordSheet(`主歌\n|C |G |\n\n副歌\n|F |G |`).form).toEqual([]);
+  });
+
+  it('keeps bar repeats on chord lines and new sections with the same name', () => {
+    const result = parseChordSheet(`主歌\n|C |G | x2\n\n主歌 2\n|Am |F |`);
+    expect(result.sections.map(section => section.bars.length)).toEqual([4, 2]);
+    expect(result.form).toEqual([]);
+  });
+
+  it('plays {chorus} again in ChordPro', () => {
+    const result = parseChordSheet(`{sov}\n[C]Verse\n{eov}\n{soc}\n[F]Chorus\n{eoc}\n{sov}\n[G]Verse two\n{chorus}`);
+    expect(result.sections.map(section => section.title)).toEqual(['Verse', 'Chorus', 'Verse']);
+    expect(result.form).toEqual([
+      { section: 0, repeat: 1 }, { section: 1, repeat: 1 }, { section: 2, repeat: 1 }, { section: 1, repeat: 1 },
+    ]);
+  });
+});

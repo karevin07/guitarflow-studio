@@ -15,8 +15,8 @@ import {
   loadCountInBars,
   nextTrainedBpm,
   saveCountInBars,
-  sectionRange,
 } from '../services/practiceTools';
+import { buildTimeline, stepRange, timelineIndex, timelinePosition } from '../services/songForm';
 
 export type { PlaybackPosition };
 
@@ -27,9 +27,11 @@ interface UsePlaybackOptions {
   transposeOffset: number;
   chordLibrary?: ChordDefinition[];
   voicingPlan?: SongVoicingPlan;
+  /** Section indices in play order (repeats expanded); defaults to the written order. */
+  order?: number[];
 }
 
-export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voicingPlan = {} }: UsePlaybackOptions) => {
+export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voicingPlan = {}, order }: UsePlaybackOptions) => {
   // 'countIn' clicks the metronome for a bar or two before 'playing' starts.
   const [status, setStatus] = useState<'stopped' | 'countIn' | 'playing' | 'paused'>('stopped');
   const [countInBars, setCountInBarsState] = useState(loadCountInBars);
@@ -60,41 +62,21 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     return result.ok ? result.pattern : null;
   }), [sections]);
 
-  const totalCols = useMemo(() => {
-    let total = 0;
-    for (const sec of sections) total += (sec.measures?.length ?? 0) * 16;
-    return total;
-  }, [sections]);
+  // Playback walks the play order, so a repeated chorus is played (and counted) twice.
+  const orderKey = order?.join(',') ?? '';
+  const timeline = useMemo(() => {
+    const valid = (order ?? []).filter(index => index >= 0 && index < sections.length);
+    return buildTimeline(valid.length > 0 ? valid : sections.map((_, index) => index), sections);
+  }, [orderKey, sections]); // eslint-disable-line react-hooks/exhaustive-deps
+  const totalCols = timeline.total;
 
+  // A position without a step (e.g. a clicked bar) maps to that section's next play from the current step.
   const positionToIndex = useCallback(
-    (pos: PlaybackPosition) => {
-      let idx = 0;
-      for (let s = 0; s < pos.sectionIdx; s++) {
-        idx += (sections[s]?.measures?.length ?? 0) * 16;
-      }
-      idx += pos.measureIdx * 16 + pos.colIdx;
-      return Math.max(0, Math.min(Math.max(0, totalCols - 1), idx));
-    },
-    [sections, totalCols]
+    (pos: PlaybackPosition) => timelineIndex(timeline, pos, positionRef.current.step ?? 0),
+    [timeline]
   );
 
-  const indexToPosition = useCallback(
-    (index: number): PlaybackPosition => {
-      let remaining = Math.max(0, Math.min(Math.max(0, totalCols - 1), index));
-      for (let s = 0; s < sections.length; s++) {
-        const secCols = (sections[s]?.measures?.length ?? 0) * 16;
-        if (remaining >= secCols) {
-          remaining -= secCols;
-          continue;
-        }
-        const measureIdx = Math.floor(remaining / 16);
-        const colIdx = remaining % 16;
-        return { sectionIdx: s, measureIdx, colIdx };
-      }
-      return { sectionIdx: 0, measureIdx: 0, colIdx: 0 };
-    },
-    [sections, totalCols]
-  );
+  const indexToPosition = useCallback((index: number): PlaybackPosition => timelinePosition(timeline, index), [timeline]);
 
   const clearIntervalRef = useCallback(() => {
     if (intervalRef.current) {
@@ -179,6 +161,12 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     [indexToPosition]
   );
 
+  /** Move to the start of a step of the play order (keeps playing if it was). */
+  const seekStep = useCallback((step: number) => {
+    const start = timeline.starts[step];
+    if (start !== undefined) seek(start);
+  }, [timeline, seek]);
+
   const setLoopA = useCallback(() => {
     const idx = playState ? positionToIndex(playState) : positionToIndex(positionRef.current);
     setAbLoop(prev => ({ ...prev, start: idx }));
@@ -197,23 +185,31 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     setAbLoop({ enabled: false, start: null, end: null });
   }, []);
 
+  // The step to use for a section: the one playing now, else its first play.
+  const stepOfSection = useCallback((sectionIdx: number) => {
+    const current = positionRef.current.step;
+    if (current !== undefined && timeline.order[current] === sectionIdx) return current;
+    return timeline.order.indexOf(sectionIdx);
+  }, [timeline]);
+
   /** Loop one section and play it from the top; calling it again on that section turns the loop off. */
   const loopSection = useCallback((sectionIdx: number) => {
-    const range = sectionRange(sections, sectionIdx);
-    if (!range) return;
-    if (isRangeLooped(abLoop, range)) {
+    const looped = timeline.order.some((index, step) => index === sectionIdx && isRangeLooped(abLoop, stepRange(timeline, step)));
+    if (looped) {
       setAbLoop({ enabled: false, start: null, end: null });
       return;
     }
+    const range = stepRange(timeline, stepOfSection(sectionIdx));
+    if (!range) return;
     setAbLoop({ enabled: true, start: range.start, end: range.end });
     clearIntervalRef();
     play(indexToPosition(range.start));
-  }, [sections, abLoop, clearIntervalRef, play, indexToPosition]);
+  }, [timeline, abLoop, stepOfSection, clearIntervalRef, play, indexToPosition]);
 
-  const loopedSectionIdx = useMemo(
-    () => sections.findIndex((_, index) => isRangeLooped(abLoop, sectionRange(sections, index))),
-    [sections, abLoop]
-  );
+  const loopedSectionIdx = useMemo(() => {
+    const step = timeline.order.findIndex((_, index) => isRangeLooped(abLoop, stepRange(timeline, index)));
+    return step >= 0 ? timeline.order[step] : -1;
+  }, [timeline, abLoop]);
 
   // Count-in: click each beat, accenting the first, then start playing.
   useEffect(() => {
@@ -482,6 +478,7 @@ export const usePlayback = ({ sections, transposeOffset, chordLibrary = [], voic
     pause,
     stop,
     seek,
+    seekStep,
     togglePlayPause,
     abLoop,
     setLoopA,

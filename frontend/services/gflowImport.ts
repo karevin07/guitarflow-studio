@@ -137,9 +137,22 @@ export const parseGflowFile = (raw: unknown): GflowImportResult => {
     ? Math.round(Math.max(MIN_BPM, Math.min(MAX_BPM, obj.bpm)))
     : null;
 
+  const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
+  const artist = text(obj.artist, 120);
+  const originalKey = text(obj.originalKey, 12);
+  const form = Array.isArray(obj.form)
+    ? obj.form.flatMap(entry => {
+      const { section, repeat } = (entry ?? {}) as { section?: unknown; repeat?: unknown };
+      return typeof section === 'number' && section >= 0 && section < sections.length
+        ? [{ section, repeat: typeof repeat === 'number' ? Math.max(1, Math.min(8, Math.round(repeat))) : 1 }]
+        : [];
+    })
+    : [];
+  const tags = Array.isArray(obj.tags) ? obj.tags.map(tag => text(tag, 24)).filter(Boolean).slice(0, 12) : [];
+
   return {
     ok: true,
-    data: { title, sections, customChords, voicingPlan, transposeOffset, bpm },
+    data: { title, artist, originalKey, tags, form, sections, customChords, voicingPlan, transposeOffset, bpm },
   };
 };
 

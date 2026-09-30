@@ -4,6 +4,8 @@ export interface PlaybackPosition {
   sectionIdx: number;
   measureIdx: number;
   colIdx: number;
+  /** Step in the song's play order; a section played twice has two steps. */
+  step?: number;
 }
 
 /** Shared props for PlayerBar — gflow and alphaTab engines adapt into this shape. */

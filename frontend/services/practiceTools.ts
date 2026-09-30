@@ -1,7 +1,4 @@
-import { TabSection } from '../types';
 import { MAX_BPM } from '../constants/practice';
-
-const COLS_PER_MEASURE = 16;
 
 export interface ColumnRange {
   /** First column of the range in whole-song playback order. */
@@ -9,14 +6,6 @@ export interface ColumnRange {
   /** Last column of the range (inclusive). */
   end: number;
 }
-
-/** Where a section sits in whole-song playback columns, or null for an empty section. */
-export const sectionRange = (sections: TabSection[], sectionIdx: number): ColumnRange | null => {
-  let start = 0;
-  for (let index = 0; index < sectionIdx; index += 1) start += (sections[index]?.measures.length ?? 0) * COLS_PER_MEASURE;
-  const length = (sections[sectionIdx]?.measures.length ?? 0) * COLS_PER_MEASURE;
-  return length > 0 ? { start, end: start + length - 1 } : null;
-};
 
 export const isRangeLooped = (
   abLoop: { enabled: boolean; start: number | null; end: number | null },

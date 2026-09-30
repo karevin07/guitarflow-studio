@@ -177,6 +177,64 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         response = self.client.put(detail_url, {'title': 'Groove', 'sections': [changed], 'customChords': []}, format='json')
         self.assertEqual(response.data['sections'][0]['pattern'], 'T1 21 31 21')
 
+    def test_song_info_is_saved_on_create_and_changed_only_through_info(self):
+        data = {
+            'title': '小幸運', 'artist': ' 田馥甄 ', 'originalKey': 'E', 'tags': ['抒情', ' 表演 ', '抒情', ''],
+            'sections': [], 'customChords': [],
+        }
+        response = self.client.post(self.song_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['artist'], '田馥甄')
+        self.assertEqual(response.data['originalKey'], 'E')
+        self.assertEqual(response.data['tags'], ['抒情', '表演'])
+        self.assertFalse(response.data['favorite'])
+        detail_url = reverse('song-detail', args=[response.data['id']])
+
+        # An editor autosave with an older copy does not undo library changes.
+        info_url = reverse('song-info', args=[response.data['id']])
+        response = self.client.patch(info_url, {'favorite': True, 'tags': ['表演']}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        stale = {'title': '小幸運', 'artist': '', 'tags': [], 'favorite': False, 'sections': [], 'customChords': []}
+        response = self.client.put(detail_url, stale, format='json')
+        self.assertTrue(response.data['favorite'])
+        self.assertEqual(response.data['artist'], '田馥甄')
+        self.assertEqual(response.data['tags'], ['表演'])
+
+        response = self.client.patch(info_url, {'title': '  '}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        response = self.client.patch(info_url, {'tags': 'oops'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_search_matches_artist(self):
+        self.client.post(self.song_url, {'title': '小幸運', 'artist': '田馥甄', 'sections': [], 'customChords': []}, format='json')
+        self.client.post(self.song_url, {'title': '晴天', 'artist': '周杰倫', 'sections': [], 'customChords': []}, format='json')
+        titles = [song['title'] for song in list_results(self.client.get(self.song_url, {'search': '周杰'}))]
+        self.assertEqual(titles, ['晴天'])
+
+    def test_song_info_is_private_to_owner(self):
+        response = self.client.post(self.song_url, {'title': 'Mine', 'sections': [], 'customChords': []}, format='json')
+        _, other_token = self.create_other_user()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {other_token.key}')
+        response = self.client.patch(reverse('song-info', args=[response.data['id']]), {'favorite': True}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_play_order_is_saved_and_validated(self):
+        form = [{'section': 0, 'repeat': 1}, {'section': 1, 'repeat': 2}, {'section': 0}]
+        response = self.client.post(self.song_url, {'title': 'Form', 'form': form, 'sections': [], 'customChords': []}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['form'][2], {'section': 0, 'repeat': 1})
+        detail_url = reverse('song-detail', args=[response.data['id']])
+
+        # Saving without a form keeps it; an empty list clears it.
+        response = self.client.put(detail_url, {'title': 'Form', 'sections': [], 'customChords': []}, format='json')
+        self.assertEqual(len(response.data['form']), 3)
+        response = self.client.put(detail_url, {'title': 'Form', 'form': [], 'sections': [], 'customChords': []}, format='json')
+        self.assertEqual(response.data['form'], [])
+
+        for bad in ([{'section': -1}], [{'section': 0, 'repeat': 9}], [{'repeat': 2}], 'x'):
+            response = self.client.put(detail_url, {'title': 'Form', 'form': bad, 'sections': [], 'customChords': []}, format='json')
+            self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, bad)
+
     def test_create_song_persists_time_signature(self):
         data = {
             'title': 'Time Sig Song',
@@ -406,3 +464,26 @@ class ImportedScoreAPITests(AuthenticatedAPITestCase):
         upload = SimpleUploadedFile('bad.txt', b'nope', content_type='text/plain')
         response = self.client.post(self.import_url, {'file': upload}, format='multipart')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class SetlistAPITests(AuthenticatedAPITestCase):
+    def test_create_reorder_and_delete_setlist(self):
+        url = reverse('setlist-list')
+        response = self.client.post(url, {'name': ' 週六表演 ', 'songIds': ['3', 1, '', None]}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['name'], '週六表演')
+        self.assertEqual(response.data['songIds'], ['3', '1'])
+        detail = reverse('setlist-detail', args=[response.data['id']])
+        response = self.client.patch(detail, {'songIds': ['1', '3']}, format='json')
+        self.assertEqual(response.data['songIds'], ['1', '3'])
+        self.assertEqual(len(self.client.get(url).data), 1)
+        self.assertEqual(self.client.post(url, {'name': ''}, format='json').status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(self.client.delete(detail).status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_setlists_are_private(self):
+        response = self.client.post(reverse('setlist-list'), {'name': 'Mine'}, format='json')
+        _, other_token = self.create_other_user()
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {other_token.key}')
+        self.assertEqual(self.client.get(reverse('setlist-list')).data, [])
+        detail = reverse('setlist-detail', args=[response.data['id']])
+        self.assertEqual(self.client.delete(detail).status_code, status.HTTP_404_NOT_FOUND)
