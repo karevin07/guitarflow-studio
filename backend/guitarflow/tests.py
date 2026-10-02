@@ -119,6 +119,15 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         self.assertEqual(chord.name, 'Cmaj7')
         self.assertEqual(chord.frets, [None, 3, 2, 0, 0, 0])
 
+    def test_created_at_is_returned_and_kept(self):
+        """createdAt tells songs apart across databases, so updates must not change it."""
+        song = self.client.post(self.song_url, {'title': 'Keep', 'sections': []}, format='json').json()
+        song_obj = GuitarSong.objects.get(pk=song['id'])
+        self.assertEqual(song['createdAt'], int(song_obj.created_at.timestamp() * 1000))
+
+        updated = self.client.patch(reverse('song-detail', args=[song['id']]), {'title': 'Kept'}, format='json').json()
+        self.assertEqual(updated['createdAt'], song['createdAt'])
+
     def test_rejects_invalid_voicing_plan(self):
         response = self.client.post(
             self.song_url,

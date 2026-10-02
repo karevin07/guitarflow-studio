@@ -38,6 +38,8 @@ export interface GuitarSong extends SongInfo {
   id: string;
   title: string;
   lastModified: number;
+  /** Set by the server; tells songs apart across databases, where ids repeat. */
+  createdAt?: number;
   sections: TabSection[];
   customChords: ChordDefinition[];
   voicingPlan: SongVoicingPlan;

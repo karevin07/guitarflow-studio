@@ -5,6 +5,8 @@ import { DriveGflowFile } from '../services/googleDrive';
 interface DriveImportModalProps {
   /** null while the list is loading. */
   files: DriveGflowFile[] | null;
+  /** Drive keys of the songs already in the library. */
+  libraryKeys: Set<string>;
   importing: boolean;
   onImport: (files: DriveGflowFile[]) => void;
   onClose: () => void;
@@ -14,9 +16,12 @@ const formatTime = (time: number) =>
   new Date(time).toLocaleString('zh-TW', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 /** Pick .gflow files uploaded from GuitarFlow to import back into the library. */
-const DriveImportModal: React.FC<DriveImportModalProps> = ({ files, importing, onImport, onClose }) => {
+const DriveImportModal: React.FC<DriveImportModalProps> = ({ files, libraryKeys, importing, onImport, onClose }) => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const allSelected = !!files && files.length > 0 && selected.size === files.length;
+  const inLibrary = (file: DriveGflowFile) => !!file.songKey && libraryKeys.has(file.songKey);
+  // "Select all" skips songs already in the library, so restoring a backup does not add copies.
+  const missing = (files ?? []).filter(file => !inLibrary(file));
+  const allSelected = missing.length > 0 && missing.every(file => selected.has(file.id));
   const toggle = (id: string) => setSelected(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id);
@@ -50,6 +55,7 @@ const DriveImportModal: React.FC<DriveImportModalProps> = ({ files, importing, o
                     <button type="button" role="checkbox" aria-checked={checked} onClick={() => toggle(file.id)} disabled={importing} className={`flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left ${checked ? 'bg-[#eceefa] dark:bg-indigo-950/40' : 'hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
                       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-md border ${checked ? 'border-[#4d5bd2] bg-[#4d5bd2] text-white' : 'border-slate-300 dark:border-zinc-600'}`}>{checked && <Check size={13} />}</span>
                       <span className="min-w-0 flex-1 truncate text-sm font-semibold">{file.name.replace(/\.gflow$/i, '')}</span>
+                      {inLibrary(file) && <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:bg-zinc-800 dark:text-zinc-400">已在曲庫</span>}
                       <span className="shrink-0 font-mono text-[11px] text-slate-400">{formatTime(file.modifiedTime)}</span>
                     </button>
                   </li>
@@ -60,8 +66,8 @@ const DriveImportModal: React.FC<DriveImportModalProps> = ({ files, importing, o
         </div>
 
         <footer className="flex items-center gap-2 border-t border-slate-200 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-zinc-800">
-          {files && files.length > 1 && (
-            <button type="button" onClick={() => setSelected(allSelected ? new Set() : new Set(files.map(file => file.id)))} disabled={importing} className="h-11 rounded-xl px-3 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800">{allSelected ? '全部取消' : '全選'}</button>
+          {missing.length > 1 && (
+            <button type="button" onClick={() => setSelected(allSelected ? new Set() : new Set(missing.map(file => file.id)))} disabled={importing} className="h-11 rounded-xl px-3 text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-800">{allSelected ? '全部取消' : missing.length < (files?.length ?? 0) ? '選取未在曲庫的' : '全選'}</button>
           )}
           <div className="ml-auto flex gap-2">
             <button type="button" onClick={onClose} disabled={importing} className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-40 dark:text-zinc-300 dark:hover:bg-zinc-800">取消</button>

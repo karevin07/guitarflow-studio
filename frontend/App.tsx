@@ -18,14 +18,14 @@ import DriveImportModal from './components/DriveImportModal';
 import SetlistBar from './components/SetlistBar';
 import { useSetlists } from './hooks/useSetlists';
 import { libraryTags, setlistPosition, setlistSongs } from './services/songInfo';
-import { formToStored, playOrder } from './services/songForm';
+import { formFromStored, formToStored, playOrder } from './services/songForm';
 import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
 import { GuitarSong, ImportedSong, LibrarySong, Setlist, SongInfo, TabSection, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { parseGflowText, readGflowFile } from './services/gflowImport';
 import { gflowFileName, serializeGflow } from './services/gflowExport';
-import { DRIVE_FOLDER_NAME, DriveError, DriveGflowFile } from './services/googleDrive';
+import { DRIVE_FOLDER_NAME, DriveError, DriveGflowFile, driveSongKey } from './services/googleDrive';
 import { DriveCancelledError, drive, isDriveConfigured, preloadDrive } from './services/googleDriveBrowser';
 import { downloadMusicXml } from './services/musicXmlExport';
 import { convertAlphaTabScoreToGflow, pickGuitarTrackIndex } from './services/gpToGflow';
@@ -494,7 +494,8 @@ const App: React.FC = () => {
     if (!songId || driveBusy) return;
     setDriveBusy(true);
     try {
-      const result = await drive.uploadGflow(songId, gflowFileName(editor.songTitle), currentGflow());
+      const song = { key: driveSongKey(currentLibrarySong ?? { id: songId }), id: songId };
+      const result = await drive.uploadGflow(song, gflowFileName(editor.songTitle), currentGflow());
       toast.success(result.updated
         ? `已更新 Google Drive 上的「${result.name}」`
         : `已上傳「${result.name}」到 Google Drive 的 ${DRIVE_FOLDER_NAME} 資料夾`);
@@ -502,6 +503,37 @@ const App: React.FC = () => {
       reportDriveError(error);
     } finally {
       setDriveBusy(false);
+    }
+  };
+
+  // null when no backup is running.
+  const [backupProgress, setBackupProgress] = useState<{ done: number; total: number } | null>(null);
+  const backupLibraryToDrive = async () => {
+    if (backupProgress) return;
+    const songs = library.songs;
+    if (songs.length === 0) {
+      toast.info('曲庫裡還沒有可以備份的樂譜。');
+      return;
+    }
+    setBackupProgress({ done: 0, total: songs.length });
+    try {
+      const result = await drive.backupLibrary(songs.map(song => ({
+        song: { key: driveSongKey(song), id: song.id },
+        fileName: gflowFileName(song.title),
+        lastModified: song.lastModified,
+        content: () => serializeGflow({ ...song, bpm: song.bpm ?? null, form: formFromStored(song.form, song.sections) }),
+      })), (done, total) => setBackupProgress({ done, total }));
+      const counts = [
+        result.created > 0 && `新增 ${result.created} 首`,
+        result.updated > 0 && `更新 ${result.updated} 首`,
+        result.unchanged > 0 && `${result.unchanged} 首沒有變更`,
+      ].filter(Boolean).join('、');
+      if (result.failed.length > 0) toast.error(`有 ${result.failed.length} 首備份失敗：${result.failed.join('、')}`);
+      toast.success(`已備份到 Google Drive 的 ${DRIVE_FOLDER_NAME} 資料夾：${counts}`);
+    } catch (error) {
+      reportDriveError(error);
+    } finally {
+      setBackupProgress(null);
     }
   };
 
@@ -536,7 +568,11 @@ const App: React.FC = () => {
           toast.error(`無法匯入「${file.name}」：${result.error}`);
           continue;
         }
-        lastSong = await library.importSong(result.data) ?? lastSong;
+        const song = await library.importSong(result.data);
+        if (!song) continue;
+        lastSong = song;
+        // Later backups of the new song overwrite this file instead of adding a copy.
+        await drive.linkFile(file.id, { key: driveSongKey(song), id: song.id }).catch(() => {});
       }
       setDriveFiles(undefined);
       if (files.length === 1 && lastSong) navigate(appPaths.create(lastSong.id));
@@ -696,7 +732,9 @@ const App: React.FC = () => {
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
           onImportFromDrive={isDriveConfigured() ? () => void openDriveImport() : undefined}
-          driveBusy={driveFiles !== undefined}
+          onBackupToDrive={isDriveConfigured() ? () => void backupLibraryToDrive() : undefined}
+          driveBusy={driveFiles !== undefined || backupProgress !== null}
+          backupProgress={backupProgress}
           onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
           onPasteChordSheet={() => runWhenSignedIn(() => setChordSheetOpen(true))}
           setlists={setlists.setlists}
@@ -716,6 +754,7 @@ const App: React.FC = () => {
         {driveFiles !== undefined && (
           <DriveImportModal
             files={driveFiles}
+            libraryKeys={new Set(library.songs.map(driveSongKey))}
             importing={driveBusy}
             onImport={files => void importDriveFiles(files)}
             onClose={closeDriveImport}

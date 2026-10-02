@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight, BookOpenText, ClipboardPaste, Clock3, CloudDownload, FileMusic, FileUp, Guitar, Import, ListMusic, PenLine,
+  ArrowRight, BookOpenText, ChevronDown, ClipboardPaste, Clock3, Cloud, CloudDownload, CloudUpload, FileMusic, FileUp, Guitar, Import, ListMusic, PenLine,
   LogIn, LogOut, Pencil, Play, Plus, Search, Shapes, Sparkles, Star, Trash2,
 } from 'lucide-react';
 import { LibrarySong, Setlist, isImportedSong } from '../types';
@@ -28,7 +28,11 @@ interface HomeProps {
   onImportGflow: (file: File) => void;
   /** Absent when Google Drive is not configured. */
   onImportFromDrive?: () => void;
+  /** Absent when Google Drive is not configured. */
+  onBackupToDrive?: () => void;
   driveBusy?: boolean;
+  /** Set while the library is being backed up. */
+  backupProgress?: { done: number; total: number } | null;
   onImportGp: (file: File) => void;
   onPasteChordSheet: () => void;
   setlists: Setlist[];
@@ -69,7 +73,7 @@ const songMeta = (song: LibrarySong) => {
 
 const Home: React.FC<HomeProps> = ({
   songs, user, authLoading, onOpenAuth, onLogout, onCreateNew, onOpenChordLab,
-  onOpen, onOpenRead, onOpenPractice, onDelete, onImportGflow, onImportFromDrive, driveBusy = false, onImportGp, onPasteChordSheet,
+  onOpen, onOpenRead, onOpenPractice, onDelete, onImportGflow, onImportFromDrive, onBackupToDrive, driveBusy = false, backupProgress = null, onImportGp, onPasteChordSheet,
   setlists, onEditSetlist, onPlaySetlist, onToggleFavorite, onEditInfo,
   onClaimSong, onClaimAllLegacy, onRailNavigate, theme, onToggleTheme,
 }) => {
@@ -119,6 +123,12 @@ const Home: React.FC<HomeProps> = ({
 
   // Not deferred until after sign-in: the Google popup has to open straight from the click.
   const importFromDrive = onImportFromDrive && (() => (user ? onImportFromDrive() : onOpenAuth()));
+  const [driveMenuOpen, setDriveMenuOpen] = useState(false);
+  const driveAction = (action: () => void) => {
+    setDriveMenuOpen(false);
+    if (user) action();
+    else onOpenAuth();
+  };
 
   const navigate = (destination: AppDestination) => {
     if (destination === 'library') {
@@ -164,7 +174,22 @@ const Home: React.FC<HomeProps> = ({
           </label>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => openPicker(gpInput)} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><Import size={16} />匯入樂譜</button>
-            {importFromDrive && <button type="button" onClick={importFromDrive} disabled={driveBusy} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><CloudDownload size={16} />{driveBusy ? '連線中…' : '從 Drive 匯入'}</button>}
+            {onImportFromDrive && onBackupToDrive && (
+              <div className="relative">
+                <button type="button" onClick={() => setDriveMenuOpen(open => !open)} disabled={driveBusy} aria-expanded={driveMenuOpen} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                  <Cloud size={16} />{backupProgress ? `備份中 ${backupProgress.done}/${backupProgress.total}` : driveBusy ? '連線中…' : 'Google Drive'}<ChevronDown size={13} />
+                </button>
+                {driveMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[70]" onClick={() => setDriveMenuOpen(false)} />
+                    <div className="absolute right-0 top-14 z-[80] w-60 rounded-2xl border border-[#dedcd4] bg-[#fffefa] p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
+                      <button type="button" onClick={() => driveAction(onBackupToDrive)} className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-[#f0eee8] dark:hover:bg-zinc-800"><CloudUpload size={16} className="mt-0.5 shrink-0 text-[#4d5bd2]" /><span><span className="block text-xs font-semibold">備份整個曲庫</span><span className="block text-[11px] text-[#85877f]">只上傳有變更的樂譜</span></span></button>
+                      <button type="button" onClick={() => driveAction(onImportFromDrive)} className="flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-[#f0eee8] dark:hover:bg-zinc-800"><CloudDownload size={16} className="mt-0.5 shrink-0 text-[#4d5bd2]" /><span><span className="block text-xs font-semibold">從 Drive 匯入</span><span className="block text-[11px] text-[#85877f]">挑選備份過的樂譜加回曲庫</span></span></button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <button type="button" onClick={onPasteChordSheet} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><ClipboardPaste size={16} />貼上和弦譜</button>
             <button type="button" onClick={onCreateNew} className="flex h-12 items-center gap-2 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white hover:bg-[#3f4cc0]"><Plus size={17} />新增歌曲</button>
           </div>

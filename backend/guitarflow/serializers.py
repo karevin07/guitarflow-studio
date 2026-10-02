@@ -150,6 +150,7 @@ class CustomChordSerializer(serializers.ModelSerializer):
 class GuitarSongSerializer(serializers.ModelSerializer):
     id = serializers.SerializerMethodField()
     lastModified = serializers.SerializerMethodField()
+    createdAt = serializers.SerializerMethodField()
     sections = TabSectionSerializer(many=True, read_only=True)
     customChords = CustomChordSerializer(source='custom_chords', many=True, read_only=True)
     transposeOffset = serializers.IntegerField(source='transpose_offset', required=False, default=0)
@@ -176,6 +177,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'lastModified',
+            'createdAt',
             'sections',
             'customChords',
             'voicingPlan',
@@ -201,6 +203,9 @@ class GuitarSongSerializer(serializers.ModelSerializer):
 
     def get_lastModified(self, obj):
         return int(obj.last_modified.timestamp() * 1000)
+
+    def get_createdAt(self, obj):
+        return int(obj.created_at.timestamp() * 1000)
 
     def validate_voicingPlan(self, value):
         return validate_voicing_plan(value)
