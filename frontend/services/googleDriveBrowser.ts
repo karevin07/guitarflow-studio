@@ -26,7 +26,7 @@ interface TokenClient {
 declare global {
   interface Window {
     google?: {
-      accounts: { oauth2: { initTokenClient(config: { client_id: string; scope: string; callback: TokenClient['callback'] }): TokenClient } };
+      accounts: { oauth2: { initTokenClient(config: { client_id: string; scope: string; include_granted_scopes?: boolean; callback: TokenClient['callback'] }): TokenClient } };
     };
   }
 }
@@ -57,7 +57,14 @@ let tokenClient: TokenClient | null = null;
 let token: { value: string; expiresAt: number } | null = null;
 
 const requestToken = (): Promise<string> => new Promise((resolve, reject) => {
-  tokenClient ??= window.google!.accounts.oauth2.initTokenClient({ client_id: CLIENT_ID!, scope: SCOPE, callback: () => {} });
+  tokenClient ??= window.google!.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID!,
+    scope: SCOPE,
+    // Ask for drive.file alone: the Cloud project may hold grants from other apps (e.g. YouTube
+    // scopes), and Google refuses to request some of those together with Drive.
+    include_granted_scopes: false,
+    callback: () => {},
+  });
   tokenClient.callback = response => {
     if (response.error || !response.access_token) {
       reject(new DriveError(response.error === 'access_denied' ? '需要允許 GuitarFlow 存取 Google Drive 才能繼續。' : 'Google 登入失敗，請再試一次。'));
