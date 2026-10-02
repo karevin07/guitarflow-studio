@@ -77,6 +77,22 @@ describe('createDriveClient', () => {
     expect(calls[4].init.body).toContain('"parents":["folder1"]');
   });
 
+  it('lists every uploaded .gflow across pages, newest first', async () => {
+    const { impl, calls } = fakeFetch(
+      json({ nextPageToken: 'p2', files: [{ id: 'a', name: 'A.gflow', modifiedTime: '2026-10-02T03:00:00.000Z' }] }),
+      json({ files: [{ id: 'b', name: 'B.gflow', modifiedTime: '2026-10-01T03:00:00.000Z' }] }),
+    );
+    const files = await createDriveClient(token, impl).listGflowFiles();
+
+    expect(files).toEqual([
+      { id: 'a', name: 'A.gflow', modifiedTime: Date.parse('2026-10-02T03:00:00.000Z') },
+      { id: 'b', name: 'B.gflow', modifiedTime: Date.parse('2026-10-01T03:00:00.000Z') },
+    ]);
+    expect(query(calls[0].url)).toBe("mimeType='application/json' and trashed=false");
+    expect(new URL(calls[0].url).searchParams.get('orderBy')).toBe('modifiedTime desc');
+    expect(new URL(calls[1].url).searchParams.get('pageToken')).toBe('p2');
+  });
+
   it('retries once with a fresh token after a 401', async () => {
     const getToken = vi.fn(async ({ forceRefresh = false } = {}) => (forceRefresh ? 'new' : 'old'));
     const { impl, calls } = fakeFetch(new Response('', { status: 401 }), new Response('{"title":"x"}'));

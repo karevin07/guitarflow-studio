@@ -1,7 +1,7 @@
 /**
  * Google Drive REST calls for .gflow files, under the drive.file scope: the app sees only the
- * files it created and the ones the user picked in the Google Picker.
- * Sign-in and the Picker live in googleDriveBrowser.ts so this part runs in tests.
+ * files it created, so the import list holds exactly the songs uploaded from GuitarFlow.
+ * Sign-in lives in googleDriveBrowser.ts so this part runs in tests.
  */
 
 const API = 'https://www.googleapis.com/drive/v3/files';
@@ -25,6 +25,13 @@ export interface DriveUploadResult {
   name: string;
   /** True when an earlier upload of the same song was overwritten. */
   updated: boolean;
+}
+
+export interface DriveGflowFile {
+  id: string;
+  name: string;
+  /** Milliseconds since the epoch. */
+  modifiedTime: number;
 }
 
 export type TokenProvider = (options?: { forceRefresh?: boolean }) => Promise<string>;
@@ -110,10 +117,33 @@ export const createDriveClient = (getToken: TokenProvider, fetchImpl: typeof fet
     return { ...(await response.json() as { id: string; name: string }), updated: false };
   };
 
+  /** Every .gflow uploaded from GuitarFlow, most recently changed first. */
+  const listGflowFiles = async (): Promise<DriveGflowFile[]> => {
+    const files: DriveGflowFile[] = [];
+    let pageToken = '';
+    do {
+      const params = new URLSearchParams({
+        q: `mimeType=${quoteDriveQuery(GFLOW_MIME)} and trashed=false`,
+        spaces: 'drive',
+        orderBy: 'modifiedTime desc',
+        pageSize: '100',
+        fields: 'nextPageToken,files(id,name,modifiedTime)',
+      });
+      if (pageToken) params.set('pageToken', pageToken);
+      const page = await (await request(`${API}?${params}`)).json() as {
+        nextPageToken?: string;
+        files?: Array<{ id: string; name: string; modifiedTime: string }>;
+      };
+      for (const file of page.files ?? []) files.push({ id: file.id, name: file.name, modifiedTime: Date.parse(file.modifiedTime) });
+      pageToken = page.nextPageToken ?? '';
+    } while (pageToken);
+    return files;
+  };
+
   const downloadText = async (fileId: string): Promise<string> =>
     (await request(`${API}/${encodeURIComponent(fileId)}?alt=media`)).text();
 
-  return { uploadGflow, downloadText };
+  return { uploadGflow, listGflowFiles, downloadText };
 };
 
 export type DriveClient = ReturnType<typeof createDriveClient>;

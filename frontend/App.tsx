@@ -14,6 +14,7 @@ import ImportPreviewModal from './components/ImportPreviewModal';
 import ChordSheetImportModal from './components/ChordSheetImportModal';
 import SongInfoModal from './components/SongInfoModal';
 import SetlistModal from './components/SetlistModal';
+import DriveImportModal from './components/DriveImportModal';
 import SetlistBar from './components/SetlistBar';
 import { useSetlists } from './hooks/useSetlists';
 import { libraryTags, setlistPosition, setlistSongs } from './services/songInfo';
@@ -24,8 +25,8 @@ import { GuitarSong, ImportedSong, LibrarySong, Setlist, SongInfo, TabSection, i
 import { exportToMidi } from './services/midiHelper';
 import { parseGflowText, readGflowFile } from './services/gflowImport';
 import { gflowFileName, serializeGflow } from './services/gflowExport';
-import { DRIVE_FOLDER_NAME, DriveError } from './services/googleDrive';
-import { DriveCancelledError, drive, isDriveConfigured, pickGflowFiles, preloadDrive } from './services/googleDriveBrowser';
+import { DRIVE_FOLDER_NAME, DriveError, DriveGflowFile } from './services/googleDrive';
+import { DriveCancelledError, drive, isDriveConfigured, preloadDrive } from './services/googleDriveBrowser';
 import { downloadMusicXml } from './services/musicXmlExport';
 import { convertAlphaTabScoreToGflow, pickGuitarTrackIndex } from './services/gpToGflow';
 import { api as songApi } from './services/api';
@@ -504,11 +505,30 @@ const App: React.FC = () => {
     }
   };
 
-  const handleImportFromDrive = useCallback(async () => {
-    if (driveBusy) return;
+  // undefined: closed; null: loading the list.
+  const [driveFiles, setDriveFiles] = useState<DriveGflowFile[] | null | undefined>(undefined);
+  // Bumped on close, so a list arriving after the dialog was closed does not reopen it.
+  const driveListRequestRef = useRef(0);
+  const openDriveImport = async () => {
+    const request = ++driveListRequestRef.current;
+    setDriveFiles(null);
+    try {
+      // Called straight from the click, so a Google sign-in popup is not blocked.
+      const files = await drive.listGflowFiles();
+      if (request === driveListRequestRef.current) setDriveFiles(files);
+    } catch (error) {
+      if (request === driveListRequestRef.current) setDriveFiles(undefined);
+      reportDriveError(error);
+    }
+  };
+  const closeDriveImport = () => {
+    driveListRequestRef.current += 1;
+    setDriveFiles(undefined);
+  };
+
+  const importDriveFiles = async (files: DriveGflowFile[]) => {
     setDriveBusy(true);
     try {
-      const files = await pickGflowFiles();
       let lastSong: GuitarSong | null = null;
       for (const file of files) {
         const result = parseGflowText(await drive.downloadText(file.id));
@@ -518,13 +538,14 @@ const App: React.FC = () => {
         }
         lastSong = await library.importSong(result.data) ?? lastSong;
       }
+      setDriveFiles(undefined);
       if (files.length === 1 && lastSong) navigate(appPaths.create(lastSong.id));
     } catch (error) {
       reportDriveError(error);
     } finally {
       setDriveBusy(false);
     }
-  }, [driveBusy, library, navigate, toast, reportDriveError]);
+  };
 
   const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
@@ -674,8 +695,8 @@ const App: React.FC = () => {
           onOpenPractice={song => handleOpenLibrarySongInMode(song, 'practice')}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
-          onImportFromDrive={isDriveConfigured() ? handleImportFromDrive : undefined}
-          driveBusy={driveBusy}
+          onImportFromDrive={isDriveConfigured() ? () => void openDriveImport() : undefined}
+          driveBusy={driveFiles !== undefined}
           onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
           onPasteChordSheet={() => runWhenSignedIn(() => setChordSheetOpen(true))}
           setlists={setlists.setlists}
@@ -692,6 +713,14 @@ const App: React.FC = () => {
           theme={theme}
           onToggleTheme={toggleTheme}
         />
+        {driveFiles !== undefined && (
+          <DriveImportModal
+            files={driveFiles}
+            importing={driveBusy}
+            onImport={files => void importDriveFiles(files)}
+            onClose={closeDriveImport}
+          />
+        )}
         <AuthModal
           open={authOpen}
           onClose={() => setAuthOpen(false)}
