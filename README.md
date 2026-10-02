@@ -133,7 +133,7 @@ docker compose --env-file .env.e2e.example -p guitarflow-e2e down -v --remove-or
 
 The last command deletes only the isolated `guitarflow-e2e` containers and test database volume. CI runs the same browser suite. It covers account creation and save/reopen, chord-candidate confirmation, practice voicing planning and playback, MusicXML preview/import, Guitar Pro 7 binary import/reopen/playback, and a 390px-wide mobile chord-sheet flow. The GP7 fixture is generated from this repository's original MusicXML example; see [fixture provenance and regeneration](frontend/e2e/fixtures/README.md). Other Guitar Pro versions still need separate compatibility samples.
 
-See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details, [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes, and [docs/TAILSCALE_DOCKER_TESTING.md](docs/TAILSCALE_DOCKER_TESTING.md) for private-network device testing with Tailscale.
+See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details, [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes, [docs/TAILSCALE_DOCKER_TESTING.md](docs/TAILSCALE_DOCKER_TESTING.md) for private-network device testing with Tailscale, and [docs/GOOGLE_DRIVE_SETUP.md](docs/GOOGLE_DRIVE_SETUP.md) for uploading and importing `.gflow` files with Google Drive.
 
 ---
 

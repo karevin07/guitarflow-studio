@@ -22,7 +22,10 @@ import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
 import { GuitarSong, ImportedSong, LibrarySong, Setlist, SongInfo, TabSection, isImportedSong } from './types';
 import { exportToMidi } from './services/midiHelper';
-import { readGflowFile } from './services/gflowImport';
+import { parseGflowText, readGflowFile } from './services/gflowImport';
+import { gflowFileName, serializeGflow } from './services/gflowExport';
+import { DRIVE_FOLDER_NAME, DriveError } from './services/googleDrive';
+import { DriveCancelledError, drive, isDriveConfigured, pickGflowFiles, preloadDrive } from './services/googleDriveBrowser';
 import { downloadMusicXml } from './services/musicXmlExport';
 import { convertAlphaTabScoreToGflow, pickGuitarTrackIndex } from './services/gpToGflow';
 import { api as songApi } from './services/api';
@@ -381,26 +384,24 @@ const App: React.FC = () => {
 
   // ─── Export ────────────────────────────────────────────────────────────────
   const currentLibrarySong = library.songs.find(song => song.id === library.currentSongId);
+  const currentGflow = () => serializeGflow({
+    title: editor.songTitle,
+    artist: currentLibrarySong?.artist,
+    originalKey: currentLibrarySong?.originalKey,
+    tags: currentLibrarySong?.tags,
+    sections: editor.sections,
+    customChords: editor.customChords,
+    voicingPlan: editor.voicingPlan,
+    transposeOffset: editor.transposeOffset,
+    bpm: editor.bpm,
+    form: editor.form,
+  });
   const exportAsFile = () => {
-    const blob = new Blob(
-      [JSON.stringify({
-        title: editor.songTitle,
-        artist: currentLibrarySong?.artist ?? '',
-        originalKey: currentLibrarySong?.originalKey ?? '',
-        tags: currentLibrarySong?.tags ?? [],
-        sections: editor.sections,
-        customChords: editor.customChords,
-        voicingPlan: editor.voicingPlan,
-        transposeOffset: editor.transposeOffset,
-        bpm: editor.bpm,
-        form: formToStored(editor.form, editor.sections),
-      }, null, 2)],
-      { type: 'application/json' }
-    );
+    const blob = new Blob([currentGflow()], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${editor.songTitle.replace(/\s+/g, '_')}.gflow`;
+    link.download = gflowFileName(editor.songTitle);
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -476,6 +477,54 @@ const App: React.FC = () => {
     const song = await library.importSong(result.data);
     if (song) navigate(appPaths.create(song.id));
   }), [library, navigate, toast, runWhenSignedIn]);
+
+  const [driveBusy, setDriveBusy] = useState(false);
+  useEffect(() => {
+    // Load Google's scripts early so the sign-in popup opens straight from the click.
+    if (auth.user) preloadDrive().catch(() => {});
+  }, [auth.user]);
+  const reportDriveError = useCallback((error: unknown) => {
+    if (error instanceof DriveCancelledError) return;
+    toast.error(error instanceof DriveError ? error.message : 'Google Drive 連線失敗，請稍後再試。');
+  }, [toast]);
+
+  const uploadToDrive = async () => {
+    const songId = library.currentSongId;
+    if (!songId || driveBusy) return;
+    setDriveBusy(true);
+    try {
+      const result = await drive.uploadGflow(songId, gflowFileName(editor.songTitle), currentGflow());
+      toast.success(result.updated
+        ? `已更新 Google Drive 上的「${result.name}」`
+        : `已上傳「${result.name}」到 Google Drive 的 ${DRIVE_FOLDER_NAME} 資料夾`);
+    } catch (error) {
+      reportDriveError(error);
+    } finally {
+      setDriveBusy(false);
+    }
+  };
+
+  const handleImportFromDrive = useCallback(async () => {
+    if (driveBusy) return;
+    setDriveBusy(true);
+    try {
+      const files = await pickGflowFiles();
+      let lastSong: GuitarSong | null = null;
+      for (const file of files) {
+        const result = parseGflowText(await drive.downloadText(file.id));
+        if (result.ok === false) {
+          toast.error(`無法匯入「${file.name}」：${result.error}`);
+          continue;
+        }
+        lastSong = await library.importSong(result.data) ?? lastSong;
+      }
+      if (files.length === 1 && lastSong) navigate(appPaths.create(lastSong.id));
+    } catch (error) {
+      reportDriveError(error);
+    } finally {
+      setDriveBusy(false);
+    }
+  }, [driveBusy, library, navigate, toast, reportDriveError]);
 
   const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
     if (isImportedSong(song)) {
@@ -625,6 +674,8 @@ const App: React.FC = () => {
           onOpenPractice={song => handleOpenLibrarySongInMode(song, 'practice')}
           onDelete={handleDeleteLibrarySong}
           onImportGflow={handleImportFile}
+          onImportFromDrive={isDriveConfigured() ? handleImportFromDrive : undefined}
+          driveBusy={driveBusy}
           onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
           onPasteChordSheet={() => runWhenSignedIn(() => setChordSheetOpen(true))}
           setlists={setlists.setlists}
@@ -725,6 +776,7 @@ const App: React.FC = () => {
         isExportOpen={isExportOpen}
         onToggleExport={() => setIsExportOpen(v => !v)}
         onExportGflow={() => { exportAsFile(); setIsExportOpen(false); }}
+        onUploadToDrive={isDriveConfigured() && library.currentSongId ? () => { void uploadToDrive(); setIsExportOpen(false); } : undefined}
         onExportMidi={() => { triggerMidiExport(); setIsExportOpen(false); }}
         onExportPdf={() => { triggerPdfExport(); setIsExportOpen(false); }}
         onExportMusicXml={() => { triggerMusicXmlExport(); setIsExportOpen(false); }}

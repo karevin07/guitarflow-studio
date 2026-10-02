@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight, BookOpenText, ClipboardPaste, Clock3, FileMusic, FileUp, Guitar, Import, ListMusic, PenLine,
+  ArrowRight, BookOpenText, ClipboardPaste, Clock3, CloudDownload, FileMusic, FileUp, Guitar, Import, ListMusic, PenLine,
   LogIn, LogOut, Pencil, Play, Plus, Search, Shapes, Sparkles, Star, Trash2,
 } from 'lucide-react';
 import { LibrarySong, Setlist, isImportedSong } from '../types';
@@ -26,6 +26,9 @@ interface HomeProps {
   onOpenPractice: (song: LibrarySong) => void;
   onDelete: (song: LibrarySong) => void;
   onImportGflow: (file: File) => void;
+  /** Absent when Google Drive is not configured. */
+  onImportFromDrive?: () => void;
+  driveBusy?: boolean;
   onImportGp: (file: File) => void;
   onPasteChordSheet: () => void;
   setlists: Setlist[];
@@ -66,7 +69,7 @@ const songMeta = (song: LibrarySong) => {
 
 const Home: React.FC<HomeProps> = ({
   songs, user, authLoading, onOpenAuth, onLogout, onCreateNew, onOpenChordLab,
-  onOpen, onOpenRead, onOpenPractice, onDelete, onImportGflow, onImportGp, onPasteChordSheet,
+  onOpen, onOpenRead, onOpenPractice, onDelete, onImportGflow, onImportFromDrive, driveBusy = false, onImportGp, onPasteChordSheet,
   setlists, onEditSetlist, onPlaySetlist, onToggleFavorite, onEditInfo,
   onClaimSong, onClaimAllLegacy, onRailNavigate, theme, onToggleTheme,
 }) => {
@@ -114,6 +117,9 @@ const Home: React.FC<HomeProps> = ({
     ref.current?.click();
   };
 
+  // Not deferred until after sign-in: the Google popup has to open straight from the click.
+  const importFromDrive = onImportFromDrive && (() => (user ? onImportFromDrive() : onOpenAuth()));
+
   const navigate = (destination: AppDestination) => {
     if (destination === 'library') {
       document.getElementById('song-library')?.scrollIntoView({ behavior: 'smooth' });
@@ -156,8 +162,9 @@ const Home: React.FC<HomeProps> = ({
             <input ref={searchInput} value={search} onChange={event => setSearch(event.target.value)} placeholder="搜尋歌名、歌手或標籤" aria-label="搜尋歌曲" aria-keyshortcuts="Control+K Meta+K" className="h-12 w-full rounded-xl border border-[#dedcd4] bg-[#fffefa] pl-11 pr-4 sm:pr-16 text-sm outline-none transition-colors placeholder:text-[#a2a49d] focus:border-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900" />
             <span className="absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border sm:block border-[#dedcd4] px-2 py-1 font-mono text-[11px] text-[#85877f] dark:border-zinc-700">⌘ K</span>
           </label>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => openPicker(gpInput)} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><Import size={16} />匯入樂譜</button>
+            {importFromDrive && <button type="button" onClick={importFromDrive} disabled={driveBusy} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><CloudDownload size={16} />{driveBusy ? '連線中…' : '從 Drive 匯入'}</button>}
             <button type="button" onClick={onPasteChordSheet} className="flex h-12 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold text-[#5f625c] hover:border-[#b9b8b1] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"><ClipboardPaste size={16} />貼上和弦譜</button>
             <button type="button" onClick={onCreateNew} className="flex h-12 items-center gap-2 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white hover:bg-[#3f4cc0]"><Plus size={17} />新增歌曲</button>
           </div>
@@ -217,7 +224,7 @@ const Home: React.FC<HomeProps> = ({
               ))}
             </div>
           )}
-          {filteredSongs.length > 0 ? <SongTable songs={filteredSongs} onOpen={onOpen} onRead={onOpenRead} onPractice={onOpenPractice} onDelete={onDelete} onToggleFavorite={onToggleFavorite} onEditInfo={onEditInfo} /> : <EmptyLibrary search={search || tagFilter || (filter === 'favorite' ? '收藏' : '')} onCreate={onCreateNew} onImport={() => openPicker(gflowInput)} onPaste={onPasteChordSheet} />}
+          {filteredSongs.length > 0 ? <SongTable songs={filteredSongs} onOpen={onOpen} onRead={onOpenRead} onPractice={onOpenPractice} onDelete={onDelete} onToggleFavorite={onToggleFavorite} onEditInfo={onEditInfo} /> : <EmptyLibrary search={search || tagFilter || (filter === 'favorite' ? '收藏' : '')} onCreate={onCreateNew} onImport={() => openPicker(gflowInput)} onImportFromDrive={importFromDrive} onPaste={onPasteChordSheet} />}
         </section>
       </main>
 
@@ -257,6 +264,6 @@ const SetlistCard: React.FC<{ setlist: Setlist; songs: LibrarySong[]; onEdit: ()
 
 const SongTable: React.FC<{ songs: LibrarySong[]; onOpen: (song: LibrarySong) => void; onRead: (song: LibrarySong) => void; onPractice: (song: LibrarySong) => void; onDelete: (song: LibrarySong) => void; onToggleFavorite: (song: LibrarySong) => void; onEditInfo: (song: LibrarySong) => void }> = ({ songs, onOpen, onRead, onPractice, onDelete, onToggleFavorite, onEditInfo }) => <div className="overflow-x-auto"><div className="min-w-[780px]"><div className="grid grid-cols-[minmax(230px,1.4fr)_180px_minmax(210px,1fr)_130px_176px] gap-4 border-b border-[#dedcd4] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#979990] dark:border-zinc-800"><span>歌曲</span><span>音樂設定</span><span>主要和弦</span><span>上次彈奏</span><span className="text-right">操作</span></div>{songs.map(song => { const meta = songMeta(song); return <article key={`${song.source}-${song.id}`} className="group grid grid-cols-[minmax(230px,1.4fr)_180px_minmax(210px,1fr)_130px_176px] items-center gap-4 border-b border-[#e7e5de] px-3 py-4 transition-colors hover:bg-[#fffefa] dark:border-zinc-800 dark:hover:bg-zinc-900/70"><div className="flex min-w-0 items-start gap-1"><button type="button" onClick={() => onToggleFavorite(song)} className="-ml-2 grid h-11 w-9 shrink-0 place-items-center rounded-lg sm:h-9" aria-label={song.favorite ? `取消收藏 ${song.title}` : `收藏 ${song.title}`} aria-pressed={Boolean(song.favorite)}><Star size={15} className={song.favorite ? 'fill-amber-400 text-amber-400' : 'text-[#c9c8c0] hover:text-amber-400 dark:text-zinc-600'} /></button><button type="button" onClick={() => onOpen(song)} className="min-w-0 flex-1 pt-1.5 text-left"><div className="truncate text-sm font-semibold group-hover:text-[#4d5bd2]">{song.title}</div><div className="mt-1 flex flex-wrap items-center gap-x-2 text-[11px] text-[#85877f]"><span>{song.artist || (isImportedSong(song) ? song.fileName : 'GuitarFlow 樂譜')}</span>{(song.tags ?? []).map(tag => <span key={tag} className="text-[#4d5bd2]/80"># {tag}</span>)}{song.isLegacy && <span className="text-[#a66d22]">待認領</span>}</div></button></div><div className="font-mono text-[11px] text-[#5f625c] dark:text-zinc-400">{meta.key} 調 · Capo {meta.capo}{song.originalKey && <span className="font-sans text-[#979990]"> · 原曲 {song.originalKey} 調</span>}<div className="mt-1 font-sans text-[#979990]">{meta.detail}</div></div><div className="flex flex-wrap gap-x-3 gap-y-1">{meta.chords.map(chord => <span key={chord} className="font-mono text-[11px] font-semibold text-[#4d5bd2]">{chord}</span>)}</div><div className="text-[11px] text-[#777a73]">{timeAgo(song.lastModified)}</div><div className="flex justify-end gap-1"><button type="button" onClick={() => onEditInfo(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#85877f] sm:h-9 sm:w-9 hover:bg-[#f0eee8] dark:hover:bg-zinc-800" aria-label={`編輯 ${song.title} 的資訊`}><Pencil size={14} /></button><button type="button" onClick={() => onRead(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#4d5bd2] sm:h-9 sm:w-9 hover:bg-[#eceefa]" aria-label={`閱讀 ${song.title}`}><BookOpenText size={14} /></button><button type="button" onClick={() => onPractice(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#2b6c59] sm:h-9 sm:w-9 hover:bg-[#e8f0eb]" aria-label={`練習 ${song.title}`}><Play size={14} /></button><button type="button" onClick={() => onDelete(song)} className="grid h-11 w-11 place-items-center rounded-lg text-[#aaa9a2] opacity-100 sm:h-9 sm:w-9 sm:opacity-0 hover:bg-red-50 hover:text-red-600 group-hover:opacity-100" aria-label={`刪除 ${song.title}`}><Trash2 size={14} /></button></div></article>; })}</div></div>;
 
-const EmptyLibrary: React.FC<{ search: string; onCreate: () => void; onImport: () => void; onPaste: () => void }> = ({ search, onCreate, onImport, onPaste }) => <div className="flex min-h-56 flex-col items-center justify-center border-b border-[#dedcd4] text-center dark:border-zinc-800"><FileMusic size={22} className="text-[#a3a59d]" /><h3 className="mt-3 text-sm font-semibold">{search ? '找不到符合的歌曲' : '開始建立你的曲目'}</h3><p className="mt-1 text-xs text-[#85877f]">{search ? '試試其他關鍵字。' : '新增歌曲或匯入現有樂譜。'}</p><div className="mt-4 flex flex-wrap justify-center gap-2"><button type="button" onClick={onCreate} className="h-10 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white"><Plus size={14} className="mr-1 inline" />新增歌曲</button><button type="button" onClick={onImport} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><FileUp size={14} className="mr-1 inline" />匯入 .gflow</button><button type="button" onClick={onPaste} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><ClipboardPaste size={14} className="mr-1 inline" />貼上和弦譜</button></div></div>;
+const EmptyLibrary: React.FC<{ search: string; onCreate: () => void; onImport: () => void; onImportFromDrive?: () => void; onPaste: () => void }> = ({ search, onCreate, onImport, onImportFromDrive, onPaste }) => <div className="flex min-h-56 flex-col items-center justify-center border-b border-[#dedcd4] text-center dark:border-zinc-800"><FileMusic size={22} className="text-[#a3a59d]" /><h3 className="mt-3 text-sm font-semibold">{search ? '找不到符合的歌曲' : '開始建立你的曲目'}</h3><p className="mt-1 text-xs text-[#85877f]">{search ? '試試其他關鍵字。' : '新增歌曲或匯入現有樂譜。'}</p><div className="mt-4 flex flex-wrap justify-center gap-2"><button type="button" onClick={onCreate} className="h-10 rounded-xl bg-[#4d5bd2] px-4 text-xs font-semibold text-white"><Plus size={14} className="mr-1 inline" />新增歌曲</button><button type="button" onClick={onImport} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><FileUp size={14} className="mr-1 inline" />匯入 .gflow</button>{onImportFromDrive && <button type="button" onClick={onImportFromDrive} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><CloudDownload size={14} className="mr-1 inline" />從 Google Drive 匯入</button>}<button type="button" onClick={onPaste} className="h-10 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-4 text-xs font-semibold dark:border-zinc-800 dark:bg-zinc-900"><ClipboardPaste size={14} className="mr-1 inline" />貼上和弦譜</button></div></div>;
 
 export default Home;

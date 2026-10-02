@@ -60,6 +60,10 @@ services:
       - VITE_API_URL=${VITE_API_URL:-/api}
       - API_PROXY_TARGET=http://backend:8000
       - VITE_ALLOWED_HOSTS=${VITE_ALLOWED_HOSTS:-localhost}
+      # Google Drive .gflow upload/import; leave empty to hide it (docs/GOOGLE_DRIVE_SETUP.md).
+      - VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID:-}
+      - VITE_GOOGLE_API_KEY=${VITE_GOOGLE_API_KEY:-}
+      - VITE_GOOGLE_APP_ID=${VITE_GOOGLE_APP_ID:-}
     volumes:
       - ./frontend:/app
       - /app/node_modules

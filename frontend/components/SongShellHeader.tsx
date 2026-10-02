@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Check,
   ChevronDown,
+  CloudUpload,
   Download,
   Edit3,
   Eye,
@@ -43,6 +44,8 @@ interface SongShellHeaderProps {
   isExportOpen: boolean;
   onToggleExport: () => void;
   onExportGflow: () => void;
+  /** Absent when Google Drive is not configured. */
+  onUploadToDrive?: () => void;
   onExportMidi: () => void;
   onExportPdf: () => void;
   onExportMusicXml: () => void;
@@ -60,6 +63,7 @@ interface ExportMenuProps {
   open: boolean;
   onToggle: () => void;
   onGflow: () => void;
+  onDrive?: () => void;
   onMidi: () => void;
   onPdf: () => void;
   onMusicXml: () => void;
@@ -70,6 +74,7 @@ const ExportMenu: React.FC<ExportMenuProps> = ({
   open,
   onToggle,
   onGflow,
+  onDrive,
   onMidi,
   onPdf,
   onMusicXml,
@@ -90,6 +95,7 @@ const ExportMenu: React.FC<ExportMenuProps> = ({
       <div className="absolute right-0 top-12 z-[80] w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
         {[
           { label: 'GuitarFlow 樂譜檔', detail: '.gflow', icon: FileText, action: onGflow },
+          ...(onDrive ? [{ label: '上傳到 Google Drive', detail: '.gflow', icon: CloudUpload, action: onDrive }] : []),
           { label: 'MIDI 演奏檔', detail: '.mid', icon: Music2, action: onMidi },
           { label: '列印樂譜', detail: '.pdf', icon: Eye, action: onPdf },
           { label: 'MusicXML', detail: '.xml', icon: FileMusic, action: onMusicXml },
@@ -125,6 +131,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   isExportOpen,
   onToggleExport,
   onExportGflow,
+  onUploadToDrive,
   onExportMidi,
   onExportPdf,
   onExportMusicXml,
@@ -210,6 +217,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
               <div className="my-1 border-t border-slate-100 dark:border-zinc-800" />
               {[
                 { label: '匯出 .gflow', action: onExportGflow },
+                ...(onUploadToDrive ? [{ label: '上傳到 Google Drive', action: onUploadToDrive }] : []),
                 { label: '匯出 MIDI', action: onExportMidi },
                 { label: '列印樂譜', action: onExportPdf },
                 { label: '匯出 MusicXML', action: onExportMusicXml },
@@ -217,7 +225,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
             </div>}
           </div>
         )}
-        {!isImported && <div className={viewMode === 'practice' ? 'hidden sm:block' : ''}><ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} /></div>}
+        {!isImported && <div className={viewMode === 'practice' ? 'hidden sm:block' : ''}><ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onDrive={onUploadToDrive} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} /></div>}
         {user && <div className="hidden h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600 dark:bg-zinc-900 dark:text-zinc-300 xl:flex"><User size={14} />{user.username}</div>}
       </header>
 

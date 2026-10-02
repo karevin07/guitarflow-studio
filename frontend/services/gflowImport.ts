@@ -156,17 +156,18 @@ export const parseGflowFile = (raw: unknown): GflowImportResult => {
   };
 };
 
+export const parseGflowText = (text: string): GflowImportResult => {
+  try {
+    return parseGflowFile(JSON.parse(text));
+  } catch {
+    return { ok: false, error: 'Could not parse JSON file.' };
+  }
+};
+
 export const readGflowFile = (file: File): Promise<GflowImportResult> =>
   new Promise(resolve => {
     const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const json = JSON.parse(reader.result as string);
-        resolve(parseGflowFile(json));
-      } catch {
-        resolve({ ok: false, error: 'Could not parse JSON file.' });
-      }
-    };
+    reader.onload = () => resolve(parseGflowText(reader.result as string));
     reader.onerror = () => resolve({ ok: false, error: 'Failed to read file.' });
     reader.readAsText(file);
   });
