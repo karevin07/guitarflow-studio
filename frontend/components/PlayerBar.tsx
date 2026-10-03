@@ -22,7 +22,6 @@ import { colIndexToMs, formatPlaybackMs } from '../services/playbackTime';
 type PlayerBarProps = PlayerBarBindings;
 
 const PlayerBar: React.FC<PlayerBarProps> = ({
-  mode,
   isPlaying,
   isPaused,
   onTogglePlayPause,
@@ -50,18 +49,13 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
   onTempoTrainerChange,
 }) => {
   const [controlsOpen, setControlsOpen] = useState(false);
-  const isAlphaTab = mode === 'alphatab';
   const showStop = isPlaying || isPaused;
   const safeMax = Math.max(1, totalCols - 1);
   const canAb = abLoop.start !== null && abLoop.end !== null;
-  const minimumTempo = isAlphaTab ? 50 : MIN_BPM;
-  const maximumTempo = isAlphaTab ? 150 : MAX_BPM;
-  const seekLabel = isAlphaTab
-    ? `${formatPlaybackMs(playIndex)} / ${formatPlaybackMs(totalCols)}`
-    : `${formatPlaybackMs(colIndexToMs(playIndex, playBpm))} / ${formatPlaybackMs(colIndexToMs(totalCols, playBpm))}`;
+  const seekLabel = `${formatPlaybackMs(colIndexToMs(playIndex, playBpm))} / ${formatPlaybackMs(colIndexToMs(totalCols, playBpm))}`;
 
   const nudgeTempo = (delta: number) => {
-    onBpmChange(Math.max(minimumTempo, Math.min(maximumTempo, playBpm + delta)));
+    onBpmChange(Math.max(MIN_BPM, Math.min(MAX_BPM, playBpm + delta)));
   };
 
   return (
@@ -89,7 +83,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
           <button type="button" onClick={() => nudgeTempo(-5)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-700" aria-label="Decrease tempo"><Minus size={13} /></button>
           <div className="min-w-16 px-2 text-center">
             <div className="font-mono text-xs font-bold text-slate-800 dark:text-zinc-100">{playBpm}</div>
-            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">{isAlphaTab ? '速度 %' : 'BPM'}</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">BPM</div>
           </div>
           <button type="button" onClick={() => nudgeTempo(5)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white dark:text-zinc-400 dark:hover:bg-zinc-700" aria-label="Increase tempo"><Plus size={13} /></button>
         </div>
@@ -103,8 +97,8 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
         <div className="grid gap-4 border-t border-slate-200 px-4 py-4 dark:border-zinc-800 md:grid-cols-[1fr_auto_auto] md:items-center">
           <div className="flex items-center gap-3">
             <Gauge size={14} className="shrink-0 text-slate-400" />
-            <input type="range" min={minimumTempo} max={maximumTempo} value={playBpm} onChange={event => onBpmChange(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-indigo-600 dark:accent-violet-500" aria-label={isAlphaTab ? 'Playback speed' : 'Tempo'} />
-            <span className="w-16 text-right font-mono text-xs font-semibold text-slate-600 dark:text-zinc-300">{playBpm} {isAlphaTab ? '%' : 'BPM'}</span>
+            <input type="range" min={MIN_BPM} max={MAX_BPM} value={playBpm} onChange={event => onBpmChange(Number(event.target.value))} className="h-1 min-w-0 flex-1 accent-indigo-600 dark:accent-violet-500" aria-label="Tempo" />
+            <span className="w-16 text-right font-mono text-xs font-semibold text-slate-600 dark:text-zinc-300">{playBpm} BPM</span>
           </div>
 
           <div className="flex items-center gap-1 overflow-x-auto">
@@ -145,7 +139,7 @@ const PlayerBar: React.FC<PlayerBarProps> = ({
                 {[2, 5, 10].map(step => <option key={step} value={step}>+{step}</option>)}
               </select>
               <span className="text-slate-500 dark:text-zinc-400">BPM，到</span>
-              <input type="number" min={minimumTempo} max={maximumTempo} value={tempoTrainer.target} onChange={event => onTempoTrainerChange({ ...tempoTrainer, target: Math.max(minimumTempo, Math.min(maximumTempo, Number(event.target.value) || tempoTrainer.target)) })} className="h-8 w-16 rounded-md bg-slate-100 px-2 font-mono dark:bg-zinc-800" aria-label="目標速度" />
+              <input type="number" min={MIN_BPM} max={MAX_BPM} value={tempoTrainer.target} onChange={event => onTempoTrainerChange({ ...tempoTrainer, target: Math.max(MIN_BPM, Math.min(MAX_BPM, Number(event.target.value) || tempoTrainer.target)) })} className="h-8 w-16 rounded-md bg-slate-100 px-2 font-mono dark:bg-zinc-800" aria-label="目標速度" />
               <span className="text-slate-500 dark:text-zinc-400">為止{!isLooping && !abLoop.enabled ? '（要開啟循環才會加速）' : ''}</span>
             </div>
           )}

@@ -12,8 +12,6 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@coderline/alphatab": "^1.8.3",
-    "@coderline/alphatab-vite": "^1.8.3",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

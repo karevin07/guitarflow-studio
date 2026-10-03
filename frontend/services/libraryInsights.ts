@@ -1,5 +1,5 @@
 import { detectKey, formatKey, parseChord } from '../music-theory';
-import { GuitarSong, LibrarySong, isImportedSong } from '../types';
+import { GuitarSong } from '../types';
 
 export const greetingFor = (date: Date): string => {
   const hour = date.getHours();
@@ -12,13 +12,10 @@ export const greetingFor = (date: Date): string => {
 const chordCells = (song: GuitarSong): string[] =>
   song.sections.flatMap(section => section.chords.flat()).filter((name): name is string => Boolean(name));
 
-/** Chords that appear most across the user's own songs, most frequent first. */
-export const commonChords = (songs: LibrarySong[], limit = 6): string[] => {
+/** Chords that appear most across the user's songs, most frequent first. */
+export const commonChords = (songs: GuitarSong[], limit = 6): string[] => {
   const counts = new Map<string, number>();
-  songs.forEach(song => {
-    if (isImportedSong(song)) return;
-    chordCells(song).forEach(name => counts.set(name, (counts.get(name) ?? 0) + 1));
-  });
+  songs.forEach(song => chordCells(song).forEach(name => counts.set(name, (counts.get(name) ?? 0) + 1)));
   // Map keeps first-seen order, so ties stay in the order the chords were met.
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1])

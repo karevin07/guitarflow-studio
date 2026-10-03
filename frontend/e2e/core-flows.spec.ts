@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
@@ -213,8 +212,8 @@ test('an import started before sign-in is confirmed waits instead of asking to l
   });
   await page.goto('/songs');
 
-  await page.locator('input[type="file"][accept*=".musicxml"]').setInputFiles(path.join(fixtureDir, 'simple-score.musicxml'));
-  await expect(page.getByRole('dialog', { name: 'Import Preview' })).toBeVisible();
+  await page.locator('input[type="file"][accept*=".gflow"]').setInputFiles(path.join(fixtureDir, 'simple-song.gflow'));
+  await expect(page).toHaveURL(/\/songs\/[^/]+\/create$/);
   await expect(page.getByRole('heading', { name: '登入', exact: true })).toHaveCount(0);
 });
 
@@ -225,64 +224,11 @@ test('a file picked while signed out is imported after logging in', async ({ pag
   await page.goto('/songs');
   await expect(page.getByRole('button', { name: '登入或註冊' }).first()).toBeVisible();
 
-  await page.locator('input[type="file"][accept*=".musicxml"]').setInputFiles(path.join(fixtureDir, 'simple-score.musicxml'));
+  await page.locator('input[type="file"][accept*=".gflow"]').setInputFiles(path.join(fixtureDir, 'simple-song.gflow'));
   await expect(page.getByRole('heading', { name: '登入', exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: '帳號' }).fill(username);
   await page.getByLabel('密碼').fill('E2e-test-pass-2026');
   await page.getByRole('button', { name: '登入', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Import Preview' })).toBeVisible();
-});
-
-test('preview and persist an imported MusicXML score', async ({ page, request }) => {
-  const token = await register(request);
-  await authenticatePage(page, token);
-  await page.goto('/songs');
-  await waitForSignedIn(page);
-
-  await page.locator('input[type="file"][accept*=".musicxml"]').setInputFiles(path.join(fixtureDir, 'simple-score.musicxml'));
-  const dialog = page.getByRole('dialog', { name: 'Import Preview' });
-  await expect(dialog).toBeVisible();
-  await expect(dialog.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
-  await dialog.getByRole('button', { name: 'Import to Library' }).click();
-  await expect(dialog).toHaveCount(0);
-  await expect(page).toHaveURL(/\/songs\/[^/]+\/practice$/);
-  const songId = page.url().match(/\/songs\/([^/]+)\/practice$/)?.[1];
-  expect(songId).toBeDefined();
-  const imported = await getSong(request, token, songId!);
-  expect(imported).toMatchObject({ source: 'imported', importFormat: 'musicxml' });
-  expect(imported.title.replace(/\s/g, ' ')).toBe('E2E Simple Score');
-
-  await page.reload();
-  await expect(page.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
-});
-
-test('import, reopen and play a Guitar Pro score', async ({ page, request }) => {
-  const token = await register(request);
-  await authenticatePage(page, token);
-  await page.goto('/songs');
-  await waitForSignedIn(page);
-
-  const fixture = path.join(fixtureDir, 'simple-score.gp');
-  await page.locator('input[type="file"][accept*=".gp"]').setInputFiles(fixture);
-  const dialog = page.getByRole('dialog', { name: 'Import Preview' });
-  await expect(dialog.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
-  await dialog.getByRole('button', { name: 'Import to Library' }).click();
-  await expect(page).toHaveURL(/\/songs\/[^/]+\/practice$/);
-
-  const songId = page.url().match(/\/songs\/([^/]+)\/practice$/)?.[1];
-  expect(songId).toBeDefined();
-  const imported = await getSong(request, token, songId!);
-  expect(imported).toMatchObject({ source: 'imported', importFormat: 'gp' });
-  expect(imported.title.replace(/\s/g, ' ')).toBe('E2E Simple Score');
-
-  const fileResponse = await request.get(`${apiBase}/songs/${songId}/score-file/`, {
-    headers: { Authorization: `Token ${token}` },
-  });
-  expect(fileResponse.ok()).toBeTruthy();
-  expect(await fileResponse.body()).toEqual(readFileSync(fixture));
-
-  await page.reload();
-  await expect(page.locator('.alphatab-viewer svg, .alphatab-viewer canvas').first()).toBeVisible();
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/\/songs\/[^/]+\/create$/);
+  await expect(page.getByRole('textbox', { name: '歌曲名稱' })).toHaveValue('E2E Simple Song');
 });

@@ -11,8 +11,8 @@ class CustomChordInline(admin.TabularInline):
 
 @admin.register(GuitarSong)
 class GuitarSongAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'source', 'owner', 'import_format', 'last_modified', 'transpose_offset')
-    list_filter = ('source', 'import_format', 'owner')
+    list_display = ('id', 'title', 'owner', 'last_modified', 'transpose_offset')
+    list_filter = ('owner',)
     search_fields = ('title',)
     inlines = [TabSectionInline, CustomChordInline]
 

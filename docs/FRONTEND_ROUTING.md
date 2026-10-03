@@ -12,9 +12,9 @@ The product has three primary feature pages—Create, Practice, and Chord Librar
 |---|---|---|---|
 | `/` | Redirect target | No | Canonicalized to `/songs` |
 | `/songs` | Song Library | Optional | Guests can browse the shell and sign in |
-| `/songs/:songId/create` | Create | Required | GuitarFlow songs only |
-| `/songs/:songId/practice` | Practice | Required | Supports GuitarFlow and imported scores |
-| `/songs/:songId/arrange` | Arrange | Required | GuitarFlow songs only; imported scores redirect to Practice |
+| `/songs/:songId/create` | Create | Required | |
+| `/songs/:songId/practice` | Practice | Required | |
+| `/songs/:songId/arrange` | Arrange | Required | |
 | `/chords` | Chord Library | No | Opens the default recommended chord |
 | `/chords/:symbol` | Chord detail | No | Example: `/chords/F%23m7` |
 | Any unknown URL | Fallback | No | Replaced with `/songs` |
@@ -40,7 +40,7 @@ flowchart LR
     Chords[Chord Library /chords/:symbol?]
 
     Songs -->|New or edit| Create
-    Songs -->|Play or imported score| Practice
+    Songs -->|Play| Practice
     Songs -->|Chord shortcut| Chords
     Create <-->|Workspace switch| Practice
     Practice <-->|Workspace switch| Arrange
@@ -70,12 +70,9 @@ Transient state such as playback position, unsaved edits, open dialogs, and sele
 1. React Router reads the browser URL.
 2. `parseAppRoute` resolves the workspace and resource identifier.
 3. Authentication is restored.
-4. Song and imported-score collections are loaded.
-5. `App.tsx` finds `songId` in the combined collection.
-6. GuitarFlow songs are loaded into the editor; imported scores are loaded into the AlphaTab workspace.
-7. Missing resources return the user to `/songs` with an error toast.
-
-Imported scores cannot open the Create page. A direct Create URL for an imported score is replaced with its Practice URL.
+4. The song collection is loaded.
+5. `App.tsx` finds `songId` in the collection and loads it into the editor.
+6. Missing resources return the user to `/songs` with an error toast.
 
 ## Deployment Requirement
 
@@ -99,6 +96,5 @@ Imported scores cannot open the Create page. A direct Create URL for an imported
 
 - **Direct route briefly waits for library data**: Show the existing application shell while authentication and collections load.
 - **Deleted or inaccessible song ID**: Replace the route with `/songs` and show an error.
-- **Imported score opened in Create**: Canonically redirect to Practice.
 - **Future server returns 404 on refresh**: Require SPA fallback configuration in deployment checklists.
 - **URL logic becomes duplicated**: Require all navigation code to use `appPaths` and keep parser tests current.

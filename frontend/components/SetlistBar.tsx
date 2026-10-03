@@ -1,12 +1,12 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, ListMusic, X } from 'lucide-react';
-import { LibrarySong } from '../types';
+import { GuitarSong } from '../types';
 import { SetlistPosition } from '../services/songInfo';
 
 interface SetlistBarProps {
   name: string;
   position: SetlistPosition;
-  onGo: (song: LibrarySong) => void;
+  onGo: (song: GuitarSong) => void;
   onClose: () => void;
 }
 

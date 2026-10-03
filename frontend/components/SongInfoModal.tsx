@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Star, X } from 'lucide-react';
-import { LibrarySong, SongInfo } from '../types';
+import { GuitarSong, SongInfo } from '../types';
 import { COMMON_KEYS, parseTagInput } from '../services/songInfo';
 
 interface SongInfoModalProps {
-  song: LibrarySong;
+  song: GuitarSong;
   /** Tags already used in the library, offered as one-tap suggestions. */
   knownTags: string[];
   onSave: (info: SongInfo & { title: string }) => Promise<boolean>;

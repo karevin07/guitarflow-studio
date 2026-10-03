@@ -8,9 +8,8 @@ export interface PlaybackPosition {
   step?: number;
 }
 
-/** Shared props for PlayerBar — gflow and alphaTab engines adapt into this shape. */
+/** Props for PlayerBar, filled in from usePlayback. */
 export interface PlayerBarBindings {
-  mode: 'gflow' | 'alphatab';
   isPlaying: boolean;
   isPaused: boolean;
   onTogglePlayPause: () => void;
@@ -31,7 +30,7 @@ export interface PlayerBarBindings {
   onToggleMetronome: () => void;
   playbackVolume: number;
   onVolumeChange: (volume: number) => void;
-  /** Beats left in the count-in, or null when not counting in (GuitarFlow songs only). */
+  /** Beats left in the count-in, or null when not counting in. */
   countInBeat?: number | null;
   countInBars?: number;
   onCountInBarsChange?: (bars: number) => void;

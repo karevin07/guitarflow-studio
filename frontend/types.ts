@@ -48,24 +48,8 @@ export interface GuitarSong extends SongInfo {
   bpm?: number | null;
   /** Play order as section positions with repeat counts; empty plays sections as written. */
   form?: Array<{ section: number; repeat: number }>;
-  source?: 'gflow';
   isLegacy?: boolean;
 }
-
-export interface ImportedSong extends SongInfo {
-  id: string;
-  title: string;
-  lastModified: number;
-  source: 'imported';
-  importFormat: string;
-  fileName: string;
-  isLegacy?: boolean;
-}
-
-export type LibrarySong = GuitarSong | ImportedSong;
-
-export const isImportedSong = (song: LibrarySong): song is ImportedSong =>
-  song.source === 'imported';
 
 export interface ChordDefinition {
   name: string;

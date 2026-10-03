@@ -1,7 +1,6 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { alphaTab } from '@coderline/alphatab-vite';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -27,7 +26,7 @@ export default defineConfig(({ mode }) => {
       preview: {
         proxy: apiProxy,
       },
-      plugins: [react(), alphaTab()],
+      plugins: [react()],
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Plus, Search, Trash2, X } from 'lucide-react';
-import { LibrarySong, Setlist } from '../types';
+import { GuitarSong, Setlist } from '../types';
 import { matchesSearch, moveItem, setlistSongs } from '../services/songInfo';
 
 interface SetlistModalProps {
   /** null creates a new setlist. */
   setlist: Setlist | null;
-  songs: LibrarySong[];
+  songs: GuitarSong[];
   onSave: (changes: Pick<Setlist, 'name' | 'songIds'>) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
   onClose: () => void;

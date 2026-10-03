@@ -1,6 +1,5 @@
 from django.contrib.auth.models import User
 from django.urls import reverse
-from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -426,65 +425,6 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         self.client.credentials()
         response = self.client.get(self.song_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-
-class ImportedScoreAPITests(AuthenticatedAPITestCase):
-    def setUp(self):
-        super().setUp()
-        self.import_url = reverse('song-import-score')
-        self.sample_bytes = b'GP5 sample binary content'
-
-    def test_import_score_upload_and_download(self):
-        upload = SimpleUploadedFile('test-riff.gp5', self.sample_bytes, content_type='application/octet-stream')
-        response = self.client.post(
-            self.import_url,
-            {'file': upload, 'title': 'Test Riff'},
-            format='multipart',
-        )
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(response.data['title'], 'Test Riff')
-        self.assertEqual(response.data['source'], 'imported')
-
-        song = GuitarSong.objects.get(pk=response.data['id'])
-        self.assertEqual(song.owner, self.user)
-
-        song_id = response.data['id']
-        file_url = reverse('song-score-file', args=[song_id])
-        file_response = self.client.get(file_url)
-        self.assertEqual(file_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(b''.join(file_response.streaming_content), self.sample_bytes)
-
-    def test_list_imported_scores_filter(self):
-        GuitarSong.objects.create(title='GFlow Song', source=GuitarSong.SOURCE_GFLOW, owner=self.user)
-        upload = SimpleUploadedFile('another.gpx', self.sample_bytes, content_type='application/octet-stream')
-        self.client.post(self.import_url, {'file': upload}, format='multipart')
-
-        all_response = self.client.get(reverse('song-list'))
-        self.assertEqual(len(list_results(all_response)), 2)
-
-        imported_response = self.client.get(reverse('song-list'), {'source': 'imported'})
-        imported = list_results(imported_response)
-        self.assertEqual(len(imported), 1)
-        self.assertEqual(imported[0]['source'], 'imported')
-
-    def test_update_imported_title_only(self):
-        upload = SimpleUploadedFile('song.gp5', self.sample_bytes, content_type='application/octet-stream')
-        create_response = self.client.post(self.import_url, {'file': upload}, format='multipart')
-        song_id = create_response.data['id']
-
-        detail_url = reverse('song-detail', args=[song_id])
-        update_response = self.client.put(
-            detail_url,
-            {'title': 'Renamed Score', 'transposeOffset': 0, 'sections': [], 'customChords': []},
-            format='json',
-        )
-        self.assertEqual(update_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(update_response.data['title'], 'Renamed Score')
-
-    def test_reject_unsupported_import_file(self):
-        upload = SimpleUploadedFile('bad.txt', b'nope', content_type='text/plain')
-        response = self.client.post(self.import_url, {'file': upload}, format='multipart')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
 class SetlistAPITests(AuthenticatedAPITestCase):

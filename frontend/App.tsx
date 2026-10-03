@@ -7,10 +7,8 @@ import ArrangeView from './components/ArrangeView';
 import Home from './components/Home';
 import HomeChordLab from './components/HomeChordLab';
 import PlayerBar from './components/PlayerBar';
-import ImportedScorePanel from './components/ImportedScorePanel';
 import SongShellHeader from './components/SongShellHeader';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
-import ImportPreviewModal from './components/ImportPreviewModal';
 import ChordSheetImportModal from './components/ChordSheetImportModal';
 import SongInfoModal from './components/SongInfoModal';
 import SetlistModal from './components/SetlistModal';
@@ -21,26 +19,21 @@ import { libraryTags, setlistPosition, setlistSongs } from './services/songInfo'
 import { formFromStored, formToStored, playOrder } from './services/songForm';
 import AuthModal from './components/AuthModal';
 import { ToastContainer } from './components/Toast';
-import { GuitarSong, ImportedSong, LibrarySong, Setlist, SongInfo, TabSection, isImportedSong } from './types';
+import { GuitarSong, Setlist, SongInfo, TabSection } from './types';
 import { exportToMidi } from './services/midiHelper';
 import { parseGflowText, readGflowFile } from './services/gflowImport';
 import { gflowFileName, serializeGflow } from './services/gflowExport';
 import { DRIVE_FOLDER_NAME, DriveError, DriveGflowFile, driveSongKey } from './services/googleDrive';
 import { DriveCancelledError, drive, isDriveConfigured, preloadDrive } from './services/googleDriveBrowser';
 import { downloadMusicXml } from './services/musicXmlExport';
-import { convertAlphaTabScoreToGflow, pickGuitarTrackIndex } from './services/gpToGflow';
 import { api as songApi } from './services/api';
 import { getTechniqueInputHint } from './services/tabNotation';
 import { useEditorState, createEmptyMeasure } from './hooks/useEditorState';
 import { useSongLibrary } from './hooks/useSongLibrary';
-import { useImportedSongs } from './hooks/useImportedSongs';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useToast } from './hooks/useToast';
 import { usePlayback } from './hooks/usePlayback';
 import { useAutosave } from './hooks/useAutosave';
-import { useImportedScore } from './hooks/useImportedScore';
-import { useAlphaTabPlayback } from './hooks/useAlphaTabPlayback';
-import { useAlphaTabTracks } from './hooks/useAlphaTabTracks';
 import { useAuth } from './hooks/useAuth';
 import { DEFAULT_BPM, DEFAULT_TIME_SIGNATURE } from './constants/practice';
 import { appPaths, parseAppRoute } from './services/routes';
@@ -54,11 +47,8 @@ const App: React.FC = () => {
   const route = useMemo(() => parseAppRoute(location.pathname), [location.pathname]);
   const isSongWorkspace = route.name === 'create' || route.name === 'practice' || route.name === 'arrange';
   const viewMode: 'home' | 'edit' | 'preview' = route.name === 'create' ? 'edit' : isSongWorkspace ? 'preview' : 'home';
-  const [activeImportedSong, setActiveImportedSong] = useState<ImportedSong | null>(null);
-  const [importedTitle, setImportedTitle] = useState('');
-  const [gpPreviewFile, setGpPreviewFile] = useState<File | null>(null);
   const [chordSheetOpen, setChordSheetOpen] = useState(false);
-  const [infoSong, setInfoSong] = useState<LibrarySong | null>(null);
+  const [infoSong, setInfoSong] = useState<GuitarSong | null>(null);
   // undefined: closed; null: creating a new setlist.
   const [editingSetlist, setEditingSetlist] = useState<Setlist | null | undefined>(undefined);
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -110,38 +100,15 @@ const App: React.FC = () => {
       playback.setPlayBpm(song.bpm ?? DEFAULT_BPM);
       skipDirtyRef.current = true;
       setIsDirty(false);
-      setActiveImportedSong(null);
     },
     onError: toast.error,
     onSuccess: toast.success,
   });
 
-  const imported = useImportedSongs({
-    onSongOpened: song => {
-      setActiveImportedSong(song);
-      setImportedTitle(song.title);
-      playback.stop();
-    },
-    onError: toast.error,
-    onSuccess: toast.success,
-  });
-
-  const isImported = !!activeImportedSong;
-  const importedScore = useImportedScore(activeImportedSong?.id ?? null, toast.error);
-  const alphaPlayback = useAlphaTabPlayback(isImported ? importedScore.api : null);
-  const alphaTracks = useAlphaTabTracks(
-    isImported ? importedScore.api : null,
-    activeImportedSong?.id ?? null
+  const librarySongs = useMemo(
+    () => [...library.songs].sort((a, b) => b.lastModified - a.lastModified),
+    [library.songs]
   );
-
-  useEffect(() => {
-    if (activeImportedSong) setImportedTitle(activeImportedSong.title);
-  }, [activeImportedSong]);
-
-  const librarySongs: LibrarySong[] = useMemo(() => [
-    ...imported.songs,
-    ...library.songs.map(s => ({ ...s, source: 'gflow' as const })),
-  ].sort((a, b) => b.lastModified - a.lastModified), [imported.songs, library.songs]);
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -174,17 +141,8 @@ const App: React.FC = () => {
       recordSongOpened(song.id);
     }
 
-    if (isImportedSong(song)) {
-      if (route.name === 'create' || route.name === 'arrange') {
-        navigate(appPaths.practice(song.id), { replace: true });
-        return;
-      }
-      if (activeImportedSong?.id !== song.id) imported.openSong(song);
-      return;
-    }
-
-    if (library.currentSongId !== song.id || activeImportedSong) library.openSong(song);
-  }, [activeImportedSong, auth.loading, auth.user, imported, library, libraryReady, librarySongs, navigate, route, toast]);
+    if (library.currentSongId !== song.id) library.openSong(song);
+  }, [auth.loading, auth.user, library, libraryReady, librarySongs, navigate, route, toast]);
 
   // Lead sheets open in the lyrics-and-chords editor; the choice is remembered per song.
   const [editMode, setEditMode] = useState<EditMode>('tab');
@@ -277,7 +235,7 @@ const App: React.FC = () => {
       return;
     }
     setLibraryReady(false);
-    Promise.all([library.fetchSongs(), imported.refresh()]).finally(() => setLibraryReady(true));
+    library.fetchSongs().finally(() => setLibraryReady(true));
   }, [auth.user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Actions started before /auth/me answers wait for it instead of treating the user as signed out.
@@ -310,11 +268,9 @@ const App: React.FC = () => {
 
   const handleLogout = useCallback(async () => {
     playback.stop();
-    alphaPlayback.onStop();
     await auth.logout();
-    setActiveImportedSong(null);
     navigate(appPaths.songs, { replace: true });
-  }, [auth, playback, alphaPlayback, navigate]);
+  }, [auth, playback, navigate]);
 
   // ─── Cell input handlers (for keyboard shortcut hook) ─────────────────────
   const handleCellInput = useCallback(
@@ -431,43 +387,25 @@ const App: React.FC = () => {
     });
   };
 
-  const handleConvertGpToGflow = useCallback(async () => {
-    const alphaApi = importedScore.api;
-    if (!alphaApi?.score) {
-      toast.error('Score not loaded yet. Please wait.');
-      return;
-    }
-    const trackIdx = pickGuitarTrackIndex(alphaApi.score);
-    const gflow = convertAlphaTabScoreToGflow(alphaApi.score, trackIdx);
-    if (!gflow) {
-      toast.error('Could not extract tab from this score.');
-      return;
-    }
-    const song = await library.importSong(gflow);
-    if (song) navigate(appPaths.create(song.id));
-  }, [importedScore.api, library, navigate, toast]);
-
-  const handleClaimSong = useCallback(async (song: LibrarySong) => {
+  const handleClaimSong = useCallback(async (song: GuitarSong) => {
     try {
       await songApi.claimSong(song.id);
       await library.fetchSongs();
-      await imported.refresh();
       toast.success(`已認領「${song.title}」`);
     } catch {
       toast.error('認領失敗，請稍後再試。');
     }
-  }, [library, imported, toast]);
+  }, [library, toast]);
 
   const handleClaimAllLegacy = useCallback(async () => {
     try {
       const { claimed } = await songApi.claimLegacySongs();
       await library.fetchSongs();
-      await imported.refresh();
       toast.success(claimed > 0 ? `已認領 ${claimed} 首舊版樂譜` : '沒有需要認領的樂譜');
     } catch {
       toast.error('批量認領失敗，請稍後再試。');
     }
-  }, [library, imported, toast]);
+  }, [library, toast]);
 
   const handleImportFile = useCallback((file: File) => runWhenSignedIn(async () => {
     const result = await readGflowFile(file);
@@ -583,58 +521,43 @@ const App: React.FC = () => {
     }
   };
 
-  const handleOpenLibrarySong = useCallback((song: LibrarySong) => {
-    if (isImportedSong(song)) {
-      imported.openSong(song);
-      navigate(appPaths.practice(song.id));
-      return;
-    }
+  const handleOpenLibrarySong = useCallback((song: GuitarSong) => {
     library.openSong(song);
     navigate(appPaths.create(song.id));
-  }, [imported, library, navigate]);
+  }, [library, navigate]);
 
-  const handleOpenLibrarySongInMode = useCallback((song: LibrarySong, mode: 'create' | 'practice') => {
-    if (isImportedSong(song)) imported.openSong(song);
-    else library.openSong(song);
-    navigate(mode === 'create' && !isImportedSong(song) ? appPaths.create(song.id) : appPaths.practice(song.id));
-  }, [imported, library, navigate]);
+  const handleOpenLibrarySongInMode = useCallback((song: GuitarSong, mode: 'create' | 'practice') => {
+    library.openSong(song);
+    navigate(appPaths[mode](song.id));
+  }, [library, navigate]);
 
-  const handleDeleteLibrarySong = useCallback((song: LibrarySong) => {
-    if (isImportedSong(song)) {
-      imported.deleteSong(song.id);
-      if (activeImportedSong?.id === song.id) {
-        goHome();
-      }
-      return;
-    }
+  const handleDeleteLibrarySong = useCallback((song: GuitarSong) => {
     library.deleteSong(song.id);
-  }, [activeImportedSong?.id, imported, library]);
+  }, [library]);
 
   // ─── Song info, favourites and setlists ────────────────────────────────────
   const setlists = useSetlists(Boolean(auth.user), toast.error);
   const activeSetlistId = new URLSearchParams(location.search).get('setlist');
   const activeSetlist = setlists.setlists.find(item => item.id === activeSetlistId) ?? null;
 
-  const applySongInfo = useCallback((id: string, info: Partial<LibrarySong>) => {
-    library.setSongs(prev => prev.map(song => (song.id === id ? { ...song, ...info } as GuitarSong : song)));
-    imported.setSongs(prev => prev.map(song => (song.id === id ? { ...song, ...info } as ImportedSong : song)));
-  }, [imported, library]);
+  const applySongInfo = useCallback((id: string, info: Partial<GuitarSong>) => {
+    library.setSongs(prev => prev.map(song => (song.id === id ? { ...song, ...info } : song)));
+  }, [library]);
 
-  const saveSongInfo = useCallback(async (song: LibrarySong, info: SongInfo & { title?: string }) => {
+  const saveSongInfo = useCallback(async (song: GuitarSong, info: SongInfo & { title?: string }) => {
     try {
       const saved = await songApi.updateSongInfo(song.id, info);
       applySongInfo(song.id, saved);
       // Keep the open copy's title in step so its next autosave does not rename the song back.
       if (library.currentSongId === song.id && saved.title !== editor.songTitle) editor.setSongTitle(saved.title);
-      if (activeImportedSong?.id === song.id) setActiveImportedSong(prev => (prev ? { ...prev, ...saved } : prev));
       return true;
     } catch {
       toast.error('儲存歌曲資訊失敗，請稍後再試。');
       return false;
     }
-  }, [activeImportedSong?.id, applySongInfo, editor, library.currentSongId, toast]);
+  }, [applySongInfo, editor, library.currentSongId, toast]);
 
-  const toggleFavorite = useCallback(async (song: LibrarySong) => {
+  const toggleFavorite = useCallback(async (song: GuitarSong) => {
     const favorite = !song.favorite;
     applySongInfo(song.id, { favorite });
     try {
@@ -645,20 +568,10 @@ const App: React.FC = () => {
     }
   }, [applySongInfo, toast]);
 
-  const openInSetlist = useCallback((song: LibrarySong, setlistId: string) => {
-    if (isImportedSong(song)) imported.openSong(song);
-    else library.openSong(song);
+  const openInSetlist = useCallback((song: GuitarSong, setlistId: string) => {
+    library.openSong(song);
     navigate(`${appPaths.practice(song.id)}?setlist=${encodeURIComponent(setlistId)}`);
-  }, [imported, library, navigate]);
-
-  const handleImportedTitleChange = useCallback(async (title: string) => {
-    if (!activeImportedSong) return;
-    const trimmed = title.trim() || activeImportedSong.title;
-    setImportedTitle(trimmed);
-    await imported.updateTitle(activeImportedSong.id, trimmed);
-    setActiveImportedSong(prev => (prev ? { ...prev, title: trimmed, lastModified: Date.now() } : prev));
-    imported.refresh();
-  }, [activeImportedSong, imported]);
+  }, [library, navigate]);
 
   const handleInsertSolo = useCallback((afterSectionId: string, section: Omit<TabSection, 'id'>) => {
     editor.insertSectionAfter(afterSectionId, section);
@@ -667,10 +580,8 @@ const App: React.FC = () => {
 
   const goHome = useCallback(() => {
     playback.stop();
-    alphaPlayback.onStop();
-    setActiveImportedSong(null);
     navigate(appPaths.songs);
-  }, [playback, alphaPlayback, navigate]);
+  }, [playback, navigate]);
 
   // ─── Derived state ─────────────────────────────────────────────────────────
   const currentSection = editor.sections.find(s => s.id === editor.activeSectionId);
@@ -700,7 +611,7 @@ const App: React.FC = () => {
       else navigate(appPaths.songs);
       return;
     }
-    navigate(isImportedSong(song) ? appPaths.practice(song.id) : appPaths[destination](song.id));
+    navigate(appPaths[destination](song.id));
   };
 
   if (viewMode === 'home' || (isSongWorkspace && !auth.user)) {
@@ -735,7 +646,6 @@ const App: React.FC = () => {
           onBackupToDrive={isDriveConfigured() ? () => void backupLibraryToDrive() : undefined}
           driveBusy={driveFiles !== undefined || backupProgress !== null}
           backupProgress={backupProgress}
-          onImportGp={file => runWhenSignedIn(() => setGpPreviewFile(file))}
           onPasteChordSheet={() => runWhenSignedIn(() => setChordSheetOpen(true))}
           setlists={setlists.setlists}
           onEditSetlist={setlist => setEditingSetlist(setlist)}
@@ -767,18 +677,6 @@ const App: React.FC = () => {
           onLogin={auth.login}
           onRegister={auth.register}
         />
-        {gpPreviewFile && (
-          <ImportPreviewModal
-            file={gpPreviewFile}
-            onConfirm={async title => {
-              const song = await imported.importFile(gpPreviewFile, title);
-              setGpPreviewFile(null);
-              if (song) navigate(appPaths.practice(song.id));
-            }}
-            onCancel={() => setGpPreviewFile(null)}
-            onError={toast.error}
-          />
-        )}
         {infoSong && (
           <SongInfoModal
             song={infoSong}
@@ -813,11 +711,10 @@ const App: React.FC = () => {
   }
 
 
-  // ─── Song shell (gflow + imported) ─────────────────────────────────────────
+  // ─── Song shell ────────────────────────────────────────────────────────────
   return (
     <div className="h-screen overflow-hidden flex flex-col bg-[#f7f5ef] dark:bg-[#151616] text-[#171a18] dark:text-zinc-100 selection:bg-indigo-500/20 dark:selection:bg-violet-500/30 selection:text-indigo-900 dark:selection:text-violet-200 transition-colors duration-200 lg:pl-[72px] print:h-auto print:overflow-visible print:pl-0">
       <SongShellHeader
-        isImported={isImported}
         viewMode={route.name === 'create' || route.name === 'arrange' ? route.name : 'practice'}
         onViewModeChange={mode => {
           if (route.name !== 'create' && route.name !== 'practice' && route.name !== 'arrange') return;
@@ -825,15 +722,8 @@ const App: React.FC = () => {
         }}
         onOpenChordLibrary={() => navigate(appPaths.chords())}
         onBack={goHome}
-        title={isImported ? importedTitle : editor.songTitle}
-        onTitleChange={title => {
-          if (isImported) setImportedTitle(title);
-          else editor.setSongTitle(title);
-        }}
-        onTitleBlur={() => {
-          if (isImported) handleImportedTitleChange(importedTitle);
-        }}
-        importedSong={activeImportedSong}
+        title={editor.songTitle}
+        onTitleChange={editor.setSongTitle}
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenShortcuts={() => setShortcutsOpen(true)}
@@ -848,8 +738,6 @@ const App: React.FC = () => {
         onExportMidi={() => { triggerMidiExport(); setIsExportOpen(false); }}
         onExportPdf={() => { triggerPdfExport(); setIsExportOpen(false); }}
         onExportMusicXml={() => { triggerMusicXmlExport(); setIsExportOpen(false); }}
-        onConvertToGflow={isImported ? handleConvertGpToGflow : undefined}
-        convertToGflowDisabled={isImported && (!importedScore.api?.score || importedScore.loading)}
         canUndo={editor.historyIndex > 0}
         canRedo={editor.historyIndex < editor.history.length - 1}
         onUndo={editor.undo}
@@ -864,7 +752,7 @@ const App: React.FC = () => {
           <SetlistBar
             name={activeSetlist.name}
             position={position}
-            onGo={song => { playback.stop(); alphaPlayback.onStop(); openInSetlist(song, activeSetlist.id); }}
+            onGo={song => { playback.stop(); openInSetlist(song, activeSetlist.id); }}
             onClose={() => navigate(location.pathname, { replace: true })}
           />
         );
@@ -872,28 +760,7 @@ const App: React.FC = () => {
 
       {/* ─ Main ───────────────────────────────────────────────────────────── */}
       <main className="flex-1 flex overflow-hidden pb-16 lg:pb-0">
-        {isImported && activeImportedSong && route.name === 'practice' && (
-          <ImportedScorePanel
-            songId={activeImportedSong.id}
-            scoreData={importedScore.scoreData}
-            loading={importedScore.loading}
-            onReady={importedScore.onApiReady}
-            onScoreLoaded={loadedTitle => {
-              if (loadedTitle && loadedTitle !== importedTitle) {
-                setImportedTitle(loadedTitle);
-                handleImportedTitleChange(loadedTitle);
-              }
-            }}
-            onError={toast.error}
-            tracks={alphaTracks.tracks}
-            selectedTracks={alphaTracks.selected}
-            onToggleTrack={alphaTracks.toggleTrack}
-            onSelectAllTracks={alphaTracks.selectAll}
-            onSelectGuitarTracks={alphaTracks.selectGuitarTracks}
-          />
-        )}
-
-        {!isImported && route.name === 'create' && (
+        {route.name === 'create' && (
           <EditView
             sections={editor.sections}
             activeSectionId={editor.activeSectionId}
@@ -942,7 +809,7 @@ const App: React.FC = () => {
         )}
 
         {/* ── Practice workspace: reading and playback live in one route ──── */}
-        {!isImported && route.name === 'practice' && (
+        {route.name === 'practice' && (
           <div className="flex-1 overflow-y-auto bg-[#f6f6f3] dark:bg-zinc-950 transition-colors duration-250">
             <SongPreview
               sections={editor.sections}
@@ -975,7 +842,7 @@ const App: React.FC = () => {
         )}
 
         {/* ── Arrange workspace: solo note suggestions over the progression ── */}
-        {!isImported && route.name === 'arrange' && (
+        {route.name === 'arrange' && (
           <div className="flex-1 overflow-y-auto bg-[#f6f6f3] dark:bg-zinc-950 transition-colors duration-250">
             <ArrangeView
               sections={editor.sections}
@@ -993,11 +860,7 @@ const App: React.FC = () => {
       </main>
 
       {isSongWorkspace && (
-        isImported ? (
-          <PlayerBar {...alphaPlayback} />
-        ) : (
         <PlayerBar
-          mode="gflow"
           isPlaying={playback.isPlaying || playback.isCountingIn}
           isPaused={playback.isPaused}
           countInBeat={playback.countInBeat}
@@ -1033,7 +896,6 @@ const App: React.FC = () => {
           playbackVolume={playback.playbackVolume}
           onVolumeChange={playback.setPlaybackVolume}
         />
-        )
       )}
 
       {/* ─ Toast notifications ─────────────────────────────────────────────── */}

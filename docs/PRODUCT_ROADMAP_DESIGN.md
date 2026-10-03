@@ -4,6 +4,8 @@
 > 執行順序：**先 A（創作工具）→ 再 B（alphaTab 整合）**  
 > 參考：[alphaTab](https://github.com/CoderLine/alphaTab) UI/UX 與功能設計  
 > 日期：2025-06-20 · **最後更新：2026-09-22**
+>
+> **2026-10-03：Phase B（alphaTab 整合：Guitar Pro / MusicXML 匯入、閱譜與播放、GP→gflow 轉換）已整個移除。** 下文關於 Phase B 的段落保留作為歷史紀錄；MusicXML **匯出**仍保留。
 
 ### 進度總覽
 

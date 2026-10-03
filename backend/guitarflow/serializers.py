@@ -156,19 +156,12 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     transposeOffset = serializers.IntegerField(source='transpose_offset', required=False, default=0)
     voicingPlan = serializers.JSONField(source='voicing_plan', required=False)
     bpm = serializers.IntegerField(required=False, allow_null=True, min_value=30, max_value=300)
-    source = serializers.ChoiceField(
-        choices=GuitarSong.SOURCE_CHOICES,
-        required=False,
-        default=GuitarSong.SOURCE_GFLOW,
-    )
     artist = serializers.CharField(required=False, allow_blank=True, max_length=120)
     originalKey = serializers.CharField(source='original_key', required=False, allow_blank=True, max_length=12)
     tags = serializers.JSONField(required=False)
     favorite = serializers.BooleanField(required=False)
     melodyRange = serializers.JSONField(source='melody_range', required=False, allow_null=True)
     form = serializers.JSONField(required=False)
-    importFormat = serializers.CharField(source='import_format', read_only=True)
-    fileName = serializers.CharField(source='import_file_name', read_only=True)
     isLegacy = serializers.SerializerMethodField()
 
     class Meta:
@@ -189,9 +182,6 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'favorite',
             'melodyRange',
             'form',
-            'source',
-            'importFormat',
-            'fileName',
             'isLegacy',
         )
 
@@ -219,17 +209,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     def validate_melodyRange(self, value):
         return validate_melody_range(value)
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if instance.source == GuitarSong.SOURCE_IMPORTED:
-            data['sections'] = []
-            data['customChords'] = []
-            data['voicingPlan'] = {}
-            data['form'] = []
-        return data
-
     def create(self, validated_data):
-        validated_data.pop('source', None)
         request = self.context.get('request')
         sections_data = request.data.get('sections', []) if request else []
         custom_chords_data = request.data.get('customChords', []) if request else []
@@ -261,13 +241,6 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Song info (artist, key, tags, favorite) changes only through SongInfoSerializer,
         # so an editor autosave holding an older copy cannot undo a change made in the library.
-        validated_data.pop('source', None)
-
-        if instance.source == GuitarSong.SOURCE_IMPORTED:
-            instance.title = validated_data.get('title', instance.title)
-            instance.save()
-            return instance
-
         instance.title = validated_data.get('title', instance.title)
         instance.transpose_offset = validated_data.get('transpose_offset', instance.transpose_offset)
         instance.voicing_plan = validated_data.get('voicing_plan', instance.voicing_plan)

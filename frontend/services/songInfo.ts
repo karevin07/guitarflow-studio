@@ -1,14 +1,14 @@
-import { LibrarySong, Setlist } from '../types';
+import { GuitarSong, Setlist } from '../types';
 
 /** Title, artist or a tag contains the query (case-insensitive). */
-export const matchesSearch = (song: LibrarySong, query: string): boolean => {
+export const matchesSearch = (song: GuitarSong, query: string): boolean => {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
   return [song.title, song.artist ?? '', ...(song.tags ?? [])].some(text => text.toLowerCase().includes(needle));
 };
 
 /** Every tag used in the library, most used first, then alphabetically. */
-export const libraryTags = (songs: LibrarySong[]): string[] => {
+export const libraryTags = (songs: GuitarSong[]): string[] => {
   const counts = new Map<string, number>();
   songs.forEach(song => (song.tags ?? []).forEach(tag => counts.set(tag, (counts.get(tag) ?? 0) + 1)));
   return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([tag]) => tag);
@@ -25,20 +25,20 @@ export const parseTagInput = (text: string): string[] => {
 };
 
 /** The setlist's songs in order, skipping ones that were deleted. */
-export const setlistSongs = (setlist: Setlist, songs: LibrarySong[]): LibrarySong[] => {
+export const setlistSongs = (setlist: Setlist, songs: GuitarSong[]): GuitarSong[] => {
   const byId = new Map(songs.map(song => [song.id, song]));
-  return setlist.songIds.map(id => byId.get(id)).filter((song): song is LibrarySong => Boolean(song));
+  return setlist.songIds.map(id => byId.get(id)).filter((song): song is GuitarSong => Boolean(song));
 };
 
 export interface SetlistPosition {
   index: number;
   total: number;
-  previous: LibrarySong | null;
-  next: LibrarySong | null;
+  previous: GuitarSong | null;
+  next: GuitarSong | null;
 }
 
 /** Where a song sits in a setlist, or null when it is not in it. */
-export const setlistPosition = (setlist: Setlist, songs: LibrarySong[], songId: string): SetlistPosition | null => {
+export const setlistPosition = (setlist: Setlist, songs: GuitarSong[], songId: string): SetlistPosition | null => {
   const ordered = setlistSongs(setlist, songs);
   const index = ordered.findIndex(song => song.id === songId);
   if (index < 0) return null;

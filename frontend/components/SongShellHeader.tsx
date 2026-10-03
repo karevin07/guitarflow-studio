@@ -18,22 +18,18 @@ import {
   Undo2,
   User,
 } from 'lucide-react';
-import { ImportedSong } from '../types';
 import { AuthUser } from '../services/apiClient';
 import AppRail, { AppDestination } from './AppRail';
 
 type ShellViewMode = 'create' | 'practice' | 'arrange';
 
 interface SongShellHeaderProps {
-  isImported: boolean;
   viewMode: ShellViewMode;
   onViewModeChange: (mode: ShellViewMode) => void;
   onOpenChordLibrary: () => void;
   onBack: () => void;
   title: string;
   onTitleChange: (title: string) => void;
-  onTitleBlur?: () => void;
-  importedSong?: ImportedSong | null;
   theme: 'light' | 'dark';
   onToggleTheme: () => void;
   onOpenShortcuts: () => void;
@@ -49,8 +45,6 @@ interface SongShellHeaderProps {
   onExportMidi: () => void;
   onExportPdf: () => void;
   onExportMusicXml: () => void;
-  onConvertToGflow?: () => void;
-  convertToGflowDisabled?: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onUndo: () => void;
@@ -112,15 +106,12 @@ const ExportMenu: React.FC<ExportMenuProps> = ({
 );
 
 const SongShellHeader: React.FC<SongShellHeaderProps> = ({
-  isImported,
   viewMode,
   onViewModeChange,
   onOpenChordLibrary,
   onBack,
   title,
   onTitleChange,
-  onTitleBlur,
-  importedSong,
   theme,
   onToggleTheme,
   onOpenShortcuts,
@@ -135,8 +126,6 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   onExportMidi,
   onExportPdf,
   onExportMusicXml,
-  onConvertToGflow,
-  convertToGflowDisabled,
   canUndo,
   canRedo,
   onUndo,
@@ -144,15 +133,11 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   user,
   onLogout,
 }) => {
-  const modes = isImported
-    ? [
-        { mode: 'practice' as const, label: '練習', icon: Music2 },
-      ]
-    : [
-        { mode: 'create' as const, label: '創作', icon: Edit3 },
-        { mode: 'practice' as const, label: '練習', icon: Music2 },
-        { mode: 'arrange' as const, label: '編曲', icon: Guitar },
-      ];
+  const modes = [
+    { mode: 'create' as const, label: '創作', icon: Edit3 },
+    { mode: 'practice' as const, label: '練習', icon: Music2 },
+    { mode: 'arrange' as const, label: '編曲', icon: Guitar },
+  ];
 
   const activeDestination: AppDestination = viewMode;
   const saveLabel = saveStatus === 'saving' ? '儲存中' : saveStatus === 'saved' ? '已儲存' : '儲存';
@@ -160,8 +145,6 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
   const navigateRail = (destination: AppDestination) => {
     if (destination === 'library') return onBack();
     if (destination === 'chords') return onOpenChordLibrary();
-    // Imported scores only have a practice view.
-    if (isImported || destination === 'practice') return onViewModeChange('practice');
     onViewModeChange(destination);
   };
 
@@ -175,11 +158,10 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
         </button>
 
         <div className="min-w-0 flex-1">
-          <input value={title} onChange={event => onTitleChange(event.target.value)} onBlur={onTitleBlur} className="w-full truncate border-0 bg-transparent p-0 text-base font-bold tracking-[-0.02em] text-[#171a18] outline-none dark:text-zinc-50 sm:text-lg" aria-label="歌曲名稱" />
+          <input value={title} onChange={event => onTitleChange(event.target.value)} className="w-full truncate border-0 bg-transparent p-0 text-base font-bold tracking-[-0.02em] text-[#171a18] outline-none dark:text-zinc-50 sm:text-lg" aria-label="歌曲名稱" />
           <div className="mt-0.5 flex items-center gap-2 text-[11px] font-semibold text-[#85877f] dark:text-zinc-500">
             <span>GuitarFlow 樂譜</span>
-            {isImported && importedSong && <><span>·</span><span>{importedSong.importFormat}</span></>}
-            {!isImported && <><span>·</span><button type="button" onClick={onToggleAutosave} className={autosaveEnabled ? 'text-[#2b6c59] dark:text-emerald-400' : ''}>自動儲存 {autosaveEnabled ? '開啟' : '關閉'}</button></>}
+            <span>·</span><button type="button" onClick={onToggleAutosave} className={autosaveEnabled ? 'text-[#2b6c59] dark:text-emerald-400' : ''}>自動儲存 {autosaveEnabled ? '開啟' : '關閉'}</button>
           </div>
         </div>
 
@@ -189,27 +171,17 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
           ))}
         </div>
 
-        {isImported && onConvertToGflow && (
-          <button type="button" onClick={onConvertToGflow} disabled={convertToGflowDisabled} className="hidden rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-40 dark:border-violet-900 dark:bg-violet-950/40 dark:text-violet-300 sm:block">
-            轉成可編輯
-          </button>
-        )}
+        <div className="hidden items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-zinc-900 sm:flex">
+          <button type="button" onClick={onUndo} disabled={!canUndo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="復原" aria-label="復原"><Undo2 size={15} /></button>
+          <button type="button" onClick={onRedo} disabled={!canRedo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="重做" aria-label="重做"><Redo2 size={15} /></button>
+        </div>
 
-        {!isImported && (
-          <div className="hidden items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-zinc-900 sm:flex">
-            <button type="button" onClick={onUndo} disabled={!canUndo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="復原" aria-label="復原"><Undo2 size={15} /></button>
-            <button type="button" onClick={onRedo} disabled={!canRedo} className="grid h-8 w-8 place-items-center rounded-lg text-slate-500 hover:bg-white disabled:opacity-25 dark:text-zinc-400 dark:hover:bg-zinc-800" title="重做" aria-label="重做"><Redo2 size={15} /></button>
-          </div>
-        )}
+        <button type="button" onClick={onSave} aria-label={saveLabel} className={`${viewMode === 'practice' ? 'hidden sm:flex' : 'flex'} h-11 sm:h-10 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-3 text-xs font-semibold text-[#5f625c] hover:border-[#bfc2e8] hover:text-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200`}>
+          {saveStatus === 'saved' ? <Check size={16} className="text-emerald-500" /> : <Save size={16} />}
+          <span className="hidden md:inline">{saveLabel}</span>
+        </button>
 
-        {!isImported && (
-          <button type="button" onClick={onSave} aria-label={saveLabel} className={`${viewMode === 'practice' ? 'hidden sm:flex' : 'flex'} h-11 sm:h-10 items-center gap-2 rounded-xl border border-[#dedcd4] bg-[#fffefa] px-3 text-xs font-semibold text-[#5f625c] hover:border-[#bfc2e8] hover:text-[#4d5bd2] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200`}>
-            {saveStatus === 'saved' ? <Check size={16} className="text-emerald-500" /> : <Save size={16} />}
-            <span className="hidden md:inline">{saveLabel}</span>
-          </button>
-        )}
-
-        {!isImported && viewMode === 'practice' && (
+        {viewMode === 'practice' && (
           <div className="relative sm:hidden">
             <button type="button" onClick={onToggleExport} aria-label="更多歌曲操作" aria-expanded={isExportOpen} className="grid h-11 w-11 place-items-center rounded-xl border border-[#dedcd4] bg-[#fffefa] text-[#5f625c] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"><MoreHorizontal size={20} /></button>
             {isExportOpen && <div className="absolute right-0 top-12 z-[80] w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
@@ -225,7 +197,7 @@ const SongShellHeader: React.FC<SongShellHeaderProps> = ({
             </div>}
           </div>
         )}
-        {!isImported && <div className={viewMode === 'practice' ? 'hidden sm:block' : ''}><ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onDrive={onUploadToDrive} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} /></div>}
+        <div className={viewMode === 'practice' ? 'hidden sm:block' : ''}><ExportMenu open={isExportOpen} onToggle={onToggleExport} onGflow={onExportGflow} onDrive={onUploadToDrive} onMidi={onExportMidi} onPdf={onExportPdf} onMusicXml={onExportMusicXml} compact={false} /></div>
         {user && <div className="hidden h-9 items-center gap-2 rounded-full bg-slate-100 px-3 text-xs font-semibold text-slate-600 dark:bg-zinc-900 dark:text-zinc-300 xl:flex"><User size={14} />{user.username}</div>}
       </header>
 

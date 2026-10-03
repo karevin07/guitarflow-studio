@@ -28,7 +28,6 @@ services:
       - ./backend:/app
       - /app/.venv
       - /app/__pycache__
-      - media_data:/app/media
     environment:
       - PYTHONUNBUFFERED=1
       - DB_ENGINE=postgres
@@ -72,4 +71,3 @@ services:
 
 volumes:
   postgres_data:
-  media_data:

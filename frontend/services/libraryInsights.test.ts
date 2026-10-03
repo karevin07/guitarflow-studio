@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GuitarSong, ImportedSong } from '../types';
+import { GuitarSong } from '../types';
 import { commonChords, displayNameFor, greetingFor, songKeyLabel } from './libraryInsights';
 
 const row = (cells: Record<number, string>) => Array.from({ length: 16 }, (_, index) => cells[index] ?? null);
@@ -7,7 +7,6 @@ const song = (id: string, chords: Array<Record<number, string>>): GuitarSong => 
   id, title: id, lastModified: 0, customChords: [], voicingPlan: {}, transposeOffset: 0,
   sections: [{ id: 's', title: 'Verse', capo: 0, measures: [], chords: chords.map(row), lyrics: [] }],
 });
-const imported: ImportedSong = { id: 'gp', title: 'GP', lastModified: 0, source: 'imported', importFormat: 'gp', fileName: 'a.gp' };
 
 describe('greetingFor', () => {
   it.each([[7, '早安'], [13, '午安'], [21, '晚上好'], [2, '夜深了']])('%i:00 → %s', (hour, expected) => {
@@ -16,15 +15,15 @@ describe('greetingFor', () => {
 });
 
 describe('commonChords', () => {
-  it('ranks chords by how often they appear in the user songs', () => {
-    const songs = [song('a', [{ 0: 'C', 8: 'G' }, { 0: 'Am', 8: 'G' }]), song('b', [{ 0: 'G', 8: 'D' }]), imported];
+  it('ranks chords by how often they appear across songs', () => {
+    const songs = [song('a', [{ 0: 'C', 8: 'G' }, { 0: 'Am', 8: 'G' }]), song('b', [{ 0: 'G', 8: 'D' }])];
     expect(commonChords(songs)).toEqual(['G', 'C', 'Am', 'D']);
     expect(commonChords(songs, 2)).toEqual(['G', 'C']);
   });
 
   it('is empty without chords', () => {
     expect(commonChords([])).toEqual([]);
-    expect(commonChords([imported])).toEqual([]);
+    expect(commonChords([song('a', [{}])])).toEqual([]);
   });
 });
 

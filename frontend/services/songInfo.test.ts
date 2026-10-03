@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { LibrarySong, Setlist } from '../types';
+import { GuitarSong, Setlist } from '../types';
 import { libraryTags, matchesSearch, moveItem, parseTagInput, setlistPosition, setlistSongs } from './songInfo';
 
-const song = (id: string, extra: Partial<LibrarySong> = {}): LibrarySong => ({
+const song = (id: string, extra: Partial<GuitarSong> = {}): GuitarSong => ({
   id, title: `Song ${id}`, lastModified: 0, sections: [], customChords: [], voicingPlan: {}, transposeOffset: 0, ...extra,
-} as LibrarySong);
+} as GuitarSong);
 
 describe('song info helpers', () => {
   it('searches title, artist and tags', () => {

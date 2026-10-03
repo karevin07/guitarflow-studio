@@ -1,7 +1,7 @@
 
 # GuitarFlow Studio
 
-GuitarFlow Studio 是一個網頁版吉他創作與練習工具。主要入口為創作、練習與和弦庫；歌曲可儲存在個人帳號中，也可匯入 Guitar Pro 或 MusicXML 樂譜供閱譜與播放。
+GuitarFlow Studio 是一個網頁版吉他創作與練習工具。主要入口為創作、練習與和弦庫；歌曲儲存在個人帳號中，也可以匯入 `.gflow` 檔、貼上和弦譜，或透過 Google Drive 備份與還原。
 
 ## Features (功能)
 
@@ -26,8 +26,8 @@ GuitarFlow Studio 是一個網頁版吉他創作與練習工具。主要入口�
 - **Practice Mode**: Read-only score, playback, auto-scroll and chord guidance for practice.
 - **Transposition**: Instantly transpose the entire song (notes and chord names) up or down.
 - **Playback**: Play back tablature with BPM control, loop, metronome, and volume.
-- **Export**: Export songs as `.gflow` files or MIDI.
-- **Import**: Preview and persist Guitar Pro / MusicXML scores using alphaTab.
+- **Export**: Export songs as `.gflow`, MIDI or MusicXML files.
+- **Import**: Open `.gflow` files or paste a chord sheet.
 - **Account Save**: Songs belong to the signed-in user and persist to the backend (PostgreSQL in Docker, SQLite for local-only dev).
 
 ---
@@ -131,7 +131,7 @@ cd ..
 docker compose --env-file .env.e2e.example -p guitarflow-e2e down -v --remove-orphans
 ```
 
-The last command deletes only the isolated `guitarflow-e2e` containers and test database volume. CI runs the same browser suite. It covers account creation and save/reopen, chord-candidate confirmation, practice voicing planning and playback, MusicXML preview/import, Guitar Pro 7 binary import/reopen/playback, and a 390px-wide mobile chord-sheet flow. The GP7 fixture is generated from this repository's original MusicXML example; see [fixture provenance and regeneration](frontend/e2e/fixtures/README.md). Other Guitar Pro versions still need separate compatibility samples.
+The last command deletes only the isolated `guitarflow-e2e` containers and test database volume. CI runs the same browser suite. It covers account creation and save/reopen, chord-candidate confirmation, practice voicing planning and playback, `.gflow` import around sign-in, and a 390px-wide mobile chord-sheet flow.
 
 See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details, [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes, [docs/TAILSCALE_DOCKER_TESTING.md](docs/TAILSCALE_DOCKER_TESTING.md) for private-network device testing with Tailscale, and [docs/GOOGLE_DRIVE_SETUP.md](docs/GOOGLE_DRIVE_SETUP.md) for uploading and importing `.gflow` files with Google Drive.
 
@@ -139,12 +139,7 @@ See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture detail
 
 ## Third-Party Licenses (第三方授權)
 
-Guitar Pro import uses [@coderline/alphatab](https://github.com/CoderLine/alphaTab) (MPL-2.0), lazy-loaded separately from the `.gflow` editor.
-
-| Document | Description |
-|----------|-------------|
-| [frontend/NOTICE.md](frontend/NOTICE.md) | Third-party component list |
-| [docs/MPL_LICENSING.md](docs/MPL_LICENSING.md) | MPL-2.0 analysis and compliance checklist |
+See [frontend/NOTICE.md](frontend/NOTICE.md) for the third-party component list.
 
 ---
 

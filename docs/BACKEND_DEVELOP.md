@@ -47,9 +47,7 @@ backend/
 
 ### GuitarSong
 - `title`, `created_at`, `last_modified`, `transpose_offset`
-- `source` — `gflow` (default) or `imported`
-- `import_format`, `import_file_name`, `import_file` — for Guitar Pro / MusicXML uploads
-- Has many `TabSection` and `CustomChord` (cascade delete; imported songs leave sections empty)
+- Has many `TabSection` and `CustomChord` (cascade delete)
 
 ### TabSection
 - Nested under a song; ordered by `order` field
@@ -81,12 +79,10 @@ All routes are prefixed with `/api/`.
 
 | Method | Path | ViewSet | Description |
 | :--- | :--- | :--- | :--- |
-| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create gflow songs (`?source=`, `?search=`, paginated) |
+| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create songs (`?search=`, paginated) |
 | `GET/PUT/DELETE` | `/songs/{id}/` | `GuitarSongViewSet` | Retrieve / update / delete |
 | `POST` | `/songs/{id}/claim/` | `GuitarSongViewSet` | Claim legacy song (`owner=null`) for current user |
 | `POST` | `/songs/claim-legacy/` | `GuitarSongViewSet` | Bulk-claim all legacy songs for current user |
-| `POST` | `/songs/import-score/` | `GuitarSongViewSet` | Multipart upload of GP / MusicXML file |
-| `GET` | `/songs/{id}/score-file/` | `GuitarSongViewSet` | Download imported score binary |
 | `GET` | `/global-chords/` | `GlobalChordViewSet` | List standard chords（公開） |
 | `POST` | `/auth/register/` | `RegisterView` | 註冊 + 回傳 Token |
 | `POST` | `/auth/login/` | `LoginView` | 登入 + 回傳 Token |

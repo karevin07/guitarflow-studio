@@ -2,13 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class GuitarSong(models.Model):
-    SOURCE_GFLOW = 'gflow'
-    SOURCE_IMPORTED = 'imported'
-    SOURCE_CHOICES = [
-        (SOURCE_GFLOW, 'GFlow'),
-        (SOURCE_IMPORTED, 'Imported'),
-    ]
-
     title = models.CharField(max_length=255, default='New Song')
     created_at = models.DateTimeField(auto_now_add=True)
     last_modified = models.DateTimeField(auto_now=True)
@@ -23,10 +16,6 @@ class GuitarSong(models.Model):
     melody_range = models.JSONField(null=True, blank=True)
     # Play order: [{"section": <index into sections>, "repeat": 1-8}, ...]; empty plays sections as written.
     form = models.JSONField(default=list, blank=True)
-    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=SOURCE_GFLOW)
-    import_format = models.CharField(max_length=20, null=True, blank=True)
-    import_file_name = models.CharField(max_length=255, null=True, blank=True)
-    import_file = models.FileField(upload_to='imports/%Y/%m/', null=True, blank=True)
     owner = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

@@ -60,7 +60,7 @@ docker compose --env-file .env.tailscale.local up -d --build --force-recreate fr
 ## 4. 使用方式
 
 - **上傳單首**：在歌曲頁點「匯出」→「上傳到 Google Drive」。手機的練習頁在「⋯」選單裡。
-- **備份整個曲庫**：在歌曲庫點「Google Drive」→「備份整個曲庫」。每首 GuitarFlow 樂譜存成一個 `.gflow`；Drive 上的檔案比歌曲最後修改時間還新的會略過，所以重複備份只會上傳有變更的歌。匯入的 Guitar Pro／MusicXML 樂譜和歌單不在備份範圍內。
+- **備份整個曲庫**：在歌曲庫點「Google Drive」→「備份整個曲庫」。每首 GuitarFlow 樂譜存成一個 `.gflow`；Drive 上的檔案比歌曲最後修改時間還新的會略過，所以重複備份只會上傳有變更的歌。歌單不在備份範圍內。
 - **匯入／還原**：在歌曲庫點「Google Drive」→「從 Drive 匯入」，清單會列出從 GuitarFlow 上傳過的樂譜（最近更新的在前），已經在曲庫裡的會標示「已在曲庫」，「選取未在曲庫的」可以一次選齊。只選一首時，匯入後會直接打開它。
 
 ### 每個檔案怎麼對應到歌曲
