@@ -1,123 +1,49 @@
-# GuitarFlow Studio Project Overview
+# 專案架構
 
-GuitarFlow Studio is a professional-grade web-based guitar tablature editor built with React, Django REST Framework, PostgreSQL, and Docker.
+GuitarFlow 的 React 前端負責編輯、音樂理論與播放；Django API 負責帳號與資料儲存。
 
----
+## 目錄
 
-## 1. Directory Structure
+| 路徑 | 用途 |
+| --- | --- |
+| `frontend/App.tsx` | 路由、歌曲載入與頁面整合 |
+| `frontend/components/` | 創作、練習、編曲與曲庫介面 |
+| `frontend/hooks/` | 編輯狀態、播放、認證與儲存 |
+| `frontend/services/` | API、匯入匯出、Drive 與歌曲處理 |
+| `frontend/music-theory/` | 音高、和弦、音階與調性分析 |
+| `frontend/guitar/` | 指板位置與指法產生、評分 |
+| `backend/core/` | Django 設定與根路由 |
+| `backend/guitarflow/` | 模型、序列化、API、migration 與測試 |
+| `postgres-init/init.sql` | PostgreSQL 首次啟動的和弦資料 |
+| `frontend/e2e/` | Playwright 瀏覽器測試 |
 
-The project separates frontend and backend layers:
+## 資料與儲存
 
-```
-guitar-flow/
-├── docker-compose.yml     # Docker Compose orchestration (db + backend + frontend)
-├── Makefile               # Project automation (install, dev, test, docker)
-├── postgres-init/         # PostgreSQL init scripts (global chord seed data)
-│   └── init.sql
-├── README.md
-├── frontend/              # React frontend (Vite)
-│   ├── App.tsx            # Main app layout, editor & playback
-│   ├── index.html
-│   ├── index.tsx
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── vite.config.ts     # Dev server on port 3000 (5173 when run locally)
-│   ├── Dockerfile
-│   ├── .env               # optional: VITE_API_URL to bypass the /api proxy
-│   ├── components/        # UI (Home, TabMeasure, ChordDiagram, Fretboard, etc.)
-│   ├── hooks/             # useEditorState, useSongLibrary, useKeyboardShortcuts
-│   └── services/          # api.ts (REST client), midiHelper.ts
-└── backend/               # Django backend
-    ├── manage.py
-    ├── pyproject.toml     # uv package configuration
-    ├── uv.lock
-    ├── .env.example       # Environment variable template
-    ├── Dockerfile
-    ├── core/              # Django settings & root URL config
-    └── guitarflow/        # Models, serializers, views, tests
-```
+歌曲包含段落、六線譜、歌詞、和弦、指法配置與播放順序。前端以 `.gflow` JSON 匯入匯出；後端將歌曲、段落與自訂和弦分開儲存。
 
----
+歌曲與歌單屬於登入者。早期資料中沒有擁有者的歌曲仍可由登入者讀取及認領，見[後端開發](BACKEND_DEVELOP.md)。
 
-## 2. Port & Volume Mapping
+- Docker：PostgreSQL 資料保存在 `postgres_data` volume。
+- 本機：未設定 PostgreSQL 時，使用 `backend/db.sqlite3`。
+- Google Drive：瀏覽器直接上傳與下載 `.gflow`，後端不保存 Google 存取權杖。
+- 本機偏好：主題、部分練習偏好與登入 token 使用瀏覽器儲存。
 
-### Service Configuration
+## 開發服務
 
-| Service | Container Port | Host Port | Mounted Volumes |
-| :--- | :--- | :--- | :--- |
-| **`db`** | `5432` | `5432` | `postgres_data` (named volume), `./postgres-init` |
-| **`backend`** | `8000` | `8000` | `./backend:/app` |
-| **`frontend`** | `3000` | `3003` | `./frontend:/app`, `/app/node_modules` |
+| 服務 | Docker 主機位址 | 本機開發位址 |
+| --- | --- | --- |
+| 前端 | `127.0.0.1:3003` | `localhost:3000` |
+| Django | `127.0.0.1:8000` | `localhost:8000` |
+| PostgreSQL | `127.0.0.1:5432` | 預設改用 SQLite |
 
-### Data Persistence
+前端透過 Vite 的 `/api` proxy 呼叫 Django。Docker 的轉送目標為 `backend:8000`；本機為 `localhost:8000`。Docker bind mount 支援修改程式後重新載入。
 
-- **Docker (production-like)**: Song data is stored in PostgreSQL via the `postgres_data` Docker volume. Global chords are seeded from `postgres-init/init.sql` on first startup.
-- **Local dev (no Docker)**: Backend falls back to SQLite (`backend/db.sqlite3`) when `DB_ENGINE` is not set to `postgres`.
-- **Live reload**: Bind mounts on frontend and backend enable hot reload during development.
+Vite 本機開發會監聽所有介面；上表的 localhost 是瀏覽器入口，不代表僅允許本機連線。Docker 發布的 port 預設綁定 loopback。
 
----
+## 限制
 
-## 3. API Endpoints
+目前 Compose 啟動的是開發伺服器，使用開發 key、預設資料庫密碼與 debug 模式。公開網站部署需要另外處理 HTTPS、正式伺服器、憑證、認證與備份。
 
-Base URL: `http://localhost:8000/api/`
+全域和弦表由 PostgreSQL 初始化 SQL 建立；SQLite 沒有相同的自動初始化流程。需要完整和弦 API 時使用 Docker。
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `GET` | `/songs/` | List all songs |
-| `POST` | `/songs/` | Create a song |
-| `GET` | `/songs/{id}/` | Get a song |
-| `PUT` | `/songs/{id}/` | Update a song (diff-and-patch on sections/chords) |
-| `DELETE` | `/songs/{id}/` | Delete a song |
-| `GET` | `/global-chords/` | List pre-seeded standard chords |
-
----
-
-## 4. Docker Compose Management
-
-### Commands
-
-```bash
-# Start services (background)
-make docker
-# or: docker compose up -d --build
-
-# Stop services
-make docker-down
-# or: docker compose down
-
-# View logs
-make docker-logs
-# or: docker compose logs -f
-
-# Check status
-docker compose ps
-```
-
-### Environment Variables (Backend)
-
-Copy `backend/.env.example` to `backend/.env` for local overrides. In Docker, variables are set in `docker-compose.yml`:
-
-| Variable | Default (Docker) | Description |
-| :--- | :--- | :--- |
-| `DB_ENGINE` | `postgres` | Database engine |
-| `DB_NAME` | `guitarflow` | PostgreSQL database name |
-| `DB_HOST` | `db` | PostgreSQL host |
-| `DJANGO_CORS_ORIGINS` | — | Comma-separated allowed origins |
-
----
-
-## 5. Local Development (without Docker)
-
-```bash
-make install
-make migrate
-make dev-backend    # Terminal 1 — http://localhost:8000
-make dev-frontend   # Terminal 2 — http://localhost:5173
-make test           # Run backend API tests
-```
-
-The frontend calls `/api` on the page's own origin and the Vite dev server proxies it to Django (`API_PROXY_TARGET`, default `http://localhost:8000`; Docker sets `http://backend:8000`). To call a backend directly instead, set in `frontend/.env`:
-
-```
-VITE_API_URL=http://localhost:8000/api
-```
+啟動與測試指令見 [README](../README.md)，路由見[前端路由](FRONTEND_ROUTING.md)。

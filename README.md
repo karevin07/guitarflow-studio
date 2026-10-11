@@ -1,125 +1,77 @@
-
 # GuitarFlow Studio
 
-GuitarFlow Studio 是一個網頁版吉他創作與練習工具。主要入口為創作、練習與和弦庫；歌曲儲存在個人帳號中，也可以匯入 `.gflow` 檔、貼上和弦譜，或透過 Google Drive 備份與還原。
+網頁版吉他創作與練習工具。編輯六線譜與歌詞、規劃和弦指法，並在個人曲庫中儲存歌曲。
 
-## Features (功能)
+## 功能
 
-### 🎸 Professional Tab Editor (專業樂譜編輯器)
-- **Intuitive Grid**: 6-string tablature grid with 16th note resolution per measure.
-- **Keyboard Navigation**:
-  - `Arrow Keys`: Navigate strings and beats freely.
-  - `0-24`: Smart numeric input for frets (automatically handles rapid double-digit entry like '12').
-  - `Tab`: Jump to the next beat point.
-  - `Enter`: Jump to the next measure.
-  - `Backspace`: Delete notes.
-- **Smart Measures**: Add, delete, or copy measures. Organize songs into sections (Intro, Verse, Chorus).
-- **Lyrics Integration**: Add lyrics directly beneath the tablature.
-- **Interactive Fretboard**: Visual fretboard with audio playback via Web Audio API.
+- 創作：六線譜編輯、段落管理、和弦辨識、Undo/Redo 與自動儲存。
+- 練習：播放、節拍器、A–B 循環、轉調、capo 與和弦指法配置。
+- 編曲：依調性產生單音 solo 建議。
+- 曲庫：搜尋、標籤、收藏、歌單與歌曲播放順序。
+- 檔案：匯入 `.gflow` 或貼上和弦譜；匯出 `.gflow`、MIDI 和 MusicXML。
+- Google Drive：備份與還原歌曲，需另外設定 OAuth 用戶端 ID。
 
-### 🎼 Chord Management (和弦管理)
-- **和弦庫**：搜尋標準與自訂和弦，查看開放、高低把位及替代指法。
-- **和弦辨識**：依輸入音符列出候選名稱，由使用者確認後寫入譜面，不改動原本指法。
-- **指法規劃**：練習頁可為整首歌自動挑選指法並儲存，也可個別鎖定指法。
+目前不支援 Guitar Pro 或 MusicXML 匯入。
 
-### 👁️ Preview, Playback & Export (預覽、播放與匯出)
-- **Practice Mode**: Read-only score, playback, auto-scroll and chord guidance for practice.
-- **Transposition**: Instantly transpose the entire song (notes and chord names) up or down.
-- **Playback**: Play back tablature with BPM control, loop, metronome, and volume.
-- **Export**: Export songs as `.gflow`, MIDI or MusicXML files.
-- **Import**: Open `.gflow` files or paste a chord sheet.
-- **Account Save**: Songs belong to the signed-in user and persist to the backend (PostgreSQL in Docker, SQLite for local-only dev).
+## 啟動
 
----
+### Docker
 
-## Quick Start (快速開始)
-
-### Option A: Docker (Recommended)
-
-Requires Docker and Docker Compose.
+需要 Docker 與 Docker Compose。在 repo 根目錄執行：
 
 ```bash
-make docker          # or: docker compose up -d --build
+make docker
 ```
 
-| Service  | URL |
-|----------|-----|
-| Frontend | http://localhost:3003 |
-| Backend API | http://localhost:8000/api/ |
-| Django Admin | http://localhost:8000/admin/ |
-
-Stop services:
+開啟 <http://localhost:3003>。Django 管理後台位於 <http://localhost:8000/admin/>。
 
 ```bash
-make docker-down     # or: docker compose down
+make docker-logs     # 查看日誌
+make docker-down     # 停止服務，保留資料庫 volume
 ```
 
-### Option B: Local Development
+這是開發配置：使用 Vite、Django 開發伺服器與預設資料庫密碼，不適合直接對外提供服務。
 
-Requires Python 3.10+, [uv](https://docs.astral.sh/uv/), and Node.js 18+.
+### 本機開發
 
-```bash
-make install         # install backend + frontend dependencies
-
-# Terminal 1 — backend (SQLite by default)
-make dev-backend     # http://localhost:8000
-
-# Terminal 2 — frontend
-make dev-frontend    # http://localhost:5173
-```
-
-The frontend calls the relative path `/api`, and the Vite dev server proxies it to Django (`API_PROXY_TARGET`, default `http://localhost:8000`), so no `frontend/.env` is needed locally. Set `VITE_API_URL` only to call a backend directly.
-
-Run database migrations after first install:
+需要 Python 3.10+、[uv](https://docs.astral.sh/uv/) 與 Node.js 20.19+；Node.js 22 請使用 22.12+。
 
 ```bash
+make install
 make migrate
+make dev-backend     # 終端機 1：http://localhost:8000
+make dev-frontend    # 終端機 2：http://localhost:3000
 ```
 
----
+前端預設透過同一個來源的 `/api` 呼叫後端。Vite 轉送到 `http://localhost:8000`，Docker 中則轉送到 `http://backend:8000`，不需另建 `frontend/.env`。
 
-## Getting Started (開始使用)
+如需自訂設定：
 
-1. **登入或註冊**，從歌曲庫建立歌曲，或匯入現有樂譜。
-2. **創作**：
-   - Use your mouse or keyboard to select a cell.
-   - Type numbers to add notes.
-   - Drag chords from the sidebar to the top of the measure.
-3. **練習**：切換到練習頁播放、循環段落，或用「自動配置」規劃和弦指法。
-4. **和弦庫**：查找不同把位的按法；回到歌曲後按 Save 儲存變更。
+- `API_PROXY_TARGET`：Vite 轉送目標。
+- `VITE_API_URL`：直接呼叫其他後端，取代預設的 `/api`。
+- Django 設定請見 [後端開發](docs/BACKEND_DEVELOP.md)。
 
----
+## 使用
 
-## Tech Stack (技術棧)
+1. 註冊或登入，在歌曲庫建立歌曲、匯入 `.gflow`，或貼上和弦譜。
+2. 在創作頁輸入音符、歌詞與和弦，依需要新增段落。
+3. 切換到練習頁播放歌曲、循環段落，或配置和弦指法。
+4. 儲存歌曲；需要移轉時匯出 `.gflow`，或使用 Google Drive 備份。
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 19, TypeScript, Vite |
-| UI | Tailwind CSS (via CDN), Lucide React |
-| Backend | Django 5, Django REST Framework |
-| Database | PostgreSQL 15 (Docker) / SQLite (local dev) |
-| Package Management | uv (Python), npm (Node) |
-| Deployment | Docker Compose |
+鍵盤操作可在創作頁的快捷鍵面板查看。Google Drive 備份不包含歌單。
 
----
+## 開發與測試
 
-## Development Commands
+前端使用 React、TypeScript 和 Vite；後端使用 Django 與 Django REST Framework。Docker 使用 PostgreSQL，本機預設使用 SQLite。
 
-Run `make help` to see all available targets.
+```bash
+make help
+make test            # 後端與前端單元測試
+make format-frontend # TypeScript 型別檢查
+make build           # 前端建置
+```
 
-| Command | Description |
-|---------|-------------|
-| `make install` | Install all dependencies |
-| `make dev-backend` | Start Django dev server |
-| `make dev-frontend` | Start Vite dev server |
-| `make migrate` | Run Django migrations |
-| `make test` | Run backend + frontend tests |
-| `make build` | Build frontend production bundle |
-| `make docker` | Start full stack with Docker Compose |
-
-### Browser E2E tests
-
-Use the isolated test Compose project. Its frontend, API and database bind to `127.0.0.1:3303`, `127.0.0.1:18000` and `127.0.0.1:15432`, so it does not take over the normal Docker service or Tailscale endpoint.
+瀏覽器測試使用獨立資料庫，避免寫入日常使用的曲庫：
 
 ```bash
 docker compose --env-file .env.e2e.example -p guitarflow-e2e up -d --build --wait
@@ -131,16 +83,17 @@ cd ..
 docker compose --env-file .env.e2e.example -p guitarflow-e2e down -v --remove-orphans
 ```
 
-The last command deletes only the isolated `guitarflow-e2e` containers and test database volume. CI runs the same browser suite. It covers account creation and save/reopen, chord-candidate confirmation, practice voicing planning and playback, `.gflow` import around sign-in, and a 390px-wide mobile chord-sheet flow.
+最後一行會刪除測試專案的資料庫 volume。CI 也執行這組測試。
 
-See [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md) for architecture details, [docs/BACKEND_DEVELOP.md](docs/BACKEND_DEVELOP.md) for backend development notes, [docs/TAILSCALE_DOCKER_TESTING.md](docs/TAILSCALE_DOCKER_TESTING.md) for private-network device testing with Tailscale, and [docs/GOOGLE_DRIVE_SETUP.md](docs/GOOGLE_DRIVE_SETUP.md) for uploading and importing `.gflow` files with Google Drive.
+## 文件
 
----
+- [專案架構](docs/PROJECT_OVERVIEW.md)與[資料流程圖](docs/ARCHITECTURE_CHARTS.md)
+- [後端開發與 API](docs/BACKEND_DEVELOP.md)
+- [前端路由](docs/FRONTEND_ROUTING.md)
+- [Google Drive 設定](docs/GOOGLE_DRIVE_SETUP.md)
+- [Tailscale 裝置測試](docs/TAILSCALE_DOCKER_TESTING.md)
+- [產品方向](docs/PRODUCT_ROADMAP_DESIGN.md)與[介面設計](docs/STITCH_UI_HANDOFF.md)
 
-## Third-Party Licenses (第三方授權)
+## 授權
 
-See [frontend/NOTICE.md](frontend/NOTICE.md) for the third-party component list.
-
----
-
-*Built with passion for guitarists.*
+第三方元件列於 [NOTICE](frontend/NOTICE.md)。本專案尚未指定授權條款。

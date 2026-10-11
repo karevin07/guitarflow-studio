@@ -1,62 +1,29 @@
-# GuitarFlow Stitch UI handoff
+# 介面設計
 
-## Project
+這份文件保留介面設計參考，不代表每項都已實作。
 
-- Project: `GuitarFlow — Adaptive Guitar Workspace`
-- Stitch project ID: `STITCH_PROJECT_ID`
-- Stitch URL: <https://stitch.withgoogle.com/projects/STITCH_PROJECT_ID>
-- Design system: `Warm Songbook`
-- Design system asset: `assets/STITCH_ASSET_ID`
+## 版面原則
 
-The project deliberately reimagines the current UI instead of preserving its layout. It follows the product direction in `docs/notes/gpt_ui_notes.md`: the lead sheet is the primary surface, chord diagrams are contextual, and complexity is separated into Read, Practice, and Learn modes.
+- 閱譜以和弦與歌詞為主，六線譜編輯保留在創作頁。
+- 桌面使用側邊工具區，手機將次要操作收進選單或底部面板。
+- 轉調與 capo 分開操作，清楚區分按法與實際音高。
+- 練習頁提供播放、節拍器、自動捲動及 A–B 循環。
+- 和弦庫支援指法比較與不同把位。
+- 手機主要操作的觸控區至少 44px。
 
-## Generated screens
+## 視覺參考
 
-| Screen | Device | Stitch screen ID |
-| --- | --- | --- |
-| Song library and repertoire workspace | Desktop | `STITCH_SCREEN_ID` |
-| Read workspace for 沿著光走 | Desktop | `STITCH_SCREEN_ID` |
-| Read workspace with Am7 bottom sheet | Mobile | `STITCH_SCREEN_ID` |
-| Practice workspace for 沿著光走 | Desktop | `STITCH_SCREEN_ID` |
-| Chord Lab and voicing comparison | Desktop | `STITCH_SCREEN_ID` |
+| 用途 | 色彩 |
+| --- | --- |
+| 背景 | `#F7F5EF` |
+| 面板 | `#FFFFFF` |
+| 文字 | `#171A18` |
+| 次要文字 | `#6E716B` |
+| 分隔線 | `#DEDCD4` |
+| 和弦與主要操作 | `#4D5BD2` |
+| 練習狀態 | `#2B6C59` |
+| 提醒 | `#D88736` |
 
-Full resource names use this format:
+標題使用 Space Grotesk，內文使用 Noto Sans TC，和弦與數值使用 JetBrains Mono。面板圓角以 12px 為參考。
 
-```text
-projects/STITCH_PROJECT_ID/screens/{screen-id}
-```
-
-## Visual direction
-
-- Warm paper canvas: `#F7F5EF`
-- Surface: `#FFFFFF`
-- Ink: `#171A18`
-- Muted ink: `#6E716B`
-- Hairline: `#DEDCD4`
-- Chord and primary action: `#4D5BD2`
-- Practice state: `#2B6C59`
-- Attention: `#D88736`
-- Headings: Space Grotesk
-- Lyrics and Traditional Chinese body: Noto Sans
-- Chords and musical values: JetBrains Mono
-- Primary radius: 12px
-
-## UX decisions to preserve during implementation
-
-1. Lead sheets use chords above lyrics and do not show six-line tablature in Read mode.
-2. Desktop uses a contextual right inspector; mobile uses a draggable bottom sheet.
-3. Transpose and capo remain separate concepts and controls.
-4. Read stays visually quiet; Practice introduces playback, metronome, auto-scroll, count-in, and A–B looping.
-5. Chord Lab supports curated and generated voicings, filtering, comparison, and repertoire references.
-6. Navigation and touch controls remain usable at arm's length, with 44px minimum primary targets on mobile.
-7. Avoid generic dashboard cards, stock photography, gradients, glass effects, and rainbow chord colors.
-
-## Suggested implementation order
-
-1. Shared application shell and design tokens
-2. Desktop and mobile Read workspace
-3. Contextual chord inspector and mobile bottom sheet
-4. Practice toolbar and transport
-5. Song library
-6. Chord Lab comparison workspace
-7. Learn mode and remaining responsive states
+修改介面時，優先檢查歌曲庫、創作、練習與和弦庫的桌面及手機操作。

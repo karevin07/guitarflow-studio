@@ -34,7 +34,7 @@ install-frontend:  ## install Node dependencies via npm
 dev-backend:  ## start Django dev server (localhost:8000)
 	cd $(BACKEND) && $(PYTHON) manage.py runserver
 
-dev-frontend:  ## start Vite dev server (localhost:5173)
+dev-frontend:  ## start Vite dev server (localhost:3000)
 	cd $(FRONTEND) && $(NPM) run dev
 
 migrate:  ## run Django database migrations

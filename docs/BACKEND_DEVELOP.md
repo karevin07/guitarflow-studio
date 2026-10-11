@@ -1,174 +1,84 @@
-# Backend Development Guide: Django REST Framework + PostgreSQL
+# 後端開發
 
-This document describes the current backend implementation for GuitarFlow Studio.
+後端使用 Django 5、Django REST Framework 與 TokenAuthentication。
 
-本文檔說明 GuitarFlow Studio 目前的後端實作方式。
+## 本機啟動
 
----
-
-## 1. Technology Stack (技術棧)
-
-| Component | Technology | Description |
-|-----------|------------|-------------|
-| **Language** | Python 3.10+ | Managed via [uv](https://docs.astral.sh/uv/) |
-| **Web Framework** | Django 5 | Admin panel, ORM, migrations |
-| **API Layer** | Django REST Framework | RESTful CRUD for songs and global chords |
-| **Database (Docker)** | PostgreSQL 15 | Primary storage in Docker Compose |
-| **Database (local dev)** | SQLite | Fallback when `DB_ENGINE` is not `postgres` |
-| **CORS** | django-cors-headers | Allows frontend on ports 3003 and 5173 |
-
----
-
-## 2. Project Structure (專案結構)
-
-```text
-backend/
-├── manage.py
-├── pyproject.toml          # uv dependencies
-├── .env.example            # Environment variable template
-├── core/
-│   ├── settings.py         # DB, CORS, installed apps
-│   ├── urls.py             # Root URL routing
-│   ├── wsgi.py
-│   └── asgi.py
-└── guitarflow/
-    ├── models.py           # GuitarSong, TabSection, CustomChord, GlobalChord
-    ├── serializers.py      # camelCase ↔ snake_case mapping
-    ├── views.py            # ViewSets
-    ├── urls.py             # /api/songs/, /api/global-chords/
-    ├── admin.py
-    ├── tests.py            # API integration tests
-    └── migrations/
-```
-
----
-
-## 3. Data Models (資料模型)
-
-### GuitarSong
-- `title`, `created_at`, `last_modified`, `transpose_offset`
-- Has many `TabSection` and `CustomChord` (cascade delete)
-
-### TabSection
-- Nested under a song; ordered by `order` field
-- `measures`, `chords`, `lyrics` stored as JSONField (matches frontend 3D/2D arrays)
-
-### CustomChord
-- Per-song custom chord shapes (`name`, `frets` JSON array)
-
-### GlobalChord
-- Pre-seeded standard chords (C, G, Am, etc.)
-- `managed = False` — table created by `postgres-init/init.sql`, not Django migrations
-- Read-only via `/api/global-chords/`
-
-### Frontend ↔ Backend naming
-
-Serializers use camelCase aliases to match the React frontend:
-
-| Frontend (TypeScript) | Backend (Python) |
-| :--- | :--- |
-| `lastModified` | `last_modified` |
-| `transposeOffset` | `transpose_offset` |
-| `customChords` | `custom_chords` |
-
----
-
-## 4. API Endpoints (API 端點)
-
-All routes are prefixed with `/api/`.
-
-| Method | Path | ViewSet | Description |
-| :--- | :--- | :--- | :--- |
-| `GET/POST` | `/songs/` | `GuitarSongViewSet` | List / create songs (`?search=`, paginated) |
-| `GET/PUT/DELETE` | `/songs/{id}/` | `GuitarSongViewSet` | Retrieve / update / delete |
-| `POST` | `/songs/{id}/claim/` | `GuitarSongViewSet` | Claim legacy song (`owner=null`) for current user |
-| `POST` | `/songs/claim-legacy/` | `GuitarSongViewSet` | Bulk-claim all legacy songs for current user |
-| `GET` | `/global-chords/` | `GlobalChordViewSet` | List standard chords（公開） |
-| `POST` | `/auth/register/` | `RegisterView` | 註冊 + 回傳 Token |
-| `POST` | `/auth/login/` | `LoginView` | 登入 + 回傳 Token |
-| `POST` | `/auth/logout/` | `LogoutView` | 撤銷 Token（需認證） |
-| `GET` | `/auth/me/` | `MeView` | 目前使用者（需認證） |
-
-**認證**：DRF `TokenAuthentication`；前端以 `Authorization: Token <key>` 呼叫 song API。  
-**隔離**：`GuitarSong.owner` FK；使用者僅能 CRUD 自己的歌曲；`owner=null` 為 legacy 共用資料（登入後可見）。
-
-### Update strategy
-
-Song updates use **diff-and-patch**: existing sections/chords are updated in place (PKs preserved), omitted sections are deleted, and new ones are created. See `guitarflow/tests.py` for test coverage.
-
----
-
-## 5. Database Configuration (資料庫設定)
-
-Configured in `core/settings.py`:
-
-```python
-# PostgreSQL when DB_ENGINE=postgres or DB_NAME is set
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'guitarflow'),
-        ...
-    }
-}
-
-# SQLite fallback for local dev without Docker
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-```
-
-### Migrations
+在 repo 根目錄執行：
 
 ```bash
-make migrate           # apply migrations
-make makemigrations    # create new migration files
+make install-backend
+make migrate
+make dev-backend
+make test-backend
 ```
 
-Global chord data is seeded via `postgres-init/init.sql` when the PostgreSQL container starts for the first time.
-
----
-
-## 6. Development Commands (開發指令)
+建立管理員：
 
 ```bash
-# Install dependencies
-cd backend && uv sync
-
-# Run dev server
-make dev-backend       # http://localhost:8000
-
-# Run tests
-make test-backend      # 3 API tests in guitarflow/tests.py
-
-# Django admin
-cd backend && .venv/bin/python manage.py createsuperuser
-# Then visit http://localhost:8000/admin/
+cd backend
+.venv/bin/python manage.py createsuperuser
 ```
 
----
+管理後台為 <http://localhost:8000/admin/>。Docker 啟動時會自動執行 migration；本機修改模型後使用 `make makemigrations` 與 `make migrate`。
 
-## 7. Frontend Integration (前端整合)
+## 環境設定
 
-The frontend communicates via `frontend/services/api.ts`:
+`core/settings.py` 讀取程序環境變數，不會自動載入 `backend/.env`。如果從範本建立此檔案，需先將變數載入 shell，再啟動 Django：
 
-```typescript
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'; // proxied to Django by the Vite dev server
+```bash
+cp backend/.env.example backend/.env
+set -a
+. backend/.env
+set +a
+make dev-backend
 ```
 
-Song library state is managed by `hooks/useSongLibrary.ts`, which calls the REST API for CRUD operations. Theme preference is still stored in `localStorage` (`guitarflow-theme`).
+| 變數 | 用途 |
+| --- | --- |
+| `DJANGO_SECRET_KEY` | Django key；預設值僅供開發 |
+| `DJANGO_DEBUG` | 預設 `True`，正式環境設為 `False` |
+| `DJANGO_ALLOWED_HOSTS` | 可接受的 host，以逗號分隔 |
+| `DJANGO_CORS_ORIGINS` | 跨來源請求允許的 origin，以逗號分隔 |
+| `DB_ENGINE` | 設為 `postgres` 使用 PostgreSQL |
+| `DB_NAME`、`DB_USER`、`DB_PASSWORD`、`DB_HOST`、`DB_PORT` | PostgreSQL 連線設定 |
 
----
+未設定 PostgreSQL 時使用 `backend/db.sqlite3`。設定 `DB_NAME` 也會切換到 PostgreSQL。
 
-## 8. Docker Deployment (Docker 部署)
+Compose 只轉送 YAML 中列出的變數；`--env-file` 不會自動將所有變數注入容器。目前 YAML 沒有轉送 `DJANGO_SECRET_KEY` 或 `DJANGO_DEBUG`，不能只改 env 檔就當作完成正式部署設定。
 
-The backend Dockerfile uses uv to install dependencies. In `docker-compose.yml`:
+## 模型
 
-- Backend waits for PostgreSQL health check before starting
-- Runs `python manage.py migrate` on startup
-- Health check hits `GET /api/songs/`
+| 模型 | 內容 |
+| --- | --- |
+| `GuitarSong` | 擁有者、歌曲資訊、BPM、指法配置、音域與播放順序 |
+| `TabSection` | 段落順序、capo、拍號、伴奏 pattern，以及 JSON 格式的音符、和弦和歌詞 |
+| `CustomChord` | 單首歌曲使用的自訂指法 |
+| `Setlist` | 使用者的歌單與歌曲排列 |
+| `GlobalChord` | 唯讀的標準和弦表 |
 
-Environment variables are set in `docker-compose.yml` (see `backend/.env.example` for reference).
+`GlobalChord` 使用 `managed = False`，由 `postgres-init/init.sql` 在 PostgreSQL 首次初始化時建立。Django migration 不會建立這張表；SQLite 開發環境需自行處理。
+
+序列化器將 Python 的 snake_case 欄位對應到前端的 camelCase。歌曲更新會保留既有段落與自訂和弦的 ID，新增新項目並刪除省略的項目。
+
+## API
+
+所有路徑以 `/api` 開頭。
+
+| 方法 | 路徑 | 用途 |
+| --- | --- | --- |
+| POST | `/auth/register/`、`/auth/login/` | 註冊或登入，取得 token |
+| POST | `/auth/logout/` | 撤銷目前 token |
+| GET | `/auth/me/` | 目前使用者 |
+| GET / POST | `/songs/` | 歌曲列表或新增；支援 `?search=` 與分頁 |
+| GET / PUT / PATCH / DELETE | `/songs/{id}/` | 讀取、更新或刪除歌曲 |
+| PATCH | `/songs/{id}/info/` | 更新歌曲資訊 |
+| POST | `/songs/{id}/claim/` | 認領無擁有者的歌曲 |
+| POST | `/songs/claim-legacy/` | 認領所有無擁有者的歌曲 |
+| GET / POST | `/setlists/` | 歌單列表或新增 |
+| GET / PUT / PATCH / DELETE | `/setlists/{id}/` | 讀取、更新或刪除歌單 |
+| GET | `/global-chords/` | 公開的標準和弦列表 |
+
+除註冊、登入與全域和弦外，請求需帶 `Authorization: Token <token>`。
+
+歌曲 API 回傳自己的歌曲與 `owner=null` 的舊資料；歌單只回傳自己的資料。公開服務前需先確認舊歌曲的擁有者，避免讓其他使用者讀取或認領。
