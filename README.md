@@ -96,4 +96,4 @@ docker compose --env-file .env.e2e.example -p guitarflow-e2e down -v --remove-or
 
 ## 授權
 
-第三方元件列於 [NOTICE](frontend/NOTICE.md)。本專案尚未指定授權條款。
+本專案以 [MIT License](LICENSE) 授權。第三方元件列於 [NOTICE](frontend/NOTICE.md)。

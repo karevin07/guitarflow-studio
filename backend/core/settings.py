@@ -10,8 +10,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # In production, set the DJANGO_SECRET_KEY environment variable.
-SECRET_KEY = os.environ.get(
-    'DJANGO_SECRET_KEY',
+# An empty value (e.g. passed through by Compose when unset) falls back to the development key.
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY') or (
     'django-insecure-dev-only-key-change-me-in-production'
 )
 

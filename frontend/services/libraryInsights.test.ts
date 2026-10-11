@@ -37,7 +37,7 @@ describe('songKeyLabel', () => {
 
 describe('displayNameFor', () => {
   it('uses the part before @ and clips long names', () => {
-    expect(displayNameFor('player@example.com')).toBe('karevin07');
+    expect(displayNameFor('player@example.com')).toBe('player');
     expect(displayNameFor('e2e_review_1790648569435')).toBe('e2e_review_1790…');
     expect(displayNameFor(undefined)).toBe('吉他手');
   });

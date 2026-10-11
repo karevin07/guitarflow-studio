@@ -45,7 +45,7 @@ make dev-backend
 
 未設定 PostgreSQL 時使用 `backend/db.sqlite3`。設定 `DB_NAME` 也會切換到 PostgreSQL。
 
-Compose 只轉送 YAML 中列出的變數；`--env-file` 不會自動將所有變數注入容器。目前 YAML 沒有轉送 `DJANGO_SECRET_KEY` 或 `DJANGO_DEBUG`，不能只改 env 檔就當作完成正式部署設定。
+Compose 只轉送 YAML 中列出的變數；`--env-file` 不會自動將所有變數注入容器。`DJANGO_SECRET_KEY` 與 `DJANGO_DEBUG` 會轉送給後端，沒有設定時使用開發預設值。
 
 ## 模型
 
