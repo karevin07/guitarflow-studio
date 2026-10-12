@@ -35,15 +35,29 @@ git push origin main    # 隨時
 git push public main    # 想公開時
 ```
 
-建議在完成一個功能、文件也更新後再推到 `public`。需要標記版本時：
+建議在完成一個功能、文件也更新後再推到 `public`。
 
-```bash
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
-git push public v0.1.0
-```
+## 發佈版本
 
-再到 GitHub 的 Releases 頁面依 tag 建立 Release。
+1. 寫好 `docs/releases/<版本>.md`，例如 `docs/releases/v0.2.0.md`，並 commit、推到 `origin`。內容會成為 GitHub Release 的說明；圖片與連結請用指向該 tag 的完整網址，Release 頁面無法解析相對路徑。
+2. 先確認一次，不會做任何變更：
+
+   ```bash
+   make release VERSION=v0.2.0 DRY_RUN=1
+   ```
+
+3. 正式發佈：
+
+   ```bash
+   make release VERSION=v0.2.0
+   ```
+
+[`scripts/release.sh`](../scripts/release.sh) 依序執行：
+
+- 確認在 `main`、沒有未提交的修改、`main` 與 `origin/main` 一致、`public` 沒有 `main` 缺少的 commit，且版本號尚未使用。
+- 把 `main` 推到 `public`。推送前檢查在這一步執行，被擋下時還沒有建立任何 tag。
+- 建立 annotated tag，推到 `public` 與 `origin`。
+- 用 `gh` 在公開 repo 建立 Release。需要 [GitHub CLI](https://cli.github.com/) 並已登入。
 
 ## 推送前檢查什麼
 
