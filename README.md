@@ -121,6 +121,7 @@ Google Drive 功能需要自己的 OAuth 用戶端 ID，設定方式見 [Google 
 - [Google Drive 設定](docs/GOOGLE_DRIVE_SETUP.md)
 - [介面設計原則](docs/UI_GUIDELINES.md)
 - [用 Tailscale 在其他裝置測試](docs/TAILSCALE_DOCKER_TESTING.md)
+- [同步到公開 repo](docs/RELEASING.md)
 - [產品方向](docs/PRODUCT_ROADMAP_DESIGN.md)
 
 ## 授權
