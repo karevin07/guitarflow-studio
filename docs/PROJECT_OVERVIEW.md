@@ -21,7 +21,7 @@ GuitarFlow 的 React 前端負責編輯、音樂理論與播放；Django API 負
 
 歌曲包含段落、六線譜、歌詞、和弦、指法配置與播放順序。前端以 `.gflow` JSON 匯入匯出；後端將歌曲、段落與自訂和弦分開儲存。
 
-歌曲與歌單屬於登入者。早期資料中沒有擁有者的歌曲仍可由登入者讀取及認領，見[後端開發](BACKEND_DEVELOP.md)。
+歌曲與歌單屬於登入者，API 只回傳自己的資料，見[設計說明](DESIGN.md)。
 
 - Docker：PostgreSQL 資料保存在 `postgres_data` volume。
 - 本機：未設定 PostgreSQL 時，使用 `backend/db.sqlite3`。
@@ -38,11 +38,13 @@ GuitarFlow 的 React 前端負責編輯、音樂理論與播放；Django API 負
 
 前端透過 Vite 的 `/api` proxy 呼叫 Django。Docker 的轉送目標為 `backend:8000`；本機為 `localhost:8000`。Docker bind mount 支援修改程式後重新載入。
 
+Compose 依序啟動服務：PostgreSQL 通過 `pg_isready` 後啟動 Django，Django 的 `GET /api/global-chords/` 回應正常後再啟動 Vite。
+
 Vite 本機開發會監聽所有介面；上表的 localhost 是瀏覽器入口，不代表僅允許本機連線。Docker 發布的 port 預設綁定 loopback。
 
 ## 限制
 
-目前 Compose 啟動的是開發伺服器，使用開發 key、預設資料庫密碼與 debug 模式。公開網站部署需要另外處理 HTTPS、正式伺服器、憑證、認證與備份。
+目前 Compose 啟動的是開發伺服器，使用預設資料庫密碼與 debug 模式；未設定 `DJANGO_SECRET_KEY` 時使用公開的開發 key。公開網站部署需要另外處理 HTTPS、正式伺服器、憑證、認證與備份。
 
 全域和弦表由 PostgreSQL 初始化 SQL 建立；SQLite 沒有相同的自動初始化流程。需要完整和弦 API 時使用 Docker。
 

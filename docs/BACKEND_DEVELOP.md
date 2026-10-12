@@ -73,12 +73,10 @@ Compose 只轉送 YAML 中列出的變數；`--env-file` 不會自動將所有�
 | GET / POST | `/songs/` | 歌曲列表或新增；支援 `?search=` 與分頁 |
 | GET / PUT / PATCH / DELETE | `/songs/{id}/` | 讀取、更新或刪除歌曲 |
 | PATCH | `/songs/{id}/info/` | 更新歌曲資訊 |
-| POST | `/songs/{id}/claim/` | 認領無擁有者的歌曲 |
-| POST | `/songs/claim-legacy/` | 認領所有無擁有者的歌曲 |
 | GET / POST | `/setlists/` | 歌單列表或新增 |
 | GET / PUT / PATCH / DELETE | `/setlists/{id}/` | 讀取、更新或刪除歌單 |
 | GET | `/global-chords/` | 公開的標準和弦列表 |
 
 除註冊、登入與全域和弦外，請求需帶 `Authorization: Token <token>`。
 
-歌曲 API 回傳自己的歌曲與 `owner=null` 的舊資料；歌單只回傳自己的資料。公開服務前需先確認舊歌曲的擁有者，避免讓其他使用者讀取或認領。
+歌曲與歌單 API 只回傳登入者自己的資料；其他使用者的 ID 會得到 404。設計原因見[設計說明](DESIGN.md)。
