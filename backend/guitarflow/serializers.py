@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.db import transaction
 from .models import GuitarSong, TabSection, CustomChord, GlobalChord, Setlist
 
 
@@ -204,6 +205,8 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     def validate_melodyRange(self, value):
         return validate_melody_range(value)
 
+    # A song spans three tables; a failure part-way must not leave half of it saved.
+    @transaction.atomic
     def create(self, validated_data):
         request = self.context.get('request')
         sections_data = request.data.get('sections', []) if request else []
@@ -233,6 +236,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
 
         return song
 
+    @transaction.atomic
     def update(self, instance, validated_data):
         # Song info (artist, key, tags, favorite) changes only through SongInfoSerializer,
         # so an editor autosave holding an older copy cannot undo a change made in the library.
