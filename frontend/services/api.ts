@@ -38,8 +38,7 @@ export const api = {
   async fetchSongs(search?: string): Promise<GuitarSong[]> {
     const query = new URLSearchParams({ page_size: '200' });
     if (search?.trim()) query.set('search', search.trim());
-    const songs = await fetchAllPages<GuitarSong>(`/songs/?${query.toString()}`);
-    return songs.map(song => ({ ...song, isLegacy: song.isLegacy ?? false }));
+    return fetchAllPages<GuitarSong>(`/songs/?${query.toString()}`);
   },
 
   async getSong(id: string): Promise<GuitarSong> {
@@ -87,14 +86,6 @@ export const api = {
 
   async deleteSong(id: string): Promise<void> {
     await apiFetch(`/songs/${id}/`, { method: 'DELETE' });
-  },
-
-  async claimSong(id: string): Promise<GuitarSong> {
-    return apiFetch(`/songs/${id}/claim/`, { method: 'POST' });
-  },
-
-  async claimLegacySongs(): Promise<{ claimed: number }> {
-    return apiFetch('/songs/claim-legacy/', { method: 'POST' });
   },
 
   async fetchGlobalChords(): Promise<Omit<GuitarSong['customChords'][number], 'isStandard'>[]> {

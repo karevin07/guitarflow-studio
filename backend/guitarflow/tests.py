@@ -374,38 +374,6 @@ class GuitarSongAPITests(AuthenticatedAPITestCase):
         list_response = self.client.get(self.song_url)
         self.assertEqual(len(list_results(list_response)), 0)
 
-    def test_legacy_null_owner_songs_visible_to_authenticated_users(self):
-        GuitarSong.objects.create(title='Legacy', owner=None)
-        response = self.client.get(self.song_url)
-        results = list_results(response)
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]['title'], 'Legacy')
-        self.assertTrue(results[0]['isLegacy'])
-
-    def test_claim_legacy_song(self):
-        song = GuitarSong.objects.create(title='Unclaimed', owner=None)
-        claim_url = reverse('song-claim', args=[song.pk])
-        response = self.client.post(claim_url)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data['isLegacy'])
-        song.refresh_from_db()
-        self.assertEqual(song.owner, self.user)
-
-    def test_claim_already_owned_song_fails(self):
-        song = GuitarSong.objects.create(title='Mine', owner=self.user)
-        claim_url = reverse('song-claim', args=[song.pk])
-        response = self.client.post(claim_url)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-
-    def test_claim_all_legacy_songs(self):
-        GuitarSong.objects.create(title='Legacy A', owner=None)
-        GuitarSong.objects.create(title='Legacy B', owner=None)
-        GuitarSong.objects.create(title='Owned', owner=self.user)
-        response = self.client.post(reverse('song-claim-legacy'))
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['claimed'], 2)
-        self.assertEqual(GuitarSong.objects.filter(owner=self.user).count(), 3)
-
     def test_list_pagination_structure(self):
         GuitarSong.objects.create(title='Song A', owner=self.user)
         response = self.client.get(self.song_url)

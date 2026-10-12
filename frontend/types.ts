@@ -48,7 +48,6 @@ export interface GuitarSong extends SongInfo {
   bpm?: number | null;
   /** Play order as section positions with repeat counts; empty plays sections as written. */
   form?: Array<{ section: number; repeat: number }>;
-  isLegacy?: boolean;
 }
 
 export interface ChordDefinition {

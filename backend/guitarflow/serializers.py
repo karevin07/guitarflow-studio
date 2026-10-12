@@ -162,7 +162,6 @@ class GuitarSongSerializer(serializers.ModelSerializer):
     favorite = serializers.BooleanField(required=False)
     melodyRange = serializers.JSONField(source='melody_range', required=False, allow_null=True)
     form = serializers.JSONField(required=False)
-    isLegacy = serializers.SerializerMethodField()
 
     class Meta:
         model = GuitarSong
@@ -182,11 +181,7 @@ class GuitarSongSerializer(serializers.ModelSerializer):
             'favorite',
             'melodyRange',
             'form',
-            'isLegacy',
         )
-
-    def get_isLegacy(self, obj):
-        return obj.owner_id is None
 
     def get_id(self, obj):
         return str(obj.pk)

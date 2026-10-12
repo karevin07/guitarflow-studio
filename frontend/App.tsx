@@ -387,26 +387,6 @@ const App: React.FC = () => {
     });
   };
 
-  const handleClaimSong = useCallback(async (song: GuitarSong) => {
-    try {
-      await songApi.claimSong(song.id);
-      await library.fetchSongs();
-      toast.success(`已認領「${song.title}」`);
-    } catch {
-      toast.error('認領失敗，請稍後再試。');
-    }
-  }, [library, toast]);
-
-  const handleClaimAllLegacy = useCallback(async () => {
-    try {
-      const { claimed } = await songApi.claimLegacySongs();
-      await library.fetchSongs();
-      toast.success(claimed > 0 ? `已認領 ${claimed} 首舊版樂譜` : '沒有需要認領的樂譜');
-    } catch {
-      toast.error('批量認領失敗，請稍後再試。');
-    }
-  }, [library, toast]);
-
   const handleImportFile = useCallback((file: File) => runWhenSignedIn(async () => {
     const result = await readGflowFile(file);
     if (result.ok === false) {
@@ -655,8 +635,6 @@ const App: React.FC = () => {
           }}
           onToggleFavorite={toggleFavorite}
           onEditInfo={song => setInfoSong(song)}
-          onClaimSong={handleClaimSong}
-          onClaimAllLegacy={handleClaimAllLegacy}
           onRailNavigate={openRailDestination}
           theme={theme}
           onToggleTheme={toggleTheme}

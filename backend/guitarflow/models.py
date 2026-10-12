@@ -20,8 +20,6 @@ class GuitarSong(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='songs',
-        null=True,
-        blank=True,
     )
 
     def __str__(self):
