@@ -13,14 +13,14 @@
 
 ## 應用程式設定
 
-使用 Docker 時，把以下設定加到 repo 根目錄的本機 env 檔，例如 `.env.tailscale.local`：
+使用 Docker 時，把以下設定加到 repo 根目錄的本機 env 檔，例如 `.env.local`（Git 會忽略這個檔案）：
 
 ```dotenv
 VITE_GOOGLE_CLIENT_ID=YOUR_CLIENT_ID.apps.googleusercontent.com
 ```
 
 ```bash
-docker compose --env-file .env.tailscale.local up -d --build --force-recreate frontend
+docker compose --env-file .env.local up -d --build --force-recreate frontend
 ```
 
 本機開發時，把設定放在 `frontend/.env.local`，再重新啟動 Vite。沒有設定時，畫面會隱藏 Drive 按鈕。
