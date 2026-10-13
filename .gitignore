@@ -54,3 +54,6 @@ frontend/playwright-report/
 frontend/test-results/
 
 docs/notes
+
+# Public export (make export-public)
+build/

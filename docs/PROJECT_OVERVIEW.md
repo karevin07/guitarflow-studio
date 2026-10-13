@@ -1,32 +1,52 @@
 # 專案架構
 
-GuitarFlow 的 React 前端負責編輯、音樂理論與播放；Django API 負責帳號與資料儲存。
+服務架構圖放在 [README](../README.md#架構)。以下整理程式分工、資料關係，以及開發時會用到的服務。
 
-## 目錄
+## 程式分工
 
 | 路徑 | 用途 |
 | --- | --- |
-| `frontend/App.tsx` | 路由、歌曲載入與頁面整合 |
-| `frontend/components/` | 創作、練習、編曲與曲庫介面 |
-| `frontend/hooks/` | 編輯狀態、播放、認證與儲存 |
-| `frontend/services/` | API、匯入匯出、Drive 與歌曲處理 |
-| `frontend/music-theory/` | 音高、和弦、音階與調性分析 |
-| `frontend/guitar/` | 指板位置與指法產生、評分 |
+| `frontend/App.tsx` | 路由、登入狀態、歌曲載入與頁面整合 |
+| `frontend/components/` | 曲庫、創作、練習、編曲與和弦庫介面 |
+| `frontend/hooks/` | 編輯、播放、認證與自動儲存 |
+| `frontend/services/` | API、檔案、Drive 與指法規劃 |
+| `frontend/music-theory/`、`frontend/guitar/` | 音樂理論、指板與指法產生 |
 | `backend/core/` | Django 設定與根路由 |
-| `backend/guitarflow/` | 模型、序列化、API、migration 與測試 |
-| `postgres-init/init.sql` | PostgreSQL 首次啟動的和弦資料 |
+| `backend/guitarflow/` | 模型、序列化器、權限、API 與測試 |
 | `frontend/e2e/` | Playwright 瀏覽器測試 |
 
-## 資料與儲存
+## 資料關係
 
-歌曲包含段落、六線譜、歌詞、和弦、指法配置與播放順序。前端以 `.gflow` JSON 匯入匯出；後端將歌曲、段落與自訂和弦分開儲存。
+```mermaid
+erDiagram
+    User ||--o{ GuitarSong : owns
+    User ||--o{ Setlist : owns
+    GuitarSong ||--o{ TabSection : contains
+    GuitarSong ||--o{ CustomChord : contains
 
-歌曲與歌單屬於登入者，API 只回傳自己的資料，見[設計說明](DESIGN.md)。
+    GuitarSong {
+        string title
+        json voicing_plan
+        json form
+    }
+    TabSection {
+        int order
+        json measures
+        json chords
+        json lyrics
+    }
+    Setlist {
+        string name
+        json song_ids
+    }
+```
 
-- Docker：PostgreSQL 資料保存在 `postgres_data` volume。
-- 本機：未設定 PostgreSQL 時，使用 `backend/db.sqlite3`。
-- Google Drive：瀏覽器直接上傳與下載 `.gflow`，後端不保存 Google 存取權杖。
-- 本機偏好：主題、部分練習偏好與登入 token 使用瀏覽器儲存。
+`TabSection` 把音符、和弦和歌詞存成 JSON。`Setlist.song_ids` 記錄歌曲 ID 的順序，不是指向歌曲的外鍵。標準和弦另外存在唯讀的 `GlobalChord` 表。
+
+- Docker 使用 PostgreSQL，資料保存在 `postgres_data` volume。
+- 本機預設使用 `backend/db.sqlite3`；全域和弦表只由 PostgreSQL 初始化 SQL 建立。
+- 歌曲以 `.gflow` 匯入匯出；Drive 的歌曲檔案由瀏覽器直接讀寫。
+- 登入 token、主題與部分練習偏好保存在瀏覽器。
 
 ## 開發服務
 
@@ -34,18 +54,10 @@ GuitarFlow 的 React 前端負責編輯、音樂理論與播放；Django API 負
 | --- | --- | --- |
 | 前端 | `127.0.0.1:3003` | `localhost:3000` |
 | Django | `127.0.0.1:8000` | `localhost:8000` |
-| PostgreSQL | `127.0.0.1:5432` | 預設改用 SQLite |
+| 資料庫 | `127.0.0.1:5432` | SQLite |
 
-前端透過 Vite 的 `/api` proxy 呼叫 Django。Docker 的轉送目標為 `backend:8000`；本機為 `localhost:8000`。Docker bind mount 支援修改程式後重新載入。
+前端預設呼叫同源的 `/api`，由 Vite 轉送。在 Docker 裡，目標是 `backend:8000`；本機則是 `localhost:8000`。要改轉送目標，設定 `API_PROXY_TARGET`；若要直接呼叫其他後端，則設定 `VITE_API_URL`。
 
-Compose 依序啟動服務：PostgreSQL 通過 `pg_isready` 後啟動 Django，Django 的 `GET /api/global-chords/` 回應正常後再啟動 Vite。
+Compose 會先等 PostgreSQL 通過健康檢查，再啟動 Django；等 `/api/global-chords/` 回應正常後，才啟動 Vite。Docker 對外提供的 port 預設綁在 loopback，本機 Vite 則監聽所有介面。
 
-Vite 本機開發會監聽所有介面；上表的 localhost 是瀏覽器入口，不代表僅允許本機連線。Docker 發布的 port 預設綁定 loopback。
-
-## 限制
-
-目前 Compose 啟動的是開發伺服器，使用預設資料庫密碼與 debug 模式；未設定 `DJANGO_SECRET_KEY` 時使用公開的開發 key。公開網站部署需要另外處理 HTTPS、正式伺服器、憑證、認證與備份。
-
-全域和弦表由 PostgreSQL 初始化 SQL 建立；SQLite 沒有相同的自動初始化流程。需要完整和弦 API 時使用 Docker。
-
-啟動與測試指令見 [README](../README.md)，路由見[前端路由](FRONTEND_ROUTING.md)。
+啟動和測試指令在 [README](../README.md)，API 與環境變數的設定在[後端開發](BACKEND_DEVELOP.md)。

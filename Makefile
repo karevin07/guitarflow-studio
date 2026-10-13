@@ -14,7 +14,6 @@ NPM     := npm
         test test-backend test-frontend \
         build \
         docker docker-down docker-logs \
-        install-hooks release \
         clean \
         help
 
@@ -79,16 +78,6 @@ docker-down:  ## stop and remove Docker Compose containers
 
 docker-logs:  ## tail logs from all Docker Compose services
 	docker compose logs -f
-
-##@ Public mirror
-
-install-hooks:  ## install the pre-push check that guards pushes to the public mirror
-	@printf '#!/bin/sh\nexec "$$(git rev-parse --show-toplevel)/scripts/check-public-push.sh" "$$@"\n' > "$$(git rev-parse --git-path hooks/pre-push)"
-	@chmod +x "$$(git rev-parse --git-path hooks/pre-push)"
-	@echo "Installed the pre-push check. Private strings go in $$(git rev-parse --git-path info/public-push-deny); see docs/RELEASING.md."
-
-release:  ## publish VERSION (e.g. make release VERSION=v0.2.0; add DRY_RUN=1 to only check)
-	@DRY_RUN="$(DRY_RUN)" scripts/release.sh "$(VERSION)"
 
 ##@ Cleanup
 
